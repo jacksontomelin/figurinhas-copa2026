@@ -1899,10 +1899,12 @@ function doRegister(){
   js(K.SESSION,{phone}); pingOnline(); enterApp(nu);
   launchConfetti();
   toast('🎉 Conta criada! Bem-vindo(a) à Família Tomelin! 🎉','#22a04a');
+  // 🤖 Envia confirmação privada no WhatsApp do usuário
+  setTimeout(()=>{ sendConfirmationWA(name, phone).catch(e=>console.warn('[Bot]',e)); }, 800);
   // 🤖 Notifica o grupo no WhatsApp que novo membro entrou
-  setTimeout(()=>{ notifyGroupNewUser(name, phone).catch(e=>console.warn('[Bot]',e)); }, 1500);
-  // Abre o grupo WA após 3s
-  setTimeout(()=>{trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},3000);
+  setTimeout(()=>{ notifyGroupNewUser(name, phone).catch(e=>console.warn('[Bot]',e)); }, 2200);
+  // Abre o grupo WA após 4s
+  setTimeout(()=>{trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},4000);
 }
 function doLogout(){
   // set offline
@@ -2149,6 +2151,7 @@ function _buildMarketList(){
   el.innerHTML='';
   if(!items.length){el.innerHTML='<div class="empty"><div class="empty-ico">🛒</div>Nenhum anúncio ainda.</div>';return;}
   const typeLabel={troca:'🔄 Troca',venda:'💰 Venda',ambos:'🔄💰 Troca ou Venda'};
+    const isLocked = m => m.lockedBy && typeof isItemLocked==='function';
   items.forEach(m=>{
     const isMine=m.owner===u.phone;
     const waTxt=encodeURIComponent(`Oi ${m.ownerName.split(' ')[0]}! Vi no sistema Família Tomelin que você tem a figurinha *${m.code}* ${m.type==='venda'?'por R$'+m.price.toFixed(2):'para troca'}. Tenho interesse! 🎴⚽`);
@@ -2212,8 +2215,12 @@ function renderTrades(){
       <div class="sec-lbl">🏆 Ranking do álbum</div>
       <div id="rank-section"></div>
       <div class="div"></div>
-      <!-- Matches -->
-      <div class="sec-lbl">🎯 Melhores matches para troca</div>
+      <!-- Matches ativos -->
+      <div class="sec-lbl">🤝 Meus matches de troca</div>
+      <div id="my-matches-section">${renderMyMatches()}</div>
+      <div class="div"></div>
+      <!-- Sugestões de match -->
+      <div class="sec-lbl">🎯 Melhores parceiros para trocar</div>
       <div id="match-section"></div>
     </div>
   `;
@@ -2296,8 +2303,9 @@ function renderTrades(){
         ${theyGiveMe.length?`<div class="li-desc"><span style="color:#a5d6a7;">✅ Ele(a) dá:</span> ${esc(theyGiveMe.slice(0,5).join(', '))}${theyGiveMe.length>5?` <span style="color:var(--gold);">+${theyGiveMe.length-5}</span>`:''}</div>`:''}
         ${iGiveThem.length?`<div class="li-desc"><span style="color:var(--gold);">🎴 Você dá:</span> ${esc(iGiveThem.slice(0,5).join(', '))}${iGiveThem.length>5?` <span style="color:var(--gold);">+${iGiveThem.length-5}</span>`:''}</div>`:''}
         <div class="li-actions" style="margin-top:7px;">
-          <a href="${waUrl}" target="_blank" rel="noopener"><button class="btn btn-wa btn-xs">💬 WhatsApp</button></a>
-          <button class="btn btn-blue btn-xs" onclick="openChatWith('${u.phone}')">📨 Chat interno</button>
+          <button class="btn btn-gold btn-xs" onclick="sendMatchProposal('${u.phone}',[...myDup].filter(c=>iGiveThem.includes(c)).slice(0,3),theyGiveMe.slice(0,3))">🤝 Propor match</button>
+          <button class="btn btn-blue btn-xs" onclick="openChatWith('${u.phone}')">💬 Chat</button>
+          <a href="${waUrl}" target="_blank" rel="noopener"><button class="btn btn-wa btn-xs">📱 WA</button></a>
         </div>
       `;
       matchSec.appendChild(d);
@@ -2762,6 +2770,58 @@ async function notifyGroupNewUser(userName, userPhone) {
   } catch(e) {
     console.warn('[Bot] Falha ao notificar grupo:', e.message);
   }
+}
+
+
+// ═══════════════════════════════════════════════════
+// 📱 MENSAGEM PRIVADA DE CONFIRMAÇÃO DE CADASTRO
+// ═══════════════════════════════════════════════════
+function buildLandingUrl(name, phone, token) {
+  const base = 'https://jacksontomelin.github.io/figurinhas-copa2026/landing.html';
+  const p = new URLSearchParams({ name, phone, token });
+  return base + '?' + p.toString();
+}
+
+async function sendConfirmationWA(name, phone) {
+  const token = Math.random().toString(36).substring(2, 10).toUpperCase();
+  // Save token
+  const tokens = JSON.parse(localStorage.getItem('t26_tokens') || '{}');
+  tokens[phone] = { token, ts: Date.now(), confirmed: false };
+  localStorage.setItem('t26_tokens', JSON.stringify(tokens));
+
+  const firstName = name.split(' ')[0];
+  const landingUrl = buildLandingUrl(name, phone, token);
+  const GROUP_LINK = 'https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW';
+
+  const msg = `🏆 *Olá, ${firstName}! Bem-vindo(a) à Família Tomelin!* 🎉\n\n`
+    + `Seu cadastro no sistema de trocas de figurinhas da Copa 2026 foi realizado com sucesso!\n\n`
+    + `✅ *Confirme seu acesso clicando aqui:*\n${landingUrl}\n\n`
+    + `📱 *Entre também no nosso grupo do WhatsApp:*\n${GROUP_LINK}\n\n`
+    + `_Família Tomelin · Copa do Mundo FIFA 2026_ 🏆🇧🇷`;
+
+  const railwayUrl = localStorage.getItem('t26_railway_url') || '';
+  if (railwayUrl) {
+    try {
+      await fetch(railwayUrl + '/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, message: msg }),
+        signal: AbortSignal.timeout(8000)
+      });
+      console.log('[Bot] Confirmação enviada para', phone);
+      return;
+    } catch(e) { console.warn('[Bot]', e.message); }
+  }
+  // Fallback direto Z-API
+  try {
+    await fetch('https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Client-Token': 'Ff0f0920827ca4987818cafa9ba0f97a7S' },
+      body: JSON.stringify({ phone: '55' + phone.replace(/\D/g,''), message: msg }),
+      signal: AbortSignal.timeout(8000)
+    });
+    console.log('[Bot] Confirmação Z-API direta enviada');
+  } catch(e) { console.warn('[Bot] Falha confirmação:', e.message); }
 }
 
 // 🟢 ONLINE COUNTER + GRUPO WA TRACKER
@@ -3333,6 +3393,209 @@ function _answerQuiz(i){
   if(isRight) toast('Correto!','#22a04a'); else toast('Resp: '+qz.opts[qz.a],'var(--orange)');
 }
 
+
+
+// ═══════════════════════════════════════════════════
+// 🤝 SISTEMA DE MATCH DE TROCAS (com travamento)
+// ═══════════════════════════════════════════════════
+const K_MATCHES = 't26_matches'; // trocas em andamento
+
+function getMatches(){ try{return JSON.parse(localStorage.getItem(K_MATCHES)||'[]');}catch{return[];} }
+function saveMatches(arr){ localStorage.setItem(K_MATCHES, JSON.stringify(arr)); }
+
+// Criar um match entre dois usuários para um conjunto de figurinhas
+// Trava as figurinhas envolvidas para que ninguém mais as pegue
+function createMatch(fromPhone, toPhone, fromGives, toGives){
+  const id = 'match_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const matches = getMatches();
+  matches.push({
+    id,
+    from: fromPhone,
+    to: toPhone,
+    fromGives,   // códigos que fromPhone vai dar
+    toGives,     // códigos que toPhone vai dar
+    status: 'pending',   // pending | active | done | cancelled
+    ts: Date.now(),
+    updatedAt: Date.now(),
+  });
+  saveMatches(matches);
+  // Travar figurinhas no mercado (marcar como "em negociação")
+  lockMarketItems(fromPhone, fromGives, id);
+  lockMarketItems(toPhone, toGives, id);
+  return id;
+}
+
+// Marcar itens do mercado como travados em negociação
+function lockMarketItems(ownerPhone, codes, matchId){
+  const mkt = getMarket();
+  let changed = false;
+  mkt.forEach(item=>{
+    if(item.owner===ownerPhone && codes.includes(item.code) && !item.lockedBy){
+      item.lockedBy = matchId;
+      item.lockedAt = Date.now();
+      changed = true;
+    }
+  });
+  if(changed) js(K.MARKET, mkt);
+}
+
+// Liberar figurinhas de um match cancelado
+function unlockMatchItems(matchId){
+  const mkt = getMarket().map(item=>{
+    if(item.lockedBy===matchId){ delete item.lockedBy; delete item.lockedAt; }
+    return item;
+  });
+  js(K.MARKET, mkt);
+}
+
+// Aceitar match
+function acceptMatch(matchId){
+  const matches = getMatches();
+  const m = matches.find(x=>x.id===matchId);
+  if(!m||m.status!=='pending') return false;
+  m.status='active'; m.updatedAt=Date.now();
+  saveMatches(matches);
+  notifyMatchUpdate(m, 'accepted');
+  return true;
+}
+
+// Cancelar match (libera figurinhas)
+function cancelMatch(matchId){
+  const matches = getMatches();
+  const m = matches.find(x=>x.id===matchId);
+  if(!m||m.status==='done') return false;
+  m.status='cancelled'; m.updatedAt=Date.now();
+  saveMatches(matches);
+  unlockMatchItems(matchId);
+  notifyMatchUpdate(m, 'cancelled');
+  return true;
+}
+
+// Confirmar troca concluída
+function completeMatch(matchId){
+  const me = getCurrentUser(); if(!me) return false;
+  const matches = getMatches();
+  const m = matches.find(x=>x.id===matchId);
+  if(!m||m.status!=='active') return false;
+  // Registrar confirmação
+  if(!m.confirmedBy) m.confirmedBy = [];
+  if(!m.confirmedBy.includes(me.phone)) m.confirmedBy.push(me.phone);
+  // Se ambos confirmaram, finalizar
+  if(m.confirmedBy.includes(m.from) && m.confirmedBy.includes(m.to)){
+    m.status='done'; m.doneAt=Date.now();
+    // Atualizar stickers: transferir figurinhas
+    applyMatchStickers(m);
+    // Remover do mercado
+    removeMatchFromMarket(m);
+    toast('🤝 Troca concluída com sucesso! 🎴','var(--wa)');
+  }
+  m.updatedAt=Date.now();
+  saveMatches(matches);
+  return true;
+}
+
+function applyMatchStickers(m){
+  const users = getUsers();
+  const fromUser = users.find(u=>u.phone===m.from);
+  const toUser   = users.find(u=>u.phone===m.to);
+  if(!fromUser||!toUser) return;
+  // From dá figuras para To
+  m.fromGives.forEach(code=>{
+    fromUser.stickers[code]=0; // remove do from
+    toUser.stickers[code]=1;   // adiciona ao to
+  });
+  // To dá figuras para From
+  m.toGives.forEach(code=>{
+    toUser.stickers[code]=0;
+    fromUser.stickers[code]=1;
+  });
+  const us=getUsers();
+  const fi=us.findIndex(u=>u.phone===m.from); if(fi>=0)us[fi]=fromUser;
+  const ti=us.findIndex(u=>u.phone===m.to); if(ti>=0)us[ti]=toUser;
+  js(K.USERS,us);
+}
+
+function removeMatchFromMarket(m){
+  const allCodes=[...m.fromGives,...m.toGives];
+  const mkt=getMarket().filter(item=>
+    !((item.owner===m.from||item.owner===m.to)&&allCodes.includes(item.code))
+  );
+  js(K.MARKET,mkt);
+}
+
+// Notificar via chat interno sobre atualização do match
+function notifyMatchUpdate(match, type){
+  const me=getCurrentUser(); if(!me)return;
+  const other=match.from===me.phone?match.to:match.from;
+  const msgs={
+    'accepted':'✅ Match aceito! Combinemos os detalhes da troca! 🤝🎴',
+    'cancelled':'❌ Match cancelado. As figurinhas voltaram a ficar disponíveis.',
+    'done':'🎉 Troca concluída! Obrigado pela troca, parceiro(a)! 🏆🎴',
+  };
+  if(msgs[type]){
+    const cid=[me.phone,other].sort().join('__');
+    const ch=getChats(); ch[cid]=[...(ch[cid]||[]),{from:me.phone,text:msgs[type],ts:Date.now(),isSticker:true}];
+    js(K.CHAT,ch);
+  }
+}
+
+// Verificar se figurinha está travada em algum match ativo
+function isItemLocked(code, ownerPhone){
+  return getMarket().some(item=>
+    item.code===code&&item.owner===ownerPhone&&item.lockedBy
+  );
+}
+
+// Renderizar aba de matches (no contexto de trocas)
+function renderMyMatches(){
+  const me=getCurrentUser(); if(!me)return;
+  const myMatches=getMatches().filter(m=>m.from===me.phone||m.to===me.phone).reverse();
+  if(!myMatches.length) return '<div class="empty" style="padding:14px;font-size:12px;"><div class="empty-ico">🤝</div>Nenhum match de troca ainda.</div>';
+  const statusColors={pending:'rgba(245,197,24,.18)',active:'rgba(34,160,74,.15)',done:'rgba(66,165,245,.12)',cancelled:'rgba(229,57,53,.1)'};
+  const statusLabels={pending:'⏳ Pendente',active:'🟢 Ativo',done:'✅ Concluída',cancelled:'❌ Cancelada'};
+  return myMatches.slice(0,8).map(m=>{
+    const isFrom=m.from===me.phone;
+    const other=getUserByPhone(isFrom?m.to:m.from);
+    const myGives=isFrom?m.fromGives:m.toGives;
+    const theyGive=isFrom?m.toGives:m.fromGives;
+    const canConfirm=m.status==='active'&&!(m.confirmedBy||[]).includes(me.phone);
+    return `<div style="background:${statusColors[m.status]||'rgba(255,255,255,.05)'};border:1px solid rgba(255,255,255,.1);border-radius:11px;padding:11px 13px;margin-bottom:7px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">
+          ${isFrom?'Você':'←'} ↔ ${other?.name||'?'}
+        </div>
+        <span style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--gray);">${statusLabels[m.status]||m.status}</span>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px;">🎴 Você dá: <strong style="color:var(--gold);">${myGives.join(', ')||'—'}</strong></div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:7px;">🎁 Você recebe: <strong style="color:#a5d6a7;">${theyGive.join(', ')||'—'}</strong></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${m.status==='pending'&&!isFrom?`<button class="btn btn-green btn-xs" onclick="if(acceptMatch('${m.id}')){renderTrades();toast('✅ Match aceito!','var(--wa)');}">✅ Aceitar</button>`:''}
+        ${m.status!=='done'&&m.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(229,57,53,.15);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);" onclick="if(cancelMatch('${m.id}')){renderTrades();toast('Match cancelado.','#ef9a9a');}">❌ Cancelar</button>`:''}
+        ${canConfirm?`<button class="btn btn-wa btn-xs" onclick="if(completeMatch('${m.id}')){renderTrades();}">🤝 Confirmar troca feita</button>`:''}
+        ${m.status==='active'?`<button class="btn btn-blue btn-xs" onclick="openChatWith('${isFrom?m.to:m.from}');navTo(3);">💬 Chat</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Proposta automática de match a partir do chat
+function sendMatchProposal(toPhone, myGives, theyGive){
+  const me=getCurrentUser(); if(!me)return;
+  if(!myGives.length&&!theyGive.length){ toast('Selecione as figurinhas para propor a troca!','var(--red)');return; }
+  const matchId=createMatch(me.phone,toPhone,myGives,theyGive);
+  const cid=[me.phone,toPhone].sort().join('__');
+  const ch=getChats();
+  const msg=`🤝 *Proposta de match de troca!*\n\n`
+    +`🎴 Eu dou: *${myGives.join(', ')||'—'}*\n`
+    +`🎁 Você dá: *${theyGive.join(', ')||'—'}*\n\n`
+    +`Aceita? (ID: ${matchId.slice(-6)})`;
+  ch[cid]=[...(ch[cid]||[]),{from:me.phone,text:msg,ts:Date.now(),isSticker:true,matchId}];
+  js(K.CHAT,ch);
+  addDirectNotif&&addDirectNotif(toPhone,{type:'match',ico:'🤝',text:`${me.name.split(' ')[0]} propôs um match de troca! Verifique em Trocas.`});
+  toast('🤝 Match proposto! Aguardando resposta...','var(--gold)');
+  navTo(3); openChatWith(toPhone);
+  return matchId;
+}
 
 // ⚽ COPA 2026 — JOGOS AO VIVO + APOSTAS + DESAFIOS
 // ═══════════════════════════════════════════════════
