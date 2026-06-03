@@ -402,7 +402,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
     <div id="acd-dias-wrap">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(56px,18vw,88px);
         color:var(--gold);line-height:1;letter-spacing:2px;
-        text-shadow:0 0 40px rgba(245,197,24,.5);" id="acd-dias">0</div>
+        text-shadow:0 0 40px rgba(245,197,24,.5);" id="acd-dias">8</div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
         letter-spacing:3px;color:rgba(255,255,255,.55);text-transform:uppercase;margin-bottom:8px;">
         dias para a Copa
@@ -414,7 +414,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
         <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;
           background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
           border-radius:8px;padding:4px 10px;min-width:44px;text-align:center;
-          line-height:1.2;" id="acd-h">00</div>
+          line-height:1.2;" id="acd-h">17</div>
         <div style="font-size:9px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;
           font-weight:700;letter-spacing:2px;text-transform:uppercase;">Horas</div>
       </div>
@@ -424,7 +424,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
         <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;
           background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
           border-radius:8px;padding:4px 10px;min-width:44px;text-align:center;
-          line-height:1.2;" id="acd-m">00</div>
+          line-height:1.2;" id="acd-m">59</div>
         <div style="font-size:9px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;
           font-weight:700;letter-spacing:2px;text-transform:uppercase;">Min</div>
       </div>
@@ -1598,7 +1598,14 @@ const COPA_DATE = new Date('2026-06-11T19:00:00Z'); // 16h BRT = 19h UTC
 let _acdTimer = null;
 function _tickCountdown(){
   const el = document.getElementById('auth-countdown');
-  if(!el){ clearInterval(_acdTimer); return; }
+  if(!el){
+    // Element removed (Copa started or user logged in) — stop timer
+    if(_acdTimer){ clearInterval(_acdTimer); _acdTimer=null; }
+    return;
+  }
+  // Only tick if auth screen is visible
+  const scr = document.getElementById('scr-auth');
+  if(scr && !scr.classList.contains('on')) return;
   const diff = COPA_DATE - Date.now();
   if(diff <= 0){
     el.style.transition = 'opacity .8s, transform .8s';
@@ -1626,9 +1633,21 @@ function _tickCountdown(){
     ed.style.textShadow = '0 0 50px rgba(255,107,53,.6)';
   }
 }
-// Start countdown
-_acdTimer = setInterval(_tickCountdown, 1000);
-_tickCountdown();
+// Start countdown — executa imediatamente e na DOMContentLoaded
+function _startCountdown(){
+  if(_acdTimer) return; // já rodando
+  if(COPA_DATE <= Date.now()) return; // Copa já começou
+  _acdTimer = setInterval(_tickCountdown, 1000);
+  _tickCountdown();
+}
+// Tenta agora (script roda após HTML)
+_startCountdown();
+// Garante que rode após DOMContentLoaded também
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', _startCountdown);
+} else {
+  _startCountdown();
+}
 
 
 // ═══════════════════════════════════════════════════
