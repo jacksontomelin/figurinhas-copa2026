@@ -849,38 +849,110 @@ cron.schedule('*/10 * * * *', async () => {
 
 
 
-// ── URL Shortener (TinyURL API, gratuito, sem chave) ─────────
-const urlShortCache = new Map();
+// ══════════════════════════════════════════════════════════════
+// 🔗 ENCURTADOR DE URLs — copa2026.familiatomelin.com.br/s/:code
+// Armazena em memória + arquivo JSON para persistência
+// ══════════════════════════════════════════════════════════════
+const LINKS_FILE = path.join(__dirname, 'data', 'links.json');
+let shortLinks = {}; // code → { url, created, hits }
 
-async function shortenUrl(url) {
-  if (!url || url.length < 30) return url;
-  if (urlShortCache.has(url)) return urlShortCache.get(url);
+// Carrega links salvos ao iniciar
+function loadLinks() {
   try {
-    const res = await fetch(
-      'https://tinyurl.com/api-create.php?url=' + encodeURIComponent(url),
-      { signal: AbortSignal.timeout(4000) }
-    );
-    if (res.ok) {
-      const short = (await res.text()).trim();
-      if (short.startsWith('http')) {
-        urlShortCache.set(url, short);
-        return short;
-      }
+    if (fs.existsSync(LINKS_FILE)) {
+      shortLinks = JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8'));
+      log('🔗', `Encurtador: ${Object.keys(shortLinks).length} links carregados`);
     }
-  } catch (e) {
-    log('⚠️', 'shortenUrl failed: ' + e.message);
-  }
-  return url; // fallback: URL original
+  } catch (e) { log('⚠️', 'loadLinks: ' + e.message); }
 }
 
-// Rota pública de encurtamento
-app.get('/api/shorten', async (req, res) => {
+function saveLinks() {
+  try {
+    fs.mkdirSync(path.dirname(LINKS_FILE), { recursive: true });
+    fs.writeFileSync(LINKS_FILE, JSON.stringify(shortLinks, null, 2));
+  } catch (e) { log('⚠️', 'saveLinks: ' + e.message); }
+}
+
+// Gera código único de 6 chars
+function genCode() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let code;
+  do {
+    code = Array.from({ length: 6 }, () =>
+      chars[Math.floor(Math.random() * chars.length)]
+    ).join('');
+  } while (shortLinks[code]);
+  return code;
+}
+
+// Cache: url original → code (evita duplicar)
+const urlToCode = new Map();
+
+function shortenUrl(url) {
+  if (!url || url.length < 20) return url;
+  // Check cache
+  if (urlToCode.has(url)) {
+    return `${APP_URL}/s/${urlToCode.get(url)}`;
+  }
+  // Check existing links
+  const existing = Object.entries(shortLinks).find(([, v]) => v.url === url);
+  if (existing) {
+    urlToCode.set(url, existing[0]);
+    return `${APP_URL}/s/${existing[0]}`;
+  }
+  // Create new
+  const code = genCode();
+  shortLinks[code] = { url, created: Date.now(), hits: 0 };
+  urlToCode.set(url, code);
+  saveLinks();
+  log('🔗', `Novo link: /s/${code} → ${url.substring(0, 60)}`);
+  return `${APP_URL}/s/${code}`;
+}
+
+// ── Redirect endpoint: GET /s/:code ──────────────────────────
+app.get('/s/:code', (req, res) => {
+  const { code } = req.params;
+  const link = shortLinks[code];
+  if (!link) {
+    return res.status(404).send('<h2>Link não encontrado</h2><p><a href="/">Voltar</a></p>');
+  }
+  link.hits = (link.hits || 0) + 1;
+  saveLinks();
+  res.redirect(302, link.url);
+});
+
+// ── API: POST /api/shorten ─────────────────────────────────────
+app.post('/api/shorten', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const url = req.body?.url || req.query.url;
+  if (!url) return res.json({ ok: false, error: 'url required' });
+  const short = shortenUrl(url);
+  res.json({ ok: true, short, original: url });
+});
+
+// ── API: GET /api/shorten (conveniência) ─────────────────────
+app.get('/api/shorten', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const { url } = req.query;
-  if (!url) return res.json({ ok: false, error: 'url param required' });
-  const short = await shortenUrl(url);
-  res.json({ ok: true, original: url, short });
+  if (!url) return res.json({ ok: false, error: 'url required' });
+  const short = shortenUrl(url);
+  res.json({ ok: true, short, original: url });
 });
+
+// ── API: GET /api/links (lista todos) ────────────────────────
+app.get('/api/links', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const list = Object.entries(shortLinks).map(([code, v]) => ({
+    code,
+    short: `${APP_URL}/s/${code}`,
+    url: v.url,
+    hits: v.hits || 0,
+    created: v.created,
+  })).sort((a, b) => b.hits - a.hits);
+  res.json({ ok: true, count: list.length, links: list });
+});
+
+loadLinks();
 
 // ═══════════════════════════════════════════════════════════════
 // 📰 RPA DE NOTÍCIAS — Puxa e envia notícias ao vivo a cada 10min
@@ -891,7 +963,7 @@ let newsRpaEnabled = true;
 let newsRpaCount = 0;
 
 // Formata notícia para WhatsApp
-async function formatNewsMsg(item, idx) {
+function formatNewsMsg(item, idx) {
   const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡','🔴','📺'];
   const ico = emojis[idx % emojis.length];
 
@@ -908,7 +980,7 @@ async function formatNewsMsg(item, idx) {
   // Link encurtado
   let linkLine = '';
   if (item.link && item.link.length > 10) {
-    const short = await shortenUrl(item.link);
+    const short = shortenUrl(item.link);
     linkLine = `\n🔗 ${short}`;
   }
 
@@ -956,7 +1028,7 @@ async function rpaNewsLoop() {
 
     log('📰', `RPA: enviando notícia — "${(item.title||'').substring(0,50)}"`);
 
-    const msg = await formatNewsMsg(item, newsRpaCount);
+    const msg = formatNewsMsg(item, newsRpaCount);
     const r   = await sendGroup(msg);
 
     if (r.ok) {
