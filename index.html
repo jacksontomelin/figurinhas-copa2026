@@ -322,7 +322,7 @@ footer{background:rgba(0,0,0,.5);border-top:1px solid rgba(255,255,255,.06);
   <nav class="tb-nav">
     <a href="#clima">🌤 Clima</a>
     <a href="#noticias">📰 Notícias</a>
-    <a href="#sistema">✨ Sistema</a>
+    <a href="#sistema">🏆 Curiosidades</a>
   </nav>
   <a href="app.html" class="tb-cta">🎴 Entrar no app</a>
 </header>
@@ -422,22 +422,47 @@ footer{background:rgba(0,0,0,.5);border-top:1px solid rgba(255,255,255,.06);
   </div>
 </section>
 
-<!-- SISTEMA FEATURES -->
+<!-- CURIOSIDADES DA COPA -->
 <section class="section reveal" id="sistema">
   <div class="sec-head">
-    <div class="sec-kicker">✨ Tudo que você pode fazer</div>
-    <h2 class="sec-h">O sistema da <em>Família Tomelin</em></h2>
+    <div class="sec-kicker">🏆 Sabia disso?</div>
+    <h2 class="sec-h">Curiosidades da <em>Copa 2026</em></h2>
   </div>
-  <div class="feat-grid">
-    <div class="feat"><div class="feat-ico">🎴</div><div class="feat-title">Álbum Digital</div><div class="feat-desc">Marque suas 980 figurinhas, acompanhe o progresso e receba elogios por marcos alcançados.</div><div class="feat-glow"></div></div>
-    <div class="feat"><div class="feat-ico">🔄</div><div class="feat-title">Trocas Inteligentes</div><div class="feat-desc">O sistema cruza automaticamente quem tem o que você precisa. Match travado até confirmar.</div><div class="feat-glow"></div></div>
-    <div class="feat"><div class="feat-ico">🛒</div><div class="feat-title">Mercado</div><div class="feat-desc">Anuncie repetidas para venda ou troca com chips de preço e sem digitar nada.</div><div class="feat-glow"></div></div>
-    <div class="feat"><div class="feat-ico">💬</div><div class="feat-title">Chat Interno</div><div class="feat-desc">Converse, combine trocas e envie propostas de match diretamente pelo sistema.</div><div class="feat-glow"></div></div>
-    <div class="feat"><div class="feat-ico">🎲</div><div class="feat-title">Apostas</div><div class="feat-desc">Aposte nos jogos com Tomelin Coins e desafie amigos. Diversão total — 100% grátis!</div><div class="feat-glow"></div></div>
-    <div class="feat"><div class="feat-ico">🤖</div><div class="feat-title">Bot WhatsApp</div><div class="feat-desc">Gols, resultados e notificações de figurinhas direto no grupo. Automático 24h.</div><div class="feat-glow"></div></div>
-    <div class="feat"><div class="feat-ico">📺</div><div class="feat-title">Dashboard TV</div><div class="feat-desc">Ranking, apostas e jogos ao vivo formatados para exibir na televisão da família.</div><div class="feat-glow"></div></div>
-    <div class="feat"><div class="feat-ico">⚽</div><div class="feat-title">Jogos ao Vivo</div><div class="feat-desc">Placares, gols e resultados da Copa 2026 em tempo real com alertas automáticos.</div><div class="feat-glow"></div></div>
+
+  <!-- QUIZ INTERATIVO -->
+  <div id="quiz-block" style="background:linear-gradient(135deg,rgba(13,45,88,.8),rgba(5,16,28,.95));border:1.5px solid rgba(66,165,245,.3);border-radius:18px;padding:22px 20px;margin-bottom:16px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:#90caf9;text-transform:uppercase;margin-bottom:10px;">🧠 Quiz Copa 2026 · Pergunta <span id="q-num">1</span>/10</div>
+    <div style="font-size:16px;color:#fff;font-weight:600;line-height:1.5;margin-bottom:14px;" id="q-text">Carregando...</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="q-opts"></div>
+    <div style="margin-top:10px;height:26px;" id="q-feedback"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);">Placar: <span id="q-score">0</span>/<span id="q-total">0</span></div>
+      <button id="q-next" onclick="nextQuiz()" style="display:none;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;border-radius:8px;padding:8px 16px;cursor:pointer;">Próxima →</button>
+    </div>
   </div>
+
+  <!-- FACT CARD ROLANTE -->
+  <div id="fact-card" style="background:linear-gradient(135deg,rgba(26,122,58,.18),rgba(5,16,28,.95));border:1.5px solid rgba(245,197,24,.25);border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:.2s;" onclick="nextFact()" title="Clique para próxima curiosidade">
+    <div style="display:flex;align-items:flex-start;gap:14px;">
+      <div style="font-size:36px;flex-shrink:0;" id="fact-ico">⚽</div>
+      <div style="flex:1;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:6px;">💡 Curiosidade do dia · <span id="fact-num">1</span>/50 · Clique para próxima</div>
+        <div style="font-size:15px;color:#eceff1;line-height:1.65;font-weight:500;" id="fact-text">Carregando...</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;" id="fact-tags"></div>
+  </div>
+
+  <!-- GRID DE STATS DA COPA 2026 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:16px;" id="copa-stats-grid">
+    <div class="feat"><div style="font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--gold);line-height:1;">48</div><div class="feat-title">Seleções</div><div class="feat-desc">Primeira Copa com 48 times na história</div></div>
+    <div class="feat"><div style="font-family:'Bebas Neue',sans-serif;font-size:42px;color:#42a5f5;line-height:1;">104</div><div class="feat-title">Jogos</div><div class="feat-desc">40 partidas a mais que a Copa 2022</div></div>
+    <div class="feat"><div style="font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--green2);line-height:1;">16</div><div class="feat-title">Estádios</div><div class="feat-desc">Em 3 países: EUA, México e Canadá</div></div>
+    <div class="feat"><div style="font-family:'Bebas Neue',sans-serif;font-size:42px;color:#ba68c8;line-height:1;">39</div><div class="feat-title">Dias</div><div class="feat-desc">De 11 de junho a 19 de julho de 2026</div></div>
+    <div class="feat"><div style="font-family:'Bebas Neue',sans-serif;font-size:42px;color:#ef9a9a;line-height:1;">980</div><div class="feat-title">Figurinhas</div><div class="feat-desc">No álbum Panini 2026 — recorde!</div></div>
+    <div class="feat"><div style="font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--br-yellow);line-height:1;">5x</div><div class="feat-title">Brasil</div><div class="feat-desc">Maior vencedor, busca o hexacampeonato</div></div>
+  </div>
+
 </section>
 
 <!-- CTA FINAL -->
@@ -825,6 +850,144 @@ async function loadNews(){
   }).join('');
 }
 loadNews();
+
+
+// ════════════════════════════════════════════════════
+// 🧠 QUIZ + 💡 CURIOSIDADES
+// ════════════════════════════════════════════════════
+const QUIZZES=[
+  {q:'Quantas seleções jogarão a Copa 2026?',opts:['32','40','48','56'],a:2},
+  {q:'Em quantos países a Copa 2026 será realizada?',opts:['1','2','3','4'],a:2},
+  {q:'Qual estádio receberá a FINAL da Copa 2026?',opts:['Rose Bowl','MetLife Stadium','AT&T Stadium','SoFi Stadium'],a:1},
+  {q:'Quantas figurinhas tem o álbum Panini 2026?',opts:['720','840','960','980'],a:3},
+  {q:'Quantas Copas do Mundo o Brasil tem?',opts:['3','4','5','6'],a:2},
+  {q:'Quantos jogos terá a Copa 2026?',opts:['64','80','96','104'],a:3},
+  {q:'Qual o maior artilheiro da história das Copas?',opts:['Pelé','Ronaldo','Klose','Müller'],a:2},
+  {q:'Quando começa a Copa 2026?',opts:['1 Jun','11 Jun','20 Jun','1 Jul'],a:1},
+  {q:'Qual country NÃO é sede da Copa 2026?',opts:['EUA','México','Canadá','Brasil'],a:3},
+  {q:'O Brasil estreia contra qual seleção?',opts:['Argentina','Espanha','Marrocos','França'],a:2},
+];
+
+const FACTS=[
+  {ico:'🏆',txt:'A Copa 2026 é a primeira da história com 48 seleções, expandindo de 32 — o maior torneio já realizado.',tags:['Recorde','Formato']},
+  {ico:'🌎',txt:'Pela primeira vez o mundial será em 3 países simultaneamente: EUA, Canadá e México.',tags:['Sede','História']},
+  {ico:'🏟️',txt:'O Estádio Azteca (México) vai sediar sua 3ª Copa do Mundo — único no mundo com essa marca (1970, 1986 e 2026).',tags:['Estádio','Recorde']},
+  {ico:'🇧🇷',txt:'O Brasil é o único país a ter participado de TODAS as 23 edições da Copa do Mundo desde 1930.',tags:['Brasil','História']},
+  {ico:'⭐',txt:'O MetLife Stadium em Nova Jersey receberá a grande final em 19 de julho de 2026, com capacidade para mais de 82 mil pessoas.',tags:['Final','Estádio']},
+  {ico:'🎴',txt:'O álbum Panini 2026 tem 980 figurinhas — recorde absoluto! São 864 jogadores e 116 especiais.',tags:['Panini','Recorde']},
+  {ico:'💰',txt:'Cada pacotinho da Copa 2026 tem 7 figurinhas por R$7. Para completar sem repetir você gastaria R$980 — impossível na prática!',tags:['Panini','Curiosidade']},
+  {ico:'⚽',txt:'Miroslav Klose (Alemanha) é o maior artilheiro da história das Copas com 16 gols em 4 torneios.',tags:['Artilharia','Alemanha']},
+  {ico:'🥅',txt:'O gol mais rápido da história das Copas foi de Hakan Şükür (Turquia) em apenas 11 segundos, em 2002.',tags:['Recorde','Gol']},
+  {ico:'🏆',txt:'A Copa 2026 vai distribuir US$ 1 bilhão em premiação — o campeão leva US$ 200 milhões.',tags:['Premiação','Recorde']},
+  {ico:'🇲🇽',txt:'O México nunca passou das quartas de final em uma Copa — é o "quinto partido" que o país ainda não conseguiu superar.',tags:['México','Curiosidade']},
+  {ico:'🇦🇷',txt:'A Argentina é a atual campeã mundial. Messi finalmente conquistou o único título que faltava na carreira em 2022.',tags:['Argentina','Messi']},
+  {ico:'🇧🇷',txt:'Pelé é o único jogador a conquistar 3 Copas do Mundo (1958, 1962 e 1970). Uma marca provavelmente inalcançável.',tags:['Brasil','Pelé']},
+  {ico:'📦',txt:'A Panini produz álbuns de Copa do Mundo desde 1970, no México — o mesmo local que sediará jogos da Copa 2026.',tags:['Panini','História']},
+  {ico:'⚡',txt:'Vinicius Jr. foi eleito o melhor jogador do mundo pelo FIFA The Best 2024. Ele chega como principal estrela do Brasil.',tags:['Brasil','Vinicius']},
+  {ico:'🏟️',txt:'O SoFi Stadium em Los Angeles tem o maior telão de 360° do mundo, com quase 70.000 metros quadrados de LED.',tags:['Estádio','EUA']},
+  {ico:'🌍',txt:'Mais de 5 bilhões de pessoas assistiram a pelo menos um jogo da Copa 2022 — quase 2/3 da população mundial.',tags:['Audiência','Recorde']},
+  {ico:'🎯',txt:'A Copa 2026 terá sistema de impedimento semi-automático com câmeras de IA em todos os estádios.',tags:['Tecnologia','VAR']},
+  {ico:'🔵',txt:'A Itália, 4x campeã mundial, não se classificou para a Copa 2026 — mesmo destino que tinha tido em 2022.',tags:['Itália','Eliminação']},
+  {ico:'🇧🇷',txt:'Brasil estreia em 13 de junho contra o Marrocos no MetLife Stadium, em Nova Jersey, às 16h (horário de Brasília).',tags:['Brasil','Estreia']},
+  {ico:'📱',txt:'A Panini tem app oficial para coleção digital da Copa 2026. Usuários ganham 2 envelopes grátis por dia.',tags:['Panini','Digital']},
+  {ico:'🏆',txt:'O formato de 48 seleções faz com que cada time jogue ao menos 3 partidas garantidas na fase de grupos.',tags:['Formato','Regras']},
+  {ico:'🌎',txt:'A Copa 2026 será disputada em 16 estádios: 11 nos EUA, 3 no México e 2 no Canadá.',tags:['Sede','Estádios']},
+  {ico:'⚽',txt:'104 jogos serão disputados na Copa 2026 — 40 a mais do que nas edições anteriores de 32 seleções.',tags:['Formato','Recorde']},
+  {ico:'🎴',txt:'Trocar figurinhas é tradição em mais de 140 países durante as Copas do Mundo. O Brasil é campeão de trocas!',tags:['Figurinhas','Brasil']},
+  {ico:'🏅',txt:'O Brasil tem 5 títulos mundiais: 1958 (Suécia), 1962 (Chile), 1970 (México), 1994 (EUA) e 2002 (Japão/Coreia).',tags:['Brasil','Títulos']},
+  {ico:'💡',txt:'A Copa 2022 no Catar foi a primeira realizada no inverno do hemisfério norte, em novembro e dezembro.',tags:['Catar 2022','Curiosidade']},
+  {ico:'🇩🇪',txt:'A Alemanha é a única seleção a ter disputado todas as finais da Copa do Mundo entre 1982 e 2014.',tags:['Alemanha','História']},
+  {ico:'📊',txt:'O custo médio para completar o álbum comprando apenas pacotinhos é estimado em R$1.500 a R$2.500.',tags:['Panini','Custo']},
+  {ico:'🏆',txt:'A Copa 2026 terá 12 grupos de 4 times. Os 2 primeiros de cada grupo avançam + 8 melhores 3os colocados.',tags:['Formato','Regras']},
+  {ico:'🇺🇸',txt:'Os EUA nunca venceram uma Copa do Mundo, mas chegaram às quartas de final em 2002 — a melhor campanha da história.',tags:['EUA','História']},
+  {ico:'⚽',txt:'A bola oficial da Copa 2026 foi desenvolvida pela Adidas com tecnologia de rastreamento interno em tempo real.',tags:['Tecnologia','Bola']},
+  {ico:'🌟',txt:'Mbappé (França) é o jogador mais jovem a marcar na final de uma Copa — fez 2 gols com 19 anos em 2018.',tags:['França','Mbappé']},
+  {ico:'🎴',txt:'A figurinha de Pelé do álbum da Copa de 1970 vale mais de R$50.000 em leilões de colecionadores.',tags:['Figurinhas','Raridade']},
+  {ico:'🏟️',txt:'O AT&T Stadium em Dallas, Texas, tem capacidade para mais de 105.000 pessoas — o maior da Copa 2026.',tags:['Estádio','EUA']},
+  {ico:'🇨🇦',txt:'O Canadá nunca passou da fase de grupos em uma Copa do Mundo. A Copa 2026 é a chance histórica do país.',tags:['Canadá','História']},
+  {ico:'📺',txt:'A Copa 2022 foi a mais assistida da história em streaming — mais de 1,5 bilhão de streams digitais.',tags:['Audiência','Streaming']},
+  {ico:'💎',txt:'Figurinhas com erro de impressão valem fortunas para colecionadores — alguns chegam a R$10.000.',tags:['Figurinhas','Raridade']},
+  {ico:'⚡',txt:'O Brasil marcou 237 gols ao longo de todas as Copas — recorde absoluto de todos os tempos.',tags:['Brasil','Recorde']},
+  {ico:'🌍',txt:'A Copa 2026 terá sistema anti-racismo com monitoramento por inteligência artificial nos estádios.',tags:['Tecnologia','Social']},
+  {ico:'🇪🇸',txt:'A Espanha é a única seleção a ter vencido Copa do Mundo, Eurocopa e Liga das Nações consecutivamente.',tags:['Espanha','Títulos']},
+  {ico:'🏟️',txt:'O BC Place em Vancouver (Canadá) tem o maior telhado retrátil do mundo — pode fechar em apenas 10 minutos.',tags:['Estádio','Canadá']},
+  {ico:'⚽',txt:'A Copa 2026 terá 8 fases no mata-mata: 32 avos, 16 avos, oitavas, quartas, semi, 3o lugar e final.',tags:['Formato','Regras']},
+  {ico:'🎯',txt:'O VAR (árbitro de vídeo) foi usado pela 1ª vez na Copa 2018 na Rússia e revolucionou o futebol.',tags:['Tecnologia','VAR']},
+  {ico:'🇲🇦',txt:'Marrocos foi a primeira seleção africana a chegar nas semifinais de uma Copa do Mundo, em 2022.',tags:['Marrocos','África']},
+  {ico:'📦',txt:'A Panini produz mais de 11 milhões de figurinhas por dia na fábrica de Barueri (SP) durante a Copa.',tags:['Panini','Produção']},
+  {ico:'🏆',txt:'A Taça Jules Rimet foi conquistada definitivamente pelo Brasil em 1970 — único país a ganhar 3 vezes.',tags:['Brasil','Troféu']},
+  {ico:'🌟',txt:'Ronaldo Fenômeno marcou 15 gols em Copas (1994, 1998, 2002, 2006) — 2° maior artilheiro brasileiro.',tags:['Brasil','Ronaldo']},
+  {ico:'🎴',txt:'Você sabia? O sistema da Família Tomelin cruza automaticamente quem tem as figurinhas que faltam pra você!',tags:['Família Tomelin','Sistema']},
+  {ico:'⭐',txt:'A Copa 2026 marca a 1ª vez que a competição retorna à América do Norte desde 1994, quando o Brasil foi campeão.',tags:['História','EUA']},
+];
+
+let qIdx=0, qScore=0, qTotal=0, qAnswered=false;
+let factIdx=Math.floor(Math.random()*FACTS.length);
+let factTimer=null;
+
+function renderQuiz(){
+  const qz=QUIZZES[qIdx%QUIZZES.length];
+  document.getElementById('q-num').textContent=(qIdx%QUIZZES.length)+1;
+  document.getElementById('q-text').textContent=qz.q;
+  document.getElementById('q-score').textContent=qScore;
+  document.getElementById('q-total').textContent=qTotal;
+  document.getElementById('q-feedback').textContent='';
+  document.getElementById('q-next').style.display='none';
+  qAnswered=false;
+  const optsEl=document.getElementById('q-opts');
+  optsEl.innerHTML=qz.opts.map((o,i)=>
+    `<button class="q-opt" id="qo-${i}" onclick="answerQuiz(${i})">${o}</button>`
+  ).join('');
+}
+
+function answerQuiz(i){
+  if(qAnswered)return;
+  qAnswered=true; qTotal++;
+  const qz=QUIZZES[qIdx%QUIZZES.length];
+  const ok=(i===qz.a);
+  if(ok)qScore++;
+  document.querySelectorAll('.q-opt').forEach((b,j)=>{
+    b.disabled=true;
+    if(j===qz.a)b.classList.add('correct');
+    else if(j===i&&!ok)b.classList.add('wrong');
+  });
+  const fb=document.getElementById('q-feedback');
+  fb.innerHTML=ok
+    ?'<span style="color:#a5d6a7;font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:13px;">✅ Correto! 🎉</span>'
+    :`<span style="color:#ef9a9a;font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:13px;">❌ Era: ${qz.opts[qz.a]}</span>`;
+  document.getElementById('q-score').textContent=qScore;
+  document.getElementById('q-total').textContent=qTotal;
+  document.getElementById('q-next').style.display='block';
+}
+
+function nextQuiz(){ qIdx++; renderQuiz(); }
+
+function renderFact(){
+  const f=FACTS[factIdx];
+  document.getElementById('fact-ico').textContent=f.ico;
+  document.getElementById('fact-text').textContent=f.txt;
+  document.getElementById('fact-num').textContent=factIdx+1;
+  const tagsEl=document.getElementById('fact-tags');
+  tagsEl.innerHTML=(f.tags||[]).map(t=>`<span class="fact-tag">${t}</span>`).join('');
+  // Animação sutil
+  const card=document.getElementById('fact-card');
+  card.style.opacity='.4'; card.style.transform='scale(.98)';
+  setTimeout(()=>{card.style.transition='opacity .3s,transform .3s';card.style.opacity='1';card.style.transform='scale(1)';},50);
+}
+
+function nextFact(){
+  factIdx=(factIdx+1)%FACTS.length;
+  renderFact();
+  // Reset auto-timer
+  clearInterval(factTimer);
+  factTimer=setInterval(()=>{factIdx=(factIdx+1)%FACTS.length;renderFact();},8000);
+}
+
+// Init
+renderQuiz();
+renderFact();
+// Auto-avança curiosidade a cada 8 segundos
+factTimer=setInterval(()=>{factIdx=(factIdx+1)%FACTS.length;renderFact();},8000);
 
 </script>
 </body>
