@@ -523,3 +523,211 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+// ═══════════════════════════════════════════════════════════════
+// 📰 CACHE DE NOTÍCIAS + CLIMA — Atualiza a cada 5 min
+// ═══════════════════════════════════════════════════════════════
+
+const CACHE = {
+  news:    { data: [], updatedAt: 0 },
+  weather: { data: [], updatedAt: 0 },
+  matches: { data: [], updatedAt: 0 },
+};
+
+const CACHE_TTL_NEWS    = 5  * 60 * 1000; // 5 min
+const CACHE_TTL_WEATHER = 10 * 60 * 1000; // 10 min
+const CACHE_TTL_MATCHES = 2  * 60 * 1000; // 2 min
+
+// ── RSS parser simples (sem libs externas) ─────────────────────
+function parseRSS(xml) {
+  const items = [];
+  const matches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g);
+  for (const m of matches) {
+    const get = (tag) => {
+      const r = m[1].match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`));
+      return r ? (r[1] || r[2] || '').trim() : '';
+    };
+    const title = get('title');
+    const link  = get('link');
+    const desc  = (get('description') || '').replace(/<[^>]+>/g, '').substring(0, 180);
+    const pub   = get('pubDate');
+    const src   = (m[1].match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || 'Copa 2026';
+    if (title) items.push({ title, link, desc, pub, src });
+  }
+  return items;
+}
+
+// ── Fetch RSS via HTTPS ────────────────────────────────────────
+function fetchHTTPS(url, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: 'GET',
+      headers: { 'User-Agent': 'FamiliaTomelin/1.0', ...(opts.headers || {}) },
+      timeout: opts.timeout || 8000,
+    };
+    const req = https.request(options, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf-8');
+        resolve({ status: res.statusCode, body });
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.end();
+  });
+}
+
+// ── Busca e cacheia notícias ───────────────────────────────────
+async function refreshNews() {
+  const queries = [
+    'Copa+do+Mundo+2026',
+    'FIFA+World+Cup+2026+Brasil',
+    'Sele%C3%A7%C3%A3o+Brasileira+2026',
+  ];
+  const seen = new Set();
+  const items = [];
+
+  for (const q of queries) {
+    if (items.length >= 12) break;
+    try {
+      const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+      const r = await fetchHTTPS(rssUrl, { timeout: 8000 });
+      if (r.status !== 200) continue;
+      const parsed = parseRSS(r.body);
+      for (const item of parsed) {
+        if (!seen.has(item.title)) {
+          seen.add(item.title);
+          items.push(item);
+          if (items.length >= 12) break;
+        }
+      }
+    } catch (e) {
+      log('⚠️', `News RSS erro (${q}): ${e.message}`);
+    }
+  }
+
+  if (items.length > 0) {
+    CACHE.news.data      = items;
+    CACHE.news.updatedAt = Date.now();
+    log('📰', `Cache de notícias atualizado — ${items.length} itens`);
+  } else {
+    log('⚠️', 'Nenhuma notícia encontrada, mantendo cache anterior');
+  }
+  return CACHE.news.data;
+}
+
+// ── Busca e cacheia clima (Open-Meteo) ────────────────────────
+const CIDADES = [
+  { name: 'Blumenau',   lat: -26.9195, lon: -49.0661, emoji: '🏙️' },
+  { name: 'Pomerode',   lat: -26.7440, lon: -49.1773, emoji: '🌸' },
+  { name: 'Timbó',      lat: -26.8219, lon: -49.2714, emoji: '🌿' },
+  { name: 'Indaial',    lat: -26.8983, lon: -49.2322, emoji: '🏞️' },
+  { name: 'Gaspar',     lat: -26.9308, lon: -48.9589, emoji: '🌾' },
+  { name: 'Ascurra',    lat: -26.7922, lon: -49.3158, emoji: '🌲' },
+  { name: 'Rio do Sul', lat: -27.2136, lon: -49.6417, emoji: '🏔️' },
+];
+
+const WMO = {
+  0:'Céu limpo',1:'Poucas nuvens',2:'Parcialmente nublado',3:'Nublado',
+  45:'Névoa',48:'Névoa',51:'Garoa leve',53:'Garoa',55:'Garoa forte',
+  61:'Chuva leve',63:'Chuva moderada',65:'Chuva forte',
+  71:'Neve leve',73:'Neve',75:'Neve forte',
+  80:'Pancadas leves',81:'Pancadas',82:'Pancadas fortes',
+  95:'Tempestade',96:'Tempestade c/ granizo',99:'Tempestade forte',
+};
+const WMO_ICON = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',
+  80:'🌦️',81:'🌦️',82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️',
+};
+
+async function refreshWeather() {
+  try {
+    const lats = CIDADES.map(c => c.lat).join(',');
+    const lons  = CIDADES.map(c => c.lon).join(',');
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,precipitation&timezone=America%2FSao_Paulo&forecast_days=1`;
+    const r = await fetchHTTPS(url, { timeout: 10000 });
+    if (r.status !== 200) throw new Error(`HTTP ${r.status}`);
+    const raw = JSON.parse(r.body);
+    const arr  = Array.isArray(raw) ? raw : [raw];
+    const result = arr.map((d, i) => {
+      const c   = CIDADES[i] || { name: '?', emoji: '🌍' };
+      const cur = d.current || {};
+      const code = cur.weather_code ?? 0;
+      return {
+        city:  c.name,
+        emoji: c.emoji,
+        temp:  Math.round(cur.temperature_2m ?? 0),
+        hum:   Math.round(cur.relative_humidity_2m ?? 0),
+        wind:  Math.round(cur.wind_speed_10m ?? 0),
+        prec:  cur.precipitation ?? 0,
+        code,
+        icon:  WMO_ICON[code] || '🌡️',
+        desc:  WMO[code] || 'Variável',
+      };
+    });
+    CACHE.weather.data      = result;
+    CACHE.weather.updatedAt = Date.now();
+    log('🌤️', `Clima atualizado — ${result.length} cidades`);
+    return result;
+  } catch (e) {
+    log('⚠️', `Clima erro: ${e.message}`);
+    return CACHE.weather.data;
+  }
+}
+
+// ── Rotas de cache ─────────────────────────────────────────────
+app.get('/api/news', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const age = Date.now() - CACHE.news.updatedAt;
+  if (!CACHE.news.data.length || age > CACHE_TTL_NEWS) {
+    await refreshNews();
+  }
+  res.json({
+    ok: true,
+    updatedAt: CACHE.news.updatedAt,
+    ageSeconds: Math.floor((Date.now() - CACHE.news.updatedAt) / 1000),
+    items: CACHE.news.data,
+  });
+});
+
+app.get('/api/weather', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=600');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const age = Date.now() - CACHE.weather.updatedAt;
+  if (!CACHE.weather.data.length || age > CACHE_TTL_WEATHER) {
+    await refreshWeather();
+  }
+  res.json({
+    ok: true,
+    updatedAt: CACHE.weather.updatedAt,
+    ageSeconds: Math.floor((Date.now() - CACHE.weather.updatedAt) / 1000),
+    cities: CACHE.weather.data,
+  });
+});
+
+// ── CRON: atualiza automaticamente ────────────────────────────
+// Notícias: a cada 5 minutos
+cron.schedule('*/5 * * * *', async () => {
+  await refreshNews();
+}, { timezone: 'America/Sao_Paulo' });
+
+// Clima: a cada 10 minutos
+cron.schedule('*/10 * * * *', async () => {
+  await refreshWeather();
+}, { timezone: 'America/Sao_Paulo' });
+
+// ── Inicializa cache ao subir o server ────────────────────────
+(async () => {
+  log('📰', 'Carregando notícias iniciais...');
+  await refreshNews();
+  log('🌤️', 'Carregando clima inicial...');
+  await refreshWeather();
+})();
+

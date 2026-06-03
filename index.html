@@ -413,6 +413,7 @@ footer{background:rgba(0,0,0,.5);border-top:1px solid rgba(255,255,255,.06);
   <div class="sec-head">
     <div class="sec-kicker">📰 Notícias da Copa 2026</div>
     <h2 class="sec-h">O que está <em>acontecendo</em></h2>
+    <div style="font-size:11px;color:var(--gray);margin-top:4px;" id="news-updated"></div>
   </div>
   <div class="news-grid" id="news-grid">
     <div class="n-card"><div class="skel" style="height:120px;border-radius:10px;"></div></div>
@@ -635,30 +636,65 @@ function wmoIcon(code){return (WMO[code]||'🌡️').split(' ')[0];}
 
 async function loadWeather(){
   const grid=document.getElementById('weather-grid');
-  const lats=CIDADES.map(c=>c.lat).join(',');
-  const lons=CIDADES.map(c=>c.lon).join(',');
-  const url=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,precipitation&timezone=America%2FSao_Paulo&forecast_days=1`;
+
+  // 1) Tenta Railway (cache server-side)
   try{
+    const r=await fetch(RAILWAY+'/api/weather',{signal:AbortSignal.timeout(5000)});
+    if(r.ok){
+      const d=await r.json();
+      if(d.cities&&d.cities.length){
+        grid.innerHTML=d.cities.map(c=>`
+          <div class="w-card">
+            <div class="w-city">${c.emoji} ${c.city}</div>
+            <div class="w-icon">${c.icon}</div>
+            <div class="w-temp">${c.temp}°<span style="font-size:18px;color:var(--gray)">C</span></div>
+            <div class="w-desc">${c.desc}</div>
+            <div class="w-detail">💧 ${c.hum}% · 💨 ${c.wind}km/h${c.prec>0?' · 🌧️ '+c.prec+'mm':''}</div>
+          </div>`).join('');
+        try{ sessionStorage.setItem('t26_wx_cache', JSON.stringify({cities:d.cities, ts: Date.now()})); }catch(e){}
+        return;
+      }
+    }
+  }catch(e){ console.warn('[Weather] Railway indisponível'); }
+
+  // 2) sessionStorage fallback
+  try{
+    const cached=JSON.parse(sessionStorage.getItem('t26_wx_cache')||'null');
+    if(cached&&cached.cities&&Date.now()-cached.ts<30*60*1000){
+      grid.innerHTML=cached.cities.map(c=>`
+        <div class="w-card">
+          <div class="w-city">${c.emoji} ${c.city}</div>
+          <div class="w-icon">${c.icon}</div>
+          <div class="w-temp">${c.temp}°<span style="font-size:18px;color:var(--gray)">C</span></div>
+          <div class="w-desc">${c.desc}</div>
+          <div class="w-detail">💧 ${c.hum}% · 💨 ${c.wind}km/h</div>
+        </div>`).join('');
+      return;
+    }
+  }catch(e){}
+
+  // 3) Fallback: busca direto Open-Meteo
+  try{
+    const lats=CIDADES.map(c=>c.lat).join(',');
+    const lons=CIDADES.map(c=>c.lon).join(',');
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,precipitation&timezone=America%2FSao_Paulo&forecast_days=1`;
     const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
-    if(!r.ok)throw new Error('API off');
+    if(!r.ok)throw new Error('off');
     const raw=await r.json();
-    // API returns array when multiple lats/lons
     const arr=Array.isArray(raw)?raw:[raw];
     grid.innerHTML=arr.map((d,i)=>{
       const c=CIDADES[i]||{name:'?',emoji:'🌍'};
       const cur=d.current||{};
-      const temp=Math.round(cur.temperature_2m??'—');
+      const temp=Math.round(cur.temperature_2m??0);
       const hum=Math.round(cur.relative_humidity_2m??0);
       const wind=Math.round(cur.wind_speed_10m??0);
       const code=cur.weather_code??0;
       const prec=cur.precipitation??0;
-      const icon=wmoIcon(code);
-      const desc=wmoLabel(code).split(' ').slice(1).join(' ');
       return `<div class="w-card">
         <div class="w-city">${c.emoji} ${c.name}</div>
-        <div class="w-icon">${icon}</div>
+        <div class="w-icon">${wmoIcon(code)}</div>
         <div class="w-temp">${temp}°<span style="font-size:18px;color:var(--gray)">C</span></div>
-        <div class="w-desc">${desc}</div>
+        <div class="w-desc">${wmoLabel(code).split(' ').slice(1).join(' ')}</div>
         <div class="w-detail">💧 ${hum}% · 💨 ${wind}km/h${prec>0?' · 🌧️ '+prec+'mm':''}</div>
       </div>`;
     }).join('');
@@ -666,13 +702,13 @@ async function loadWeather(){
     grid.innerHTML=CIDADES.map(c=>`<div class="w-card">
       <div class="w-city">${c.emoji} ${c.name}</div>
       <div class="w-icon">🌡️</div>
-      <div class="w-temp" style="font-size:18px;color:var(--gray)">Indisponível</div>
-      <div class="w-desc">Tente novamente</div>
+      <div class="w-temp" style="font-size:18px;color:var(--gray)">—°</div>
+      <div class="w-desc">Aguardando dados</div>
     </div>`).join('');
   }
 }
 loadWeather();
-setInterval(loadWeather,10*60*1000); // refresh 10min
+setInterval(loadWeather, 10*60*1000);
 
 // ════════════════════════════════════════════════════
 // 📰 NOTÍCIAS — Google RSS + Modal "como se fosse Jackson"
@@ -710,25 +746,34 @@ function closeModal(){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
+// URL do Railway (tenta localStorage, fallback direto)
+const RAILWAY = localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app';
+
 async function loadNews(){
   const grid=document.getElementById('news-grid');
   let items=[];
-  for(const q of ['Copa+do+Mundo+2026','FIFA+World+Cup+2026+Brasil','Seleção+Brasileira+2026']){
-    try{
-      const rss=`https://news.google.com/rss/search?q=${q}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-      const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rss)}`,{signal:AbortSignal.timeout(7000)});
-      if(!r.ok)continue;
+
+  // 1) Tenta Railway (cache server-side, instantâneo)
+  try{
+    const r=await fetch(RAILWAY+'/api/news',{signal:AbortSignal.timeout(5000)});
+    if(r.ok){
       const d=await r.json();
-      const xml=new DOMParser().parseFromString(d.contents,'text/xml');
-      xml.querySelectorAll('item').forEach(it=>{
-        const title=it.querySelector('title')?.textContent||'';
-        const link=it.querySelector('link')?.textContent||'#';
-        const desc=(it.querySelector('description')?.textContent||'').replace(/<[^>]+>/g,'').substring(0,160);
-        const pub=it.querySelector('pubDate')?.textContent||'';
-        const src=it.querySelector('source')?.textContent||'Copa 2026';
-        if(title&&!items.find(x=>x.title===title))items.push({title,link,desc,pub,src});
-      });
-      if(items.length>=9)break;
+      if(d.items&&d.items.length){
+        items=d.items;
+        // Salva em sessionStorage para fallback offline
+        try{ sessionStorage.setItem('t26_news_cache', JSON.stringify({items, ts: Date.now()})); }catch(e){}
+      }
+    }
+  }catch(e){ console.warn('[News] Railway indisponível, usando fallback'); }
+
+  // 2) sessionStorage como fallback offline
+  if(!items.length){
+    try{
+      const cached=JSON.parse(sessionStorage.getItem('t26_news_cache')||'null');
+      if(cached&&cached.items&&Date.now()-cached.ts<30*60*1000){
+        items=cached.items;
+        console.log('[News] Usando cache sessionStorage');
+      }
     }catch(e){}
   }
   // Fallback estático
@@ -741,6 +786,10 @@ async function loadNews(){
     {title:'Confira como funcionam as trocas de figurinhas da Copa 2026',link:'#',desc:'Use o sistema da Família Tomelin para cruzar automaticamente quem tem as figurinhas que faltam no seu álbum.',src:'Família Tomelin',pub:''},
   ];
   _news=items;
+  // Atualiza indicador de tempo
+  const upEl=document.getElementById('news-updated');
+  if(upEl) upEl.textContent='🕐 Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
   grid.innerHTML=items.slice(0,6).map((it,i)=>{
     const d=it.pub?new Date(it.pub).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
     return `<div class="n-card" onclick="openModal(${i})">
