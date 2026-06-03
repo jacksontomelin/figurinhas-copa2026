@@ -2461,6 +2461,16 @@ function _buildMarketList(){
   if(typeF!=='all') items=items.filter(m=>m.type===typeF||m.type==='ambos');
   if(q) items=items.filter(m=>m.code.includes(q));
   items=[...items].sort((a,b)=>b.ts-a.ts);
+  // Enrich with owner data
+  const usersMap={};
+  getUsers().forEach(u2=>{ usersMap[u2.phone]=u2; });
+  items=items.map(m=>{
+    const owner=usersMap[m.owner]||{};
+    return {...m,
+      ownerName:  owner.name  || m.owner,
+      ownerAvatar:owner.avatar|| '⚽',
+    };
+  });
   const el=document.getElementById('mkt-list'); if(!el)return;
   el.innerHTML='';
   if(!items.length){el.innerHTML='<div class="empty"><div class="empty-ico">🛒</div>Nenhum anúncio ainda.</div>';return;}
@@ -2468,7 +2478,7 @@ function _buildMarketList(){
     const isLocked = m => m.lockedBy && typeof isItemLocked==='function';
   items.forEach(m=>{
     const isMine=m.owner===u.phone;
-    const waTxt=encodeURIComponent(`Oi ${m.ownerName.split(' ')[0]}! Vi no sistema Família Tomelin que você tem a figurinha *${m.code}* ${m.type==='venda'?'por R$'+m.price.toFixed(2):'para troca'}. Tenho interesse! 🎴⚽`);
+    const waTxt=encodeURIComponent(`Oi ${(m.ownerName||getUserByPhone(m.owner)?.name||m.owner||'?').split(' ')[0]}! Vi no sistema Família Tomelin que você tem a figurinha *${m.code}* ${m.type==='venda'?'por R$'+m.price.toFixed(2):'para troca'}. Tenho interesse! 🎴⚽`);
     const waUrl=`https://wa.me/55${m.owner}?text=${waTxt}`;
     const online=isOnline(m.owner);
     const d=document.createElement('div');
@@ -2477,7 +2487,7 @@ function _buildMarketList(){
       <div class="li-head">
         <div>
           <div class="li-code">${esc(m.code)}</div>
-          <div class="li-owner">${m.ownerAvatar} ${esc(m.ownerName)} <span class="badge ${online?'online':'offline'}" style="margin-left:4px;">${online?'🟢 Online agora':'⚫ Offline'}</span></div>
+          <div class="li-owner">${(m.ownerAvatar||getUserByPhone(m.owner)?.avatar||'⚽')} ${esc((m.ownerName||getUserByPhone(m.owner)?.name||m.owner||'?'))} <span class="badge ${online?'online':'offline'}" style="margin-left:4px;">${online?'🟢 Online agora':'⚫ Offline'}</span></div>
         </div>
         <div class="badge ${m.type}">${typeLabel[m.type]||m.type}</div>
       </div>
@@ -5124,7 +5134,7 @@ function _admMarket(el){
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;">
         <div>
           <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);">${esc(m.code)}</div>
-          <div style="font-size:11px;color:var(--gray);">${m.ownerAvatar||'⚽'} ${esc(m.ownerName)}</div>
+          <div style="font-size:11px;color:var(--gray);">${(m.ownerAvatar||getUserByPhone(m.owner)?.avatar||'⚽')||'⚽'} ${esc((m.ownerName||getUserByPhone(m.owner)?.name||m.owner||'?'))}</div>
           <div style="font-size:10px;color:rgba(255,255,255,.3);">${new Date(m.ts).toLocaleString('pt-BR')}</div>
         </div>
         <div style="text-align:right;">
@@ -5401,7 +5411,8 @@ function _checkNewMarketMatch(me){
   _notifiedPairs.add(key);
 
   const m=relevant[0];
-  const firstName=m.ownerName.split(' ')[0];
+  const owner=getUserByPhone(m.owner)||{};
+  const firstName=(owner.name||m.owner||'?').split(' ')[0];
   const typeLabel=m.type==='venda'?`por R$${m.price?.toFixed(2)||'?'}`:'para troca';
   showMascote({
     type:'sell', emoji:'🏷️',
