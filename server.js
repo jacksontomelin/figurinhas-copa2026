@@ -84,10 +84,10 @@ async function sendGroup(message) {
       log('✅', `Grupo ← ${message.substring(0, 60).replace(/\n/g,' ')}…`);
       return { ok: true, messageId: r.body.messageId };
     }
-    log('❌', `Grupo erro ${r.status}: ${JSON.stringify(r.body)}`);
+    log('❌', `Erro no grupo ${r.status}: ${JSON.stringify(r.body)}`);
     return { ok: false, error: r.body };
   } catch(e) {
-    log('❌', `sendGroup: ${e.message}`);
+    log('❌', `Falha ao enviar grupo: ${e.message}`);
     return { ok: false, error: e.message };
   }
 }
@@ -100,10 +100,10 @@ async function sendPrivate(phone, message) {
       log('📩', `Privado → ${p}: ${message.substring(0,50).replace(/\n/g,' ')}…`);
       return { ok: true, messageId: r.body.messageId };
     }
-    log('❌', `sendPrivate ${p} erro: ${JSON.stringify(r.body)}`);
+    log('❌', `Falha ao enviar privado ${p} erro: ${JSON.stringify(r.body)}`);
     return { ok: false, error: r.body };
   } catch(e) {
-    log('❌', `sendPrivate: ${e.message}`);
+    log('❌', `Falha ao enviar privado: ${e.message}`);
     return { ok: false, error: e.message };
   }
 }
@@ -132,7 +132,7 @@ async function fetchMatchesAPI() {
       kickoff: m.kickoff_utc || m.kickoff || null,
     }));
   } catch(e) {
-    log('⚠️', `fetchMatches: ${e.message}`);
+    log('⚠️', `Erro ao buscar jogos: ${e.message}`);
     return [];
   }
 }
@@ -145,7 +145,7 @@ let DB = {
   market:   [],   // { id, code, type, price, obs, owner, ownerName, ts }
   notified: new Set(), // pares já notificados "toPhone:code" nesta sessão
   lastScores: {},  // { matchId: { hs, as_, phase } }
-  cronStats: { sent: 0, errors: 0, lastRun: null },
+  cronStats: { enviados: 0, erros: 0, ultimaExec: null },
 };
 
 // ── MENSAGENS ─────────────────────────────────────────────────
@@ -320,7 +320,7 @@ app.use((req, res, next) => {
 // Notificação de novo usuário cadastrado
 app.post('/api/new-user', async (req, res) => {
   const { name, phone } = req.body;
-  if (!name) return res.status(400).json({ error: 'name obrigatório' });
+  if (!name) return res.status(400).json({ error: 'Campo name obrigatório' });
 
   const firstName = name.split(' ')[0];
   const templates = [
@@ -340,7 +340,7 @@ app.post('/api/new-user', async (req, res) => {
   }
 
   const r = await sendGroup(msg);
-  DB.cronStats.sent++;
+  DB.cronStats.enviados++;
   res.json(r);
 });
 
@@ -375,7 +375,7 @@ app.post('/api/send-group', async (req, res) => {
     else msg = getRandom(CURIOSIDADES);
   }
   const r = await sendGroup(msg);
-  DB.cronStats.sent++;
+  DB.cronStats.enviados++;
   res.json(r);
 });
 
@@ -384,7 +384,7 @@ app.post('/api/send', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   const { phone, message } = req.body;
-  if (!phone || !message) return res.status(400).json({ ok: false, error: 'phone e message obrigatórios' });
+  if (!phone || !message) return res.status(400).json({ ok: false, error: 'Campos phone e message obrigatórios' });
   try {
     const r = await sendPrivate(phone, message);
     res.json(r);
@@ -405,7 +405,7 @@ app.options('/api/send', (req, res) => {
 app.post('/api/notify-sticker', async (req, res) => {
   const { toPhone, toName, fromPhone, fromName, codes } = req.body;
   if (!toPhone || !fromPhone || !codes?.length)
-    return res.status(400).json({ error: 'toPhone, fromPhone e codes obrigatórios' });
+    return res.status(400).json({ error: 'Campos toPhone, fromPhone e codes obrigatórios' });
 
   const pairKey = `${toPhone}:${[...codes].sort().join(',')}`;
   if (DB.notified.has(pairKey)) return res.json({ ok: true, skipped: true });
@@ -421,7 +421,7 @@ app.post('/api/notify-sticker', async (req, res) => {
 // Sync usuários do app (o app envia o estado dos usuários)
 app.post('/api/sync-users', async (req, res) => {
   const { users } = req.body;
-  if (!Array.isArray(users)) return res.status(400).json({ error: 'users deve ser array' });
+  if (!Array.isArray(users)) return res.status(400).json({ error: 'Campo users deve ser um array' });
   const before = DB.users.length;
 
   // Detectar novos usuários ou stickers alterados
@@ -456,7 +456,7 @@ app.post('/api/sync-users', async (req, res) => {
 // Sync mercado (quando alguém anuncia figurinha)
 app.post('/api/sync-market', async (req, res) => {
   const { items, ownerPhone } = req.body;
-  if (!Array.isArray(items)) return res.status(400).json({ error: 'items deve ser array' });
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'Campo items deve ser um array' });
   DB.market = items;
 
   // Notificar quem precisa das figurinhas anunciadas
@@ -518,7 +518,7 @@ app.get('/dashboard', (_, res) => res.sendFile(pathMod.join(__dirname, 'dashboar
 cron.schedule('0 12 * * *', async () => {
   log('⏰', 'Cron: curiosidade diária');
   const r = await sendGroup(getRandom(CURIOSIDADES));
-  if (r.ok) DB.cronStats.sent++; else DB.cronStats.errors++;
+  if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
   DB.cronStats.lastRun = new Date().toISOString();
 }, { timezone: 'America/Sao_Paulo' });
 
@@ -526,14 +526,14 @@ cron.schedule('0 12 * * *', async () => {
 cron.schedule('0 11 * * 2,4', async () => {
   log('⏰', 'Cron: lembrete figurinhas');
   const r = await sendGroup(getRandom(MSGS_FIGURINHA));
-  if (r.ok) DB.cronStats.sent++; else DB.cronStats.errors++;
+  if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
 }, { timezone: 'America/Sao_Paulo' });
 
 // 🔥 Hype fim de semana — sábado às 10h BRT
 cron.schedule('0 10 * * 6', async () => {
   log('⏰', 'Cron: hype fim de semana');
   const r = await sendGroup(getRandom(MSGS_HYPE));
-  if (r.ok) DB.cronStats.sent++; else DB.cronStats.errors++;
+  if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
 }, { timezone: 'America/Sao_Paulo' });
 
 // 🇧🇷 Jogo do Brasil — 13, 19, 25 jun às 13h BRT
@@ -542,7 +542,7 @@ cron.schedule('0 10 * * 6', async () => {
   cron.schedule(`0 13 ${day} ${month} *`, async () => {
     log('🇧🇷', `Cron: Brasil joga hoje! (${day}/${month})`);
     const r = await sendGroup(getRandom(MSGS_BRASIL));
-    if (r.ok) DB.cronStats.sent++; else DB.cronStats.errors++;
+    if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
   }, { timezone: 'America/Sao_Paulo' });
 });
 
@@ -864,14 +864,14 @@ function loadLinks() {
       shortLinks = JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8'));
       log('🔗', `Encurtador: ${Object.keys(shortLinks).length} links carregados`);
     }
-  } catch (e) { log('⚠️', 'loadLinks: ' + e.message); }
+  } catch (e) { log('⚠️', 'Erro ao carregar links: ' + e.message); }
 }
 
 function saveLinks() {
   try {
     fs.mkdirSync(pathMod.dirname(LINKS_FILE), { recursive: true });
     fs.writeFileSync(LINKS_FILE, JSON.stringify(shortLinks, null, 2));
-  } catch (e) { log('⚠️', 'saveLinks: ' + e.message); }
+  } catch (e) { log('⚠️', 'Erro ao salvar links: ' + e.message); }
 }
 
 // Gera código único de 6 chars
@@ -891,17 +891,17 @@ const urlToCode = new Map();
 
 function shortenUrl(url) {
   if (!url || url.length < 20) return url;
-  // Check cache
+  // Verifica cache
   if (urlToCode.has(url)) {
     return `${APP_URL}/s/${urlToCode.get(url)}`;
   }
-  // Check existing links
+  // Verifica links existentes
   const existing = Object.entries(shortLinks).find(([, v]) => v.url === url);
   if (existing) {
     urlToCode.set(url, existing[0]);
     return `${APP_URL}/s/${existing[0]}`;
   }
-  // Create new
+  // Cria novo código
   const code = genCode();
   shortLinks[code] = { url, created: Date.now(), hits: 0 };
   urlToCode.set(url, code);
@@ -926,7 +926,7 @@ app.get('/s/:code', (req, res) => {
 app.post('/api/shorten', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const url = req.body?.url || req.query.url;
-  if (!url) return res.json({ ok: false, error: 'url required' });
+  if (!url) return res.json({ ok: false, error: 'Parâmetro url obrigatório' });
   const short = shortenUrl(url);
   res.json({ ok: true, short, original: url });
 });
@@ -935,7 +935,7 @@ app.post('/api/shorten', (req, res) => {
 app.get('/api/shorten', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const { url } = req.query;
-  if (!url) return res.json({ ok: false, error: 'url required' });
+  if (!url) return res.json({ ok: false, error: 'Parâmetro url obrigatório' });
   const short = shortenUrl(url);
   res.json({ ok: true, short, original: url });
 });
@@ -1036,15 +1036,15 @@ async function rpaNewsLoop() {
       NEWS_SENT.add(id);
       newsRpaCount++;
       log('✅', `RPA: notícia enviada (#${newsRpaCount})`);
-      if (r.messageId) DB.cronStats.sent++;
+      if (r.messageId) DB.cronStats.enviados++;
     } else {
       log('❌', `RPA: falha ao enviar — ${JSON.stringify(r).substring(0,100)}`);
-      DB.cronStats.errors++;
+      DB.cronStats.erros++;
     }
 
   } catch (e) {
     log('❌', `RPA news erro: ${e.message}`);
-    DB.cronStats.errors++;
+    DB.cronStats.erros++;
   }
 }
 
