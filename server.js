@@ -9,6 +9,7 @@ const express = require('express');
 const https   = require('https');
 const cron    = require('node-cron');
 const pathMod = require('path');
+const fs      = require('fs');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -853,7 +854,7 @@ cron.schedule('*/10 * * * *', async () => {
 // 🔗 ENCURTADOR DE URLs — copa2026.familiatomelin.com.br/s/:code
 // Armazena em memória + arquivo JSON para persistência
 // ══════════════════════════════════════════════════════════════
-const LINKS_FILE = path.join(__dirname, 'data', 'links.json');
+const LINKS_FILE = pathMod.join(__dirname, 'data', 'links.json');
 let shortLinks = {}; // code → { url, created, hits }
 
 // Carrega links salvos ao iniciar
@@ -868,7 +869,7 @@ function loadLinks() {
 
 function saveLinks() {
   try {
-    fs.mkdirSync(path.dirname(LINKS_FILE), { recursive: true });
+    fs.mkdirSync(pathMod.dirname(LINKS_FILE), { recursive: true });
     fs.writeFileSync(LINKS_FILE, JSON.stringify(shortLinks, null, 2));
   } catch (e) { log('⚠️', 'saveLinks: ' + e.message); }
 }
