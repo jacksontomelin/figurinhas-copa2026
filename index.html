@@ -444,8 +444,8 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
       border-radius:10px;padding:8px 12px;font-size:12px;color:rgba(255,255,255,.7);
       line-height:1.4;">
       🇧🇷 <strong style="color:#ffdf00;">Brasil estreia</strong> em
-      <strong style="color:#fff;">13 Jun · 16h00 BRT</strong>
-      vs Marrocos 🇲🇦 no MetLife Stadium
+      <strong style="color:#fff;">13 de junho às 16h (horário de Brasília)</strong>
+      contra o Marrocos 🇲🇦 no MetLife Stadium, em Nova York
     </div>
   </div>
   <div class="card a-card" style="max-width:390px;">
@@ -1142,7 +1142,7 @@ function _buildMarketList(){
       <div class="li-head">
         <div>
           <div class="li-code">${esc(m.code)}</div>
-          <div class="li-owner">${m.ownerAvatar} ${esc(m.ownerName)} <span class="badge ${online?'online':'offline'}" style="margin-left:4px;">${online?'🟢 Online':'⚫ Offline'}</span></div>
+          <div class="li-owner">${m.ownerAvatar} ${esc(m.ownerName)} <span class="badge ${online?'online':'offline'}" style="margin-left:4px;">${online?'🟢 Online agora':'⚫ Offline'}</span></div>
         </div>
         <div class="badge ${m.type}">${typeLabel[m.type]||m.type}</div>
       </div>
@@ -1707,6 +1707,84 @@ function showWaReminder(){
   if(pbar&&pbar.parentNode) pbar.parentNode.insertBefore(div,pbar);
   else{const ac=document.getElementById('app-content');if(ac)ac.prepend(div);}
 }
+
+
+// ═══════════════════════════════════════════════════
+// 📱 INTEGRAÇÃO Z-API — NOTIFICAÇÕES WHATSAPP
+// ═══════════════════════════════════════════════════
+const ZAPI_CFG = {
+  instance: '3F155B355FA8410212E52295B0810B48',
+  token: '9B855EED9711E32684160EE5',
+  clientToken: 'Fb16e5dcfa655472aa0e92c4b5b51f11cS',
+  get base(){ return `https://api.z-api.io/instances/${this.instance}/token/${this.token}`; }
+};
+
+async function zapiSendText(phone, message){
+  // Sanitize phone
+  let p = phone.replace(/\D/g,'');
+  if(p.length<=11) p='55'+p;
+  try {
+    const r = await fetch(`${ZAPI_CFG.base}/send-text`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Client-Token':ZAPI_CFG.clientToken},
+      body:JSON.stringify({phone:p, message}),
+      signal:AbortSignal.timeout(8000)
+    });
+    const d = await r.json();
+    console.log('[Z-API] Enviado para',p,':',d);
+    return {ok:r.ok,data:d};
+  } catch(e){
+    console.warn('[Z-API] Erro:',e.message);
+    return {ok:false,error:e.message};
+  }
+}
+
+// Notificar usuário quando alguém tem a figurinha que ele precisa
+async function notifyUserStickerMatch(toUser, fromUser, codes){
+  if(!toUser?.phone) return;
+  const toName = toUser.name?.split(' ')[0]||'';
+  const fromName = fromUser.name?.split(' ')[0]||'';
+  const codeList = codes.slice(0,5).join(', ')+(codes.length>5?` +${codes.length-5} mais`:'');
+  const msg = `🎴 Oi ${toName}! Boa notícia! 🎉\n\n*${fromUser.name}* acabou de disponibilizar ${codes.length>1?'figurinhas':'uma figurinha'} que você precisa!\n\n🃏 *${codeList}*\n\nCorre combinar a troca antes que alguém pegue! 💨\n📱 Chama: wa.me/55${fromUser.phone.replace(/\D/g,'')}\n\n_Família Tomelin · Copa 2026_ 🏆🇧🇷`;
+  const result = await zapiSendText(toUser.phone, msg);
+  if(result.ok) toast(`📱 WhatsApp enviado para ${toName}!`,'var(--wa)');
+  return result;
+}
+
+// Hook: quando usuário publica anúncio, notifica quem precisa
+// Chamado após doSellNew bem-sucedido
+async function onMarketPublish(ownerPhone, codes){
+  const owner = getUserByPhone(ownerPhone); if(!owner) return;
+  const allUsers = getUsers().filter(u=>u.phone!==ownerPhone);
+  let sent = 0;
+  for(const u of allUsers){
+    const mySt = u.stickers||{};
+    const need = new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)===0).map(s=>s.id));
+    const matches = codes.filter(c=>need.has(c));
+    if(matches.length>0){
+      await notifyUserStickerMatch(u, owner, matches);
+      sent++;
+      // Small delay to avoid rate limiting
+      await new Promise(res=>setTimeout(res,800));
+    }
+  }
+  if(sent>0) console.log(`[Z-API] Notificados ${sent} usuário(s) sobre figurinhas disponíveis`);
+}
+
+// Hook no doSellNew para disparar notificações
+const _origDoSellNew = window.doSellNew;
+window.doSellNew = async function(){
+  const me = getCurrentUser(); if(!me)return;
+  const codes = [...(_sellSelected||[])];
+  if(typeof _origDoSellNew==='function') _origDoSellNew();
+  // Notify after a small delay (let market save first)
+  if(codes.length>0){
+    setTimeout(async()=>{
+      try { await onMarketPublish(me.phone, codes); }
+      catch(e){ console.warn('[Z-API] Notificação falhou:', e); }
+    }, 1500);
+  }
+};
 
 </script>
 

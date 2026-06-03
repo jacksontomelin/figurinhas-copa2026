@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🤖 Bot Família Tomelin · Z-API</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#081220;--blue:#0d2d58;--gold:#f5c518;--gold2:#dba800;
+  --green:#176832;--green2:#1e9640;--white:#fff;--red:#e53935;
+  --gray:#8faab8;--wa:#25D366;--wa2:#128C7E;--orange:#e07800;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Barlow',sans-serif;background:var(--navy);color:#fff;min-height:100vh;padding:16px;}
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.03;
+  background-image:url("data:image/svg+xml,%3Csvg width='60' height='52' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='30,2 58,17 58,35 30,50 2,35 2,17' fill='none' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E");
+  background-size:60px 52px;}
+.container{max-width:680px;margin:0 auto;position:relative;z-index:1;}
+/* HEADER */
+.header{background:linear-gradient(135deg,rgba(37,211,102,.2),rgba(8,18,32,.95));
+  border:1.5px solid rgba(37,211,102,.4);border-radius:16px;padding:18px 20px;
+  margin-bottom:14px;display:flex;align-items:center;gap:14px;}
+.header-ico{font-size:36px;}
+.header-title{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--wa);letter-spacing:1px;line-height:1.1;}
+.header-sub{font-size:11px;color:rgba(255,255,255,.55);letter-spacing:1px;margin-top:2px;}
+/* STATUS */
+.status-bar{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  border-radius:12px;padding:12px 15px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.status-dot.online{background:#4caf50;box-shadow:0 0 8px #4caf50;}
+.status-dot.offline{background:var(--red);}
+.status-dot.checking{background:var(--gold);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+/* CARDS */
+.card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  border-radius:13px;padding:16px;margin-bottom:12px;}
+.card-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px;
+  display:flex;align-items:center;gap:7px;}
+/* BTNS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:none;border-radius:9px;padding:11px 16px;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;
+  letter-spacing:1px;text-transform:uppercase;transition:.2s;width:100%;}
+.btn:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.1);}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn-wa{background:linear-gradient(135deg,var(--wa),var(--wa2));color:#fff;}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);}
+.btn-blue{background:linear-gradient(135deg,#1976d2,#0d47a1);color:#fff;}
+.btn-green{background:linear-gradient(135deg,var(--green2),var(--green));color:#fff;}
+.btn-red{background:linear-gradient(135deg,#c62828,#b71c1c);color:#fff;}
+.btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,.18);color:#fff;}
+.btn-sm{padding:8px 13px;font-size:11px;width:auto;}
+.row{display:flex;gap:8px;flex-wrap:wrap;}
+/* FORM */
+.fg{margin-bottom:11px;}
+.fg label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:10px;
+  font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;margin-bottom:5px;}
+.fg input,.fg select,.fg textarea{width:100%;background:rgba(255,255,255,.07);
+  border:1.5px solid rgba(255,255,255,.1);border-radius:9px;padding:10px 12px;
+  color:#fff;font-size:13px;outline:none;transition:.2s;font-family:'Barlow',sans-serif;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold);}
+.fg textarea{resize:vertical;min-height:70px;}
+.fg select option{background:#0d2d58;}
+/* LOG */
+.log{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:10px;
+  padding:12px;max-height:280px;overflow-y:auto;font-family:monospace;font-size:11px;
+  line-height:1.6;}
+.log::-webkit-scrollbar{width:3px;}
+.log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+.log-line{padding:2px 0;}
+.log-line.ok{color:#69f0ae;}
+.log-line.err{color:#ef9a9a;}
+.log-line.info{color:#90caf9;}
+.log-line.warn{color:#ffd54f;}
+/* MATCH CARDS */
+.match-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:.2s;}
+.match-card:hover{background:rgba(255,255,255,.09);}
+.match-card.selected{background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.35);}
+.match-teams{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;}
+.match-meta{font-size:11px;color:var(--gray);margin-top:3px;}
+/* PHRASE CHIPS */
+.phrase-grid{display:flex;flex-direction:column;gap:6px;}
+.phrase-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;padding:9px 12px;font-size:12px;color:rgba(255,255,255,.75);
+  line-height:1.4;cursor:pointer;transition:.2s;}
+.phrase-item:hover{background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);}
+.phrase-item.selected{background:rgba(37,211,102,.15);border-color:var(--wa);}
+/* DIVIDER */
+.div{height:1px;background:rgba(255,255,255,.07);margin:12px 0;}
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;
+  font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;}
+.badge.live{background:rgba(229,57,53,.18);color:#ef9a9a;border:1px solid rgba(229,57,53,.3);}
+.badge.sched{background:rgba(66,165,245,.12);color:#90caf9;border:1px solid rgba(66,165,245,.25);}
+.badge.ft{background:rgba(158,158,158,.12);color:var(--gray);border:1px solid rgba(158,158,158,.2);}
+.badge.wa{background:rgba(37,211,102,.15);color:var(--wa);border:1px solid rgba(37,211,102,.3);}
+/* ALERT */
+.alert{border-radius:10px;padding:10px 12px;margin-bottom:10px;
+  display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4;}
+.alert.ok{background:rgba(34,160,74,.08);border:1px solid rgba(34,160,74,.22);color:#a5d6a7;}
+.alert.warn{background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.2);color:#ffe082;}
+.alert.err{background:rgba(229,57,53,.07);border:1px solid rgba(229,57,53,.2);color:#ef9a9a;}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-ico">🤖</div>
+    <div>
+      <div class="header-title">Bot Família Tomelin · Z-API</div>
+      <div class="header-sub">Automação WhatsApp · Copa do Mundo FIFA 2026</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;">
+      <div style="font-size:10px;color:var(--gray);">Instância</div>
+      <div style="font-family:monospace;font-size:11px;color:var(--gold);">...B0810B48</div>
+    </div>
+  </div>
+
+  <!-- STATUS Z-API -->
+  <div class="status-bar">
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div class="status-dot checking" id="status-dot"></div>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;" id="status-txt">Verificando conexão...</div>
+        <div style="font-size:10px;color:var(--gray);" id="status-num">Z-API WhatsApp</div>
+      </div>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="checkStatus()">🔄 Verificar</button>
+  </div>
+
+  <!-- TABS -->
+  <div style="display:flex;background:rgba(255,255,255,.05);border-radius:11px;padding:4px;margin-bottom:14px;gap:3px;">
+    <button class="tab-btn active" id="tab-0" onclick="switchTab(0)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(245,197,24,.18);color:var(--gold);transition:.25s;">📢 Grupo</button>
+    <button class="tab-btn" id="tab-1" onclick="switchTab(1)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.4);transition:.25s;">⚽ Jogos ao Vivo</button>
+    <button class="tab-btn" id="tab-2" onclick="switchTab(2)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.4);transition:.25s;">🎴 Figurinhas</button>
+    <button class="tab-btn" id="tab-3" onclick="switchTab(3)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.4);transition:.25s;">⚙️ Config</button>
+  </div>
+
+  <!-- TAB 0: GRUPO (mensagens animadas) -->
+  <div id="panel-0">
+    <div class="card">
+      <div class="card-title">📱 Número do grupo / destinatário</div>
+      <div class="alert warn">
+        <div>⚠️</div>
+        <div>Para enviar ao grupo do WhatsApp, cole o <strong>número do grupo</strong> (com sufixo <code>@g.us</code>) ou o número de um membro. Para grupos, use o formato: <code>5547999...@g.us</code></div>
+      </div>
+      <div class="fg">
+        <label>Número do destinatário</label>
+        <input type="text" id="grp-phone" placeholder="5547989001508 ou ID do grupo" value="5547989001508">
+      </div>
+      <div class="div"></div>
+      <div class="card-title">🎉 Frases de animação do grupo</div>
+      <div class="phrase-grid" id="phrase-list"></div>
+      <div class="div"></div>
+      <div class="fg">
+        <label>Mensagem personalizada</label>
+        <textarea id="custom-msg" placeholder="Digite uma mensagem personalizada para o grupo..."></textarea>
+      </div>
+      <div class="row">
+        <button class="btn btn-wa" onclick="sendCustomMsg()">📤 Enviar mensagem</button>
+      </div>
+      <div class="div"></div>
+      <div class="card-title">🤖 Envio automático programado</div>
+      <div class="row" style="margin-bottom:10px;">
+        <select id="auto-interval" style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:9px;padding:10px 12px;color:#fff;font-size:13px;outline:none;">
+          <option value="0">Desativado</option>
+          <option value="5">A cada 5 minutos</option>
+          <option value="15">A cada 15 minutos</option>
+          <option value="30">A cada 30 minutos</option>
+          <option value="60">A cada 1 hora</option>
+        </select>
+        <button class="btn btn-green btn-sm" onclick="toggleAutoSend()" id="auto-btn">▶ Ativar</button>
+      </div>
+      <div id="auto-status" style="font-size:11px;color:var(--gray);">Auto-envio desativado.</div>
+    </div>
+  </div>
+
+  <!-- TAB 1: JOGOS AO VIVO -->
+  <div id="panel-1" style="display:none;">
+    <div class="card">
+      <div class="card-title">⚽ Buscar jogos ao vivo agora</div>
+      <div class="row" style="margin-bottom:12px;">
+        <button class="btn btn-blue" onclick="fetchLiveMatches()">🔄 Buscar jogos agora</button>
+      </div>
+      <div id="live-matches-list">
+        <div style="text-align:center;color:rgba(255,255,255,.3);padding:20px;font-size:13px;">Clique em "Buscar jogos" para carregar</div>
+      </div>
+      <div class="div"></div>
+      <div class="card-title">📤 Enviar atualização de jogo</div>
+      <div class="fg">
+        <label>Destinatário</label>
+        <input type="text" id="live-phone" placeholder="5547989001508" value="5547989001508">
+      </div>
+      <div class="fg">
+        <label>Tipo de mensagem</label>
+        <select id="live-msg-type" onchange="updateLiveMsgPreview()">
+          <option value="live">🔴 Jogo ao vivo (placar atual)</option>
+          <option value="goal">⚽ Gol marcado!</option>
+          <option value="ht">☕ Intervalo</option>
+          <option value="ft">🏁 Fim de jogo</option>
+          <option value="start">🎉 Início do jogo</option>
+          <option value="brasil">🇧🇷 Jogo do Brasil</option>
+        </select>
+      </div>
+      <div id="live-preview" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:12px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:12px;white-space:pre-wrap;"></div>
+      <button class="btn btn-wa" onclick="sendLiveUpdate()">📤 Enviar para WhatsApp</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🤖 Monitor automático de jogos</div>
+      <div class="alert warn">
+        <div>💡</div>
+        <div>O monitor busca atualizações a cada 2 minutos durante jogos ao vivo e envia automaticamente para o grupo!</div>
+      </div>
+      <div class="fg">
+        <label>Destinatário do monitor</label>
+        <input type="text" id="monitor-phone" placeholder="5547989001508" value="5547989001508">
+      </div>
+      <div class="row">
+        <button class="btn btn-green" id="monitor-btn" onclick="toggleMonitor()">▶ Iniciar monitor de jogos</button>
+      </div>
+      <div id="monitor-status" style="font-size:11px;color:var(--gray);margin-top:8px;">Monitor parado.</div>
+    </div>
+  </div>
+
+  <!-- TAB 2: FIGURINHAS -->
+  <div id="panel-2" style="display:none;">
+    <div class="card">
+      <div class="card-title">🎴 Notificação de figurinha disponível</div>
+      <div class="alert ok">
+        <div>💡</div>
+        <div>Quando alguém disponibiliza uma figurinha que outro membro precisa, o bot manda mensagem privada avisando!</div>
+      </div>
+      <div class="fg">
+        <label>Usuários do sistema (do localStorage)</label>
+        <select id="sticker-user-sel" onchange="onStickerUserChange()">
+          <option value="">Selecione um usuário...</option>
+        </select>
+      </div>
+      <div id="sticker-matches-area"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📨 Enviar notificação privada de figurinha</div>
+      <div class="fg">
+        <label>Telefone de quem vai receber</label>
+        <input type="text" id="stk-phone-dest" placeholder="5547989001508">
+      </div>
+      <div class="fg">
+        <label>Mensagem</label>
+        <textarea id="stk-msg" rows="4" placeholder="Mensagem será gerada automaticamente..."></textarea>
+      </div>
+      <button class="btn btn-wa" onclick="sendStickerNotif()">📱 Enviar via WhatsApp</button>
+    </div>
+  </div>
+
+  <!-- TAB 3: CONFIG -->
+  <div id="panel-3" style="display:none;">
+    <div class="card">
+      <div class="card-title">🔧 Credenciais Z-API</div>
+      <div class="fg">
+        <label>Instance ID</label>
+        <input type="text" id="cfg-instance" value="3F155B355FA8410212E52295B0810B48" readonly style="opacity:.6;">
+      </div>
+      <div class="fg">
+        <label>Token</label>
+        <input type="password" id="cfg-token" value="9B855EED9711E32684160EE5" readonly style="opacity:.6;">
+      </div>
+      <div class="fg">
+        <label>Client-Token</label>
+        <input type="password" id="cfg-client" value="Fb16e5dcfa655472aa0e92c4b5b51f11cS" readonly style="opacity:.6;">
+      </div>
+      <button class="btn btn-blue" onclick="checkStatus()">🔄 Testar conexão</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Log de envios</div>
+      <div class="log" id="send-log">
+        <div class="log-line info">— Bot inicializado. Aguardando ações. —</div>
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="document.getElementById('send-log').innerHTML='<div class=\'log-line info\'>— Log limpo —</div>'">🗑️ Limpar log</button>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ═══════════════════════════════════════════════════
+// Z-API CONFIG
+// ═══════════════════════════════════════════════════
+const ZAPI = {
+  instance: '3F155B355FA8410212E52295B0810B48',
+  token: '9B855EED9711E32684160EE5',
+  clientToken: 'Fb16e5dcfa655472aa0e92c4b5b51f11cS',
+  base: 'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5'
+};
+
+// ═══════════════════════════════════════════════════
+// FRASES ANIMADAS PARA O GRUPO
+// ═══════════════════════════════════════════════════
+const GROUP_PHRASES = [
+  {emoji:'🏆',tag:'Hype',txt:'🏆 FAMÍLIA TOMELIN NA COPA 2026! 🔥\n\nVamos juntos torcer, trocar figurinhas e torcer pela nossa seleção! Bora completar o álbum! 🎴⚽🇧🇷'},
+  {emoji:'⚽',tag:'Álbum',txt:'⚽ Quem tem figurinhas repetidas?\n\nMarca aqui no sistema que todo mundo pode ver e fazer trocas! 🎴\nAcesse: https://jacksontomelin.github.io/figurinhas-copa2026\nFamília Tomelin Copa 2026 🏆'},
+  {emoji:'🎴',tag:'Troca',txt:'🎴 HEY! Já cadastrou suas figurinhas no sistema?\n\nLá você vê quem tem as que faltam pra você, troca e vende! É grátis e fácil!\n👉 https://jacksontomelin.github.io/figurinhas-copa2026\nBora Família Tomelin! 🇧🇷🏆'},
+  {emoji:'🔥',tag:'Aquecimento',txt:'🔥 A Copa do Mundo 2026 está chegando!\n\n48 seleções, 104 jogos, 16 estádios em 3 países!\nO Brasil estreia em 13 de junho contra o Marrocos 🇧🇷🆚🇲🇦\nJá completou seu álbum? Corre trocar figurinhas no grupo! 🎴'},
+  {emoji:'📱',tag:'Sistema',txt:'📱 ATENÇÃO Família Tomelin!\n\nNosso sistema de trocas está no ar! 🎉\n✅ Marque suas figurinhas\n🔄 Veja quem tem as que faltam\n💬 Converse pelo chat\n🎲 Aposte nos jogos\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
+  {emoji:'🇧🇷',tag:'Brasil',txt:'🇧🇷 BORA BRASIL! HEXA EM 2026! 🏆\n\nO Brasil é o único país a disputar TODAS as Copas do Mundo!\n5 títulos... o 6º vem aí! Vamos juntos! ⚽🔥\n#FamíliaTomelin #Copa2026 #Hexa'},
+  {emoji:'🎲',tag:'Apostas',txt:'🎲 APOSTAS ABERTAS!\n\nJá fez seu palpite nos jogos da Copa?\nUse o sistema da Família Tomelin e ganhe Tomelin Coins! 💰\nÉ só diversão — mas todo mundo quer ser o campeão dos palpites! 😄\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
+  {emoji:'🌟',tag:'Ranking',txt:'🌟 Quem está liderando o álbum da Família Tomelin?\n\nAcesse o sistema, veja o ranking e descubra quem está mais perto de completar o álbum da Copa 2026! 🎴🏆\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
+  {emoji:'📦',tag:'Pacotinhos',txt:'📦 DICA DE HOJE!\n\nSabia que para completar o álbum da Copa 2026 você precisa de pelo menos 196 pacotinhos? 😅\nMas com as trocas da Família Tomelin você gasta muito menos! Cadastre suas repetidas! 🎴'},
+  {emoji:'💰',tag:'Economia',txt:'💰 ECONOMIZE na Copa 2026!\n\nEm vez de comprar todos os pacotinhos, troque figurinhas com a Família Tomelin! 🤝\nCada troca é uma figurinha a menos pra comprar! 💪\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
+];
+
+// ═══════════════════════════════════════════════════
+// FRASES DE JOGO AO VIVO
+// ═══════════════════════════════════════════════════
+function getLiveMsg(type, match){
+  const h = match?.home||'Time A', a = match?.away||'Time B';
+  const hf = match?.home_flag||'🏳️', af = match?.away_flag||'🏳️';
+  const hs = match?.home_score??0, as_ = match?.away_score??0;
+  const now = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const msgs = {
+    live: `⚽ JOGO AO VIVO — COPA 2026! 🔴\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\n⏱️ ${now} BRT\n🏟️ ${match?.stadium||''}\n\nAcesse o sistema da Família Tomelin para ver detalhes e fazer apostas! 🎲\n👉 https://jacksontomelin.github.io/figurinhas-copa2026`,
+    goal: `⚽ GOOOOOOL! 🎉🔥\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\nQue momento emocionante! A Família Tomelin está na torcida! 🇧🇷🏆\n#Copa2026 #FamíliaTomelin`,
+    ht: `☕ INTERVALO — COPA 2026\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\nMeia hora terminada! Segundo tempo começa em breve! ⚽\nA Família Tomelin continua na torcida! 🔥🇧🇷`,
+    ft: `🏁 FIM DE JOGO — RESULTADO FINAL!\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\nQue jogo emocionante! 🎉 Família Tomelin presente! 🏆\n\nJá apostou no próximo jogo? Acesse:\n👉 https://jacksontomelin.github.io/figurinhas-copa2026`,
+    start: `🎉 BOLA ROLANDO! COPA 2026!\n\n${hf} ${h} x ${a} ${af} COMEÇOU!\n\n⚽ Vamos torcer juntos, Família Tomelin! 🇧🇷🔥\n🏟️ ${match?.stadium||''}\n\n#Copa2026 #FamíliaTomelin`,
+    brasil: `🇧🇷🇧🇷🇧🇷 É JOGO DO BRASIL! 🇧🇷🇧🇷🇧🇷\n\n🦁 BRASIL ${hs} x ${as_} ${a} ${af}\n\n⚽ BORA HEXA! BORA BRASIL! 💛💚\nToda a Família Tomelin está na torcida! 🏆🔥\n\n#VaiBrasil #Hexa #Copa2026 #FamíliaTomelin`,
+  };
+  return msgs[type]||msgs.live;
+}
+
+// ═══════════════════════════════════════════════════
+// Z-API REQUESTS (via fetch com proxy CORS)
+// ═══════════════════════════════════════════════════
+async function zapiPost(endpoint, body){
+  const url = `${ZAPI.base}/${endpoint}`;
+  try {
+    const r = await fetch(url, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Client-Token': ZAPI.clientToken
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    return {ok: r.ok, status: r.status, data};
+  } catch(e) {
+    return {ok:false, error: e.message};
+  }
+}
+
+async function zapiGet(endpoint){
+  const url = `${ZAPI.base}/${endpoint}`;
+  try {
+    const r = await fetch(url, {
+      headers:{'Client-Token': ZAPI.clientToken}
+    });
+    const data = await r.json();
+    return {ok: r.ok, data};
+  } catch(e) {
+    return {ok:false, error: e.message};
+  }
+}
+
+function sanitizePhone(phone){
+  let p = phone.trim().replace(/\D/g,'');
+  if(!phone.includes('@g.us')){
+    if(p.length===10||p.length===11) p='55'+p;
+  }
+  return phone.includes('@g.us') ? phone.trim() : p;
+}
+
+async function sendText(phone, message){
+  const p = sanitizePhone(phone);
+  const r = await zapiPost('send-text', {phone:p, message});
+  log(r.ok ? `✅ Mensagem enviada para ${p}` : `❌ Erro: ${JSON.stringify(r.data||r.error)}`, r.ok?'ok':'err');
+  return r;
+}
+
+// ═══════════════════════════════════════════════════
+// STATUS CHECK
+// ═══════════════════════════════════════════════════
+async function checkStatus(){
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-txt');
+  const num = document.getElementById('status-num');
+  dot.className='status-dot checking';
+  txt.textContent='Verificando...';
+  const r = await zapiGet('status');
+  if(r.ok && r.data?.connected){
+    dot.className='status-dot online';
+    txt.textContent='✅ WhatsApp conectado!';
+    num.textContent=r.data.number||'Conectado';
+    log(`✅ Z-API conectada — Número: ${r.data.number||'?'}`, 'ok');
+  } else {
+    dot.className='status-dot offline';
+    txt.textContent='❌ Desconectado ou erro';
+    num.textContent=r.data?.message||'Verifique a instância Z-API';
+    log(`❌ Z-API desconectada: ${JSON.stringify(r.data||r.error)}`, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PHRASES / GROUP
+// ═══════════════════════════════════════════════════
+let selectedPhrase = null;
+function buildPhrases(){
+  const el = document.getElementById('phrase-list');
+  el.innerHTML = GROUP_PHRASES.map((p,i)=>`
+    <div class="phrase-item" id="phrase-${i}" onclick="selectPhrase(${i})">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
+        <span style="font-size:16px;">${p.emoji}</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;
+          letter-spacing:1px;color:var(--gold);text-transform:uppercase;">${p.tag}</span>
+      </div>
+      <div>${p.txt.substring(0,80)}...</div>
+    </div>`).join('');
+}
+function selectPhrase(i){
+  selectedPhrase = i;
+  document.querySelectorAll('.phrase-item').forEach((el,j)=>el.classList.toggle('selected',j===i));
+  document.getElementById('custom-msg').value = GROUP_PHRASES[i].txt;
+}
+async function sendCustomMsg(){
+  const phone = document.getElementById('grp-phone').value;
+  const msg = document.getElementById('custom-msg').value.trim();
+  if(!phone||!msg){alert('Preencha o telefone e a mensagem!');return;}
+  await sendText(phone, msg);
+}
+
+// ═══════════════════════════════════════════════════
+// AUTO SEND
+// ═══════════════════════════════════════════════════
+let _autoTimer = null;
+let _autoIdx = 0;
+function toggleAutoSend(){
+  const btn = document.getElementById('auto-btn');
+  const statusEl = document.getElementById('auto-status');
+  if(_autoTimer){
+    clearInterval(_autoTimer);
+    _autoTimer = null;
+    btn.textContent='▶ Ativar';
+    btn.className='btn btn-green btn-sm';
+    statusEl.textContent='Auto-envio desativado.';
+    log('⏹️ Auto-envio desativado.','info');
+    return;
+  }
+  const mins = parseInt(document.getElementById('auto-interval').value);
+  if(!mins){alert('Selecione o intervalo!');return;}
+  const phone = document.getElementById('grp-phone').value;
+  if(!phone){alert('Informe o destinatário!');return;}
+  btn.textContent='⏹ Parar';
+  btn.className='btn btn-red btn-sm';
+  statusEl.textContent=`Enviando a cada ${mins} minuto(s)...`;
+  log(`▶️ Auto-envio ativado — a cada ${mins}min para ${phone}`,'ok');
+  async function autoSend(){
+    const p = GROUP_PHRASES[_autoIdx % GROUP_PHRASES.length];
+    await sendText(phone, p.txt);
+    statusEl.textContent=`Última: "${p.tag}" — ${new Date().toLocaleTimeString('pt-BR')}`;
+    _autoIdx++;
+  }
+  autoSend();
+  _autoTimer = setInterval(autoSend, mins*60000);
+}
+
+// ═══════════════════════════════════════════════════
+// JOGOS AO VIVO (Z-API Copa)
+// ═══════════════════════════════════════════════════
+let _liveMatches = [];
+let _selectedMatch = null;
+let _monitorTimer = null;
+let _lastScores = {};
+
+async function fetchLiveMatches(){
+  const el = document.getElementById('live-matches-list');
+  el.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.4);padding:14px;">🔄 Buscando jogos...</div>';
+  try {
+    const r = await fetch('https://api.wc2026api.com/matches', {
+      headers:{Authorization:'Bearer wc2026_free'},
+      signal:AbortSignal.timeout(6000)
+    });
+    if(r.ok){
+      const data = await r.json();
+      _liveMatches = (Array.isArray(data)?data:data.matches||data.data||[]).map(m=>({
+        ...m,
+        home: m.home_team||m.home||'TBD',
+        away: m.away_team||m.away||'TBD',
+        home_flag: flagOf(m.home_team||m.home||''),
+        away_flag: flagOf(m.away_team||m.away||''),
+        home_score: m.home_score??m.score?.home??null,
+        away_score: m.away_score??m.score?.away??null,
+      }));
+      log(`✅ ${_liveMatches.length} jogos carregados da API`,'ok');
+    } else {
+      _liveMatches = getMockMatches();
+      log('⚠️ API offline, usando dados simulados','warn');
+    }
+  } catch(e) {
+    _liveMatches = getMockMatches();
+    log(`⚠️ Erro API: ${e.message} — usando simulado`,'warn');
+  }
+  renderMatchList();
+}
+
+function getMockMatches(){
+  return [
+    {id:5,home:'Brasil',away:'Marrocos',home_flag:'🇧🇷',away_flag:'🇲🇦',home_score:null,away_score:null,status:'scheduled',phase:'PRE',stadium:'MetLife Stadium',kickoff_utc:'2026-06-13T19:00:00Z'},
+    {id:19,home:'Argentina',away:'Argélia',home_flag:'🇦🇷',away_flag:'🇩🇿',home_score:null,away_score:null,status:'scheduled',phase:'PRE',stadium:'Hard Rock Stadium',kickoff_utc:'2026-06-16T22:00:00Z'},
+    {id:17,home:'França',away:'Senegal',home_flag:'🇫🇷',away_flag:'🇸🇳',home_score:null,away_score:null,status:'scheduled',phase:'PRE',stadium:'MetLife Stadium',kickoff_utc:'2026-06-16T16:00:00Z'},
+  ];
+}
+
+const FLAG_MAP={'Brasil':'🇧🇷','Brazil':'🇧🇷','Argentina':'🇦🇷','França':'🇫🇷','France':'🇫🇷','Espanha':'🇪🇸','Spain':'🇪🇸','Alemanha':'🇩🇪','Germany':'🇩🇪','Portugal':'🇵🇹','Inglaterra':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Holanda':'🇳🇱','Netherlands':'🇳🇱','Marrocos':'🇲🇦','Morocco':'🇲🇦','Senegal':'🇸🇳','Argélia':'🇩🇿','Algeria':'🇩🇿','México':'🇲🇽','Mexico':'🇲🇽','EUA':'🇺🇸','USA':'🇺🇸','United States':'🇺🇸','Canadá':'🇨🇦','Canada':'🇨🇦','Coreia do Sul':'🇰🇷','South Korea':'🇰🇷','Japão':'🇯🇵','Japan':'🇯🇵','Austrália':'🇦🇺','Australia':'🇦🇺','Irã':'🇮🇷','Iran':'🇮🇷'};
+function flagOf(n){return FLAG_MAP[n]||'🏳️';}
+
+function renderMatchList(){
+  const el = document.getElementById('live-matches-list');
+  if(!_liveMatches.length){
+    el.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);padding:14px;">Nenhum jogo encontrado</div>';
+    return;
+  }
+  const live = _liveMatches.filter(m=>['1H','HT','2H','ET1','ET2','PEN'].includes(m.phase||m.status));
+  const soon = _liveMatches.filter(m=>{
+    const ph=m.phase||m.status;
+    if(['1H','HT','2H','ET1','ET2','PEN','FT','FT_PEN'].includes(ph))return false;
+    const dt=new Date(m.kickoff_utc||m.kickoff||0);
+    return dt-Date.now()<7200000&&dt>Date.now();
+  });
+  const all = [...live,...soon,..._liveMatches.filter(m=>!live.includes(m)&&!soon.includes(m))].slice(0,10);
+  el.innerHTML = all.map((m,i)=>{
+    const ph=m.phase||m.status;
+    const isLive=['1H','HT','2H','ET1','ET2','PEN'].includes(ph);
+    const isFT=['FT','FT_PEN'].includes(ph);
+    const score=m.home_score!==null?`${m.home_score} — ${m.away_score}`:'vs';
+    const badgeHtml=isLive?'<span class="badge live">🔴 Ao vivo</span>':isFT?'<span class="badge ft">Encerrado</span>':'<span class="badge sched">Agendado</span>';
+    return `<div class="match-card" id="mc-${i}" onclick="selectMatch(${i})">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;">
+        <div class="match-teams">${m.home_flag} ${m.home} ${score} ${m.away} ${m.away_flag}</div>
+        ${badgeHtml}
+      </div>
+      <div class="match-meta">${m.stadium||''} ${m.group_name?'· Grupo '+m.group_name:''}</div>
+    </div>`;
+  }).join('');
+  _liveMatches = all;
+}
+
+function selectMatch(i){
+  _selectedMatch = _liveMatches[i];
+  document.querySelectorAll('.match-card').forEach((el,j)=>el.classList.toggle('selected',j===i));
+  updateLiveMsgPreview();
+  log(`✅ Jogo selecionado: ${_selectedMatch.home} x ${_selectedMatch.away}`,'info');
+}
+
+function updateLiveMsgPreview(){
+  const type = document.getElementById('live-msg-type').value;
+  const msg = getLiveMsg(type, _selectedMatch);
+  document.getElementById('live-preview').textContent = msg;
+}
+
+async function sendLiveUpdate(){
+  const phone = document.getElementById('live-phone').value;
+  if(!phone){alert('Informe o destinatário!');return;}
+  const type = document.getElementById('live-msg-type').value;
+  const msg = getLiveMsg(type, _selectedMatch);
+  await sendText(phone, msg);
+}
+
+// ── MONITOR AUTOMÁTICO ──────────────────────────────
+async function toggleMonitor(){
+  const btn = document.getElementById('monitor-btn');
+  const statusEl = document.getElementById('monitor-status');
+  if(_monitorTimer){
+    clearInterval(_monitorTimer);
+    _monitorTimer=null;
+    btn.textContent='▶ Iniciar monitor de jogos';
+    btn.className='btn btn-green';
+    statusEl.textContent='Monitor parado.';
+    log('⏹️ Monitor de jogos parado.','info');
+    return;
+  }
+  const phone = document.getElementById('monitor-phone').value;
+  if(!phone){alert('Informe o destinatário!');return;}
+  btn.textContent='⏹ Parar monitor';
+  btn.className='btn btn-red';
+  statusEl.textContent='Monitor ativo — verificando a cada 2 minutos...';
+  log(`▶️ Monitor ativado para ${phone}`,'ok');
+  async function monitorCheck(){
+    try {
+      const r = await fetch('https://api.wc2026api.com/matches',{headers:{Authorization:'Bearer wc2026_free'},signal:AbortSignal.timeout(5000)});
+      if(!r.ok) return;
+      const data = await r.json();
+      const matches = Array.isArray(data)?data:data.matches||data.data||[];
+      for(const m of matches){
+        const ph=m.phase||m.status;
+        const key=m.id;
+        const hs=m.home_score??null, as_=m.away_score??null;
+        const prev=_lastScores[key];
+        const home=m.home_team||m.home||'?', away=m.away_team||m.away||'?';
+        const hf=flagOf(home), af=flagOf(away);
+        const mObj={home,away,home_flag:hf,away_flag:af,home_score:hs,away_score:as_,stadium:m.stadium||''};
+        // Detectar início
+        if(!prev&&['1H','2H'].includes(ph)){
+          _lastScores[key]={hs,as_,ph};
+          await sendText(phone,getLiveMsg('start',mObj));
+          log(`🎉 Jogo iniciado: ${home} x ${away}`,'ok');
+        }
+        // Detectar gol
+        if(prev&&hs!==null&&as_!==null&&(hs!==prev.hs||as_!==prev.as_)){
+          _lastScores[key]={hs,as_,ph};
+          await sendText(phone,getLiveMsg('goal',mObj));
+          log(`⚽ GOL! ${home} ${hs} x ${as_} ${away}`,'ok');
+        }
+        // Detectar intervalo
+        if(prev&&ph==='HT'&&prev.ph!=='HT'){
+          _lastScores[key]={...prev,ph};
+          await sendText(phone,getLiveMsg('ht',mObj));
+          log(`☕ Intervalo: ${home} x ${away}`,'info');
+        }
+        // Detectar fim
+        if(prev&&['FT','FT_PEN'].includes(ph)&&!['FT','FT_PEN'].includes(prev.ph)){
+          _lastScores[key]={hs,as_,ph};
+          await sendText(phone,getLiveMsg('ft',mObj));
+          log(`🏁 Fim de jogo: ${home} ${hs} x ${as_} ${away}`,'ok');
+        }
+        if(!prev) _lastScores[key]={hs,as_,ph};
+      }
+      statusEl.textContent=`Última verificação: ${new Date().toLocaleTimeString('pt-BR')} — ${matches.filter(m=>['1H','2H'].includes(m.phase||m.status)).length} jogo(s) ao vivo`;
+    } catch(e){ log(`⚠️ Monitor: ${e.message}`,'warn'); }
+  }
+  monitorCheck();
+  _monitorTimer = setInterval(monitorCheck, 2*60000);
+}
+
+// ═══════════════════════════════════════════════════
+// FIGURINHAS — cross-match de usuários
+// ═══════════════════════════════════════════════════
+const ALL_TEAMS=[['ARG','Argentina','🇦🇷'],['BRA','Brasil','🇧🇷'],['FRA','França','🇫🇷'],['ESP','Espanha','🇪🇸'],['ENG','Inglaterra','🏴󠁧󠁢󠁥󠁮󠁧󠁿'],['GER','Alemanha','🇩🇪'],['POR','Portugal','🇵🇹'],['NED','Holanda','🇳🇱'],['BEL','Bélgica','🇧🇪'],['ITA','Itália','🇮🇹'],['URU','Uruguai','🇺🇾'],['USA','EUA','🇺🇸'],['MEX','México','🇲🇽'],['CAN','Canadá','🇨🇦'],['COL','Colômbia','🇨🇴'],['ECU','Equador','🇪🇨'],['CHI','Chile','🇨🇱'],['VEN','Venezuela','🇻🇪'],['MAR','Marrocos','🇲🇦'],['SEN','Senegal','🇸🇳'],['NGA','Nigéria','🇳🇬'],['EGY','Egito','🇪🇬'],['JPN','Japão','🇯🇵'],['KOR','Coreia do Sul','🇰🇷'],['AUS','Austrália','🇦🇺'],['IRN','Irã','🇮🇷'],['SAU','Arábia Saudita','🇸🇦'],['CHN','China','🇨🇳'],['SUI','Suíça','🇨🇭'],['AUT','Áustria','🇦🇹'],['POL','Polônia','🇵🇱'],['CRO','Croácia','🇭🇷'],['DEN','Dinamarca','🇩🇰'],['SWE','Suécia','🇸🇪'],['SCO','Escócia','🏴󠁧󠁢󠁳󠁣󠁴󠁿'],['UKR','Ucrânia','🇺🇦'],['SRB','Sérvia','🇷🇸'],['GHA','Gana','🇬🇭'],['PAR','Paraguai','🇵🇾'],['QAT','Catar','🇶🇦'],['IRQ','Iraque','🇮🇶'],['NOR','Noruega','🇳🇴'],['BOL','Bolívia','🇧🇴'],['HAI','Haiti','🇭🇹'],['ALG','Argélia','🇩🇿'],['UZB','Uzbequistão','🇺🇿'],['NZL','Nova Zelândia','🇳🇿'],['CIV','Costa do Marfim','🇨🇮']];
+const ALL_STICKERS=[]; ALL_TEAMS.forEach(([c,n,f])=>{for(let i=1;i<=20;i++)ALL_STICKERS.push({id:c+i,team:c,n:i,teamName:n,flag:f});});
+
+function getUsers(){ try{return JSON.parse(localStorage.getItem('t26_users')||'[]');}catch{return[];} }
+
+function loadStickerUsers(){
+  const users = getUsers();
+  const sel = document.getElementById('sticker-user-sel');
+  sel.innerHTML='<option value="">Selecione um usuário...</option>';
+  users.forEach(u=>{
+    const o=document.createElement('option');
+    o.value=u.phone;
+    o.textContent=`${u.name} (${u.phone})`;
+    sel.appendChild(o);
+  });
+  if(!users.length){
+    document.getElementById('sticker-matches-area').innerHTML='<div class="alert warn"><div>⚠️</div><div>Nenhum usuário encontrado no localStorage. Abra o sistema principal primeiro.</div></div>';
+  }
+}
+
+function onStickerUserChange(){
+  const phone = document.getElementById('sticker-user-sel').value;
+  if(!phone){document.getElementById('sticker-matches-area').innerHTML='';return;}
+  const users = getUsers();
+  const me = users.find(u=>u.phone===phone);
+  if(!me)return;
+  const mySt=me.stickers||{};
+  const myNeed=new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)===0).map(s=>s.id));
+  const others=users.filter(u=>u.phone!==phone);
+  const matches=[];
+  others.forEach(u=>{
+    const ust=u.stickers||{};
+    const theyHave=ALL_STICKERS.filter(s=>myNeed.has(s.id)&&(ust[s.id]||0)===2).map(s=>s.id);
+    if(theyHave.length) matches.push({u,theyHave});
+  });
+  const area=document.getElementById('sticker-matches-area');
+  if(!matches.length){
+    area.innerHTML='<div class="alert ok"><div>✅</div><div>Nenhum membro tem figurinhas que este usuário precisa no momento.</div></div>';
+    return;
+  }
+  area.innerHTML=matches.map(m=>`
+    <div style="background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);border-radius:10px;padding:10px 12px;margin-bottom:7px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;margin-bottom:4px;">
+        ${m.u.avatar||'⚽'} ${m.u.name} — ${m.theyHave.length} figurinha(s) para ${me.name.split(' ')[0]}
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:7px;">${m.theyHave.slice(0,8).join(', ')}${m.theyHave.length>8?` +${m.theyHave.length-8} mais`:''}</div>
+      <button onclick="prepStickerNotif('${me.phone}','${me.name}','${m.u.phone}','${m.u.name}','${m.theyHave.slice(0,5).join(',')}','${m.u.phone}')" class="btn btn-wa btn-sm">📱 Notificar ${me.name.split(' ')[0]} agora</button>
+    </div>`).join('');
+}
+
+function prepStickerNotif(destPhone, destName, ownerPhone, ownerName, codes, ownerWaPhone){
+  const codesArr=codes.split(',');
+  const msg = `🎴 OI ${destName.split(' ')[0].toUpperCase()}! NOVIDADE! 🎉\n\n*${ownerName}* tem ${codesArr.length>1?'as figurinhas':'a figurinha'} que você precisa!\n\n🃏 ${codesArr.join(', ')}\n\nChama ele(a) agora e combinem a troca! 👇\n📱 WhatsApp: wa.me/55${ownerWaPhone.replace(/\D/g,'')}\n\n#FamíliaTomelin #Copa2026 🏆🇧🇷`;
+  document.getElementById('stk-phone-dest').value=destPhone;
+  document.getElementById('stk-msg').value=msg;
+  log(`✏️ Mensagem preparada para ${destName} sobre ${ownerName}`,'info');
+}
+
+async function sendStickerNotif(){
+  const phone=document.getElementById('stk-phone-dest').value.trim();
+  const msg=document.getElementById('stk-msg').value.trim();
+  if(!phone||!msg){alert('Preencha o telefone e a mensagem!');return;}
+  await sendText(phone,msg);
+}
+
+// ═══════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════
+function switchTab(i){
+  [0,1,2,3].forEach(j=>{
+    document.getElementById(`panel-${j}`).style.display=j===i?'block':'none';
+    const btn=document.getElementById(`tab-${j}`);
+    btn.style.background=j===i?'rgba(245,197,24,.18)':'transparent';
+    btn.style.color=j===i?'var(--gold)':'rgba(255,255,255,.4)';
+  });
+  if(i===2)loadStickerUsers();
+  if(i===1){if(!_liveMatches.length)fetchLiveMatches();updateLiveMsgPreview();}
+}
+
+// ═══════════════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════════════
+function log(msg, type='info'){
+  const el=document.getElementById('send-log');
+  const d=document.createElement('div');
+  d.className=`log-line ${type}`;
+  d.textContent=`[${new Date().toLocaleTimeString('pt-BR')}] ${msg}`;
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+buildPhrases();
+checkStatus();
+updateLiveMsgPreview();
+</script>
+</body>
+</html>
