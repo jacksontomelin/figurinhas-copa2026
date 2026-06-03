@@ -3183,6 +3183,175 @@ function trackWaClick(){
   if(rem){rem.style.transition='opacity .4s,transform .4s';rem.style.opacity='0';rem.style.transform='scale(.95)';setTimeout(()=>rem&&rem.remove(),400);}
 }
 
+
+// ═══════════════════════════════════════════════════
+// 🛒 MODAL ANUNCIAR FIGURINHA — FUNÇÕES COMPLETAS
+// ═══════════════════════════════════════════════════
+let _sellSelected = new Set();
+let _sellFilter   = 'dup';
+let _sellType     = '';
+let _sellPrice    = 0;
+
+function openSellModal(){
+  const u = getCurrentUser(); if(!u) return;
+  _sellSelected.clear();
+  _sellType  = '';
+  _sellPrice = 0;
+  // Reset UI
+  document.getElementById('sell-step1').style.display = 'block';
+  document.getElementById('sell-step2').style.display = 'none';
+  const nextBtn = document.getElementById('sell-next-btn');
+  if(nextBtn){ nextBtn.style.opacity='.4'; nextBtn.style.pointerEvents='none'; }
+  const pubBtn = document.getElementById('sell-pub-btn');
+  if(pubBtn){ pubBtn.style.opacity='.4'; pubBtn.style.pointerEvents='none'; }
+  // Reset type buttons
+  document.querySelectorAll('.sell-type-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('.sell-type-btn .stb-check').forEach(c=>c.textContent='○');
+  document.getElementById('sell-valor-section').style.display = 'none';
+  // Load stickers
+  setSellFilter(_sellFilter, document.querySelector('.sell-filter-btn.active'));
+  openModal('mod-sell');
+}
+
+function setSellFilter(f, btn){
+  _sellFilter = f;
+  document.querySelectorAll('.sell-filter-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  _renderSellGrid();
+}
+
+function _renderSellGrid(){
+  const u   = getCurrentUser(); if(!u) return;
+  const st  = u.stickers || {};
+  const grid = document.getElementById('sell-fig-grid'); if(!grid) return;
+  const mktCodes = new Set(getMarket().filter(m=>m.owner===u.phone).map(m=>m.code));
+
+  let stickers = ALL_STICKERS.filter(s => s.team !== 'FWC');
+  if(_sellFilter === 'dup')  stickers = stickers.filter(s => (st[s.id]||0) === 2);
+  if(_sellFilter === 'have') stickers = stickers.filter(s => (st[s.id]||0) === 1);
+
+  if(!stickers.length){
+    grid.innerHTML = '<div style="color:rgba(255,255,255,.35);font-size:12px;text-align:center;padding:18px;grid-column:1/-1;">Nenhuma figurinha nesta categoria</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  stickers.forEach(s => {
+    const sel  = _sellSelected.has(s.id);
+    const inMkt = mktCodes.has(s.id);
+    const btn  = document.createElement('button');
+    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      + 'border-radius:9px;aspect-ratio:3/4;width:100%;padding:3px;gap:1px;cursor:pointer;'
+      + 'border:2px solid;transition:.15s;';
+    btn.style.background   = sel ? 'rgba(245,197,24,.25)' : inMkt ? 'rgba(255,107,53,.15)' : 'rgba(255,255,255,.06)';
+    btn.style.borderColor  = sel ? 'var(--gold)' : inMkt ? 'rgba(255,107,53,.5)' : 'rgba(255,255,255,.12)';
+    btn.innerHTML = '<span style="font-size:clamp(16px,4vw,22px);line-height:1">'+s.flag+'</span>'
+      +'<span style="font-family:\'Bebas Neue\',sans-serif;font-size:12px;color:'+(sel?'var(--gold)':'#fff')+';">'+(getStickerNum(s.id)||s.n)+'</span>'
+      +(sel ? '<span style="font-size:9px;color:var(--gold);">✓</span>' : '')
+      +(inMkt ? '<span style="font-size:8px;color:#ff6b35;">🏷️</span>' : '');
+    btn.disabled = inMkt && !sel;
+    btn.onclick = () => _toggleSellSticker(s.id);
+    grid.appendChild(btn);
+  });
+}
+
+function _toggleSellSticker(id){
+  if(_sellSelected.has(id)) _sellSelected.delete(id);
+  else                       _sellSelected.add(id);
+  _renderSellGrid();
+  _updateSellSelCount();
+}
+
+function _updateSellSelCount(){
+  const count   = _sellSelected.size;
+  const countEl = document.getElementById('sell-sel-count');
+  const wrapEl  = document.getElementById('sell-selected-wrap');
+  const chipsEl = document.getElementById('sell-sel-chips');
+  const nextBtn = document.getElementById('sell-next-btn');
+  if(countEl) countEl.textContent = count;
+  if(wrapEl)  wrapEl.style.display = count > 0 ? 'block' : 'none';
+  if(nextBtn){
+    nextBtn.style.opacity = count > 0 ? '1' : '.4';
+    nextBtn.style.pointerEvents = count > 0 ? 'auto' : 'none';
+  }
+  if(chipsEl) chipsEl.innerHTML = [..._sellSelected].map(id => {
+    const s = ALL_STICKERS.find(x=>x.id===id);
+    if(!s) return '';
+    return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);border-radius:20px;padding:2px 8px;font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--gold);">'
+      +s.flag+' '+(getStickerNum(s.id)||s.n)+' <span onclick="_toggleSellSticker(\''+id+'\')" style="cursor:pointer;margin-left:2px;color:rgba(255,255,255,.5);">✕</span></span>';
+  }).join('');
+}
+
+function sellGoStep2(){
+  if(!_sellSelected.size) return;
+  document.getElementById('sell-step1').style.display = 'none';
+  document.getElementById('sell-step2').style.display = 'block';
+  // Show selected chips on step2
+  const chipsEl = document.getElementById('sell-s2-chips');
+  if(chipsEl) chipsEl.innerHTML = [..._sellSelected].map(id => {
+    const s = ALL_STICKERS.find(x=>x.id===id);
+    if(!s) return '';
+    return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);border-radius:20px;padding:2px 9px;font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--gold);">'
+      +s.flag+' '+(getStickerNum(s.id)||s.n)+'</span>';
+  }).join('');
+}
+
+function selectSellType(type, btn){
+  _sellType = type;
+  document.querySelectorAll('.sell-type-btn').forEach(b=>{
+    b.classList.remove('selected');
+    const chk = b.querySelector('.stb-check');
+    if(chk) chk.textContent = '○';
+  });
+  if(btn){
+    btn.classList.add('selected');
+    const chk = btn.querySelector('.stb-check');
+    if(chk) chk.textContent = '✓';
+  }
+  const valorSec = document.getElementById('sell-valor-section');
+  if(valorSec) valorSec.style.display = (type==='venda'||type==='ambos') ? 'block' : 'none';
+  const pubBtn = document.getElementById('sell-pub-btn');
+  if(pubBtn){ pubBtn.style.opacity='1'; pubBtn.style.pointerEvents='auto'; }
+}
+
+function doSellNew(){
+  const u = getCurrentUser(); if(!u) return;
+  if(!_sellType){ toast('⚠️ Escolha o tipo de oferta','var(--red)'); return; }
+  if(!_sellSelected.size){ toast('⚠️ Selecione ao menos uma figurinha','var(--red)'); return; }
+
+  const priceInput = document.getElementById('sell-price-input');
+  if(priceInput && (priceInput.value||'').trim()) {
+    _sellPrice = parseFloat(priceInput.value) || 0;
+  }
+
+  const now  = Date.now();
+  const mkt  = getMarket();
+  const codes = [..._sellSelected];
+
+  codes.forEach(code => {
+    // Remove old ad for same sticker by same user if exists
+    const oldIdx = mkt.findIndex(m => m.owner===u.phone && m.code===code);
+    if(oldIdx >= 0) mkt.splice(oldIdx, 1);
+    mkt.push({
+      id:    'ad_' + now + '_' + Math.random().toString(36).slice(2,6),
+      owner: u.phone,
+      code,
+      type:  _sellType,
+      price: _sellPrice || 0,
+      ts:    now,
+    });
+  });
+
+  js(K.MARKET, mkt);
+  closeModal('mod-sell');
+  toast('✅ '+codes.length+' figurinha(s) anunciada(s)! 🎴', 'var(--gold)');
+  launchConfetti();
+  renderMarket();
+
+  // Notify via Railway
+  _afterMarketPublish(u.phone, codes).catch(e => console.warn('[Market]', e));
+}
+
 // ── ONLINE COUNTER BADGE ─────────────────────────────────
 function updateOnlineBadge(){
   const users=getUsers();
@@ -3353,6 +3522,13 @@ async function _afterMarketPublish(ownerPhone, codes){
 
 // Expose admin functions
 ['admTab','admDeleteUser','admResetStickers','admSendGroupMsg','admSaveRailway','admClearMarket','admClearChats'].forEach(function(n){try{if(typeof eval(n)==='function')window[n]=eval(n);}catch(e){}});
+
+
+['openSellModal','setSellFilter','sellGoStep2','selectSellType','doSellNew',
+ '_toggleSellSticker'
+].forEach(function(n){
+  try{ if(typeof eval(n)==='function') window[n]=eval(n); }catch(e){}
+});
 
 // Expose match functions globally
 ['createMatch','acceptMatch','cancelMatch','completeMatch','sendMatchProposal','_proposeMatch',
