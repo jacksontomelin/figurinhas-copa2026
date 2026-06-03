@@ -3340,6 +3340,8 @@ async function _afterMarketPublish(ownerPhone, codes){
 }
 
 
+// Expose admin functions
+['admTab','admDeleteUser','admResetStickers','admSendGroupMsg','admSaveRailway','admClearMarket','admClearChats'].forEach(function(n){try{if(typeof eval(n)==='function')window[n]=eval(n);}catch(e){}});
 // Expose all nav render functions to window for lazy NAV_RENDERERS lookup
 ['renderAlbum','renderMarket','renderTrades','renderChat','renderFeed','renderAdmin',
  'doLogin','doRegister','doLogout','showForm','navTo','toast','launchConfetti',
@@ -4460,70 +4462,293 @@ function copaTab(i,btn){
 // ═══════════════════════════════════════════════════
 // 🔐 PAINEL ADMINISTRATIVO COMPLETO
 // ═══════════════════════════════════════════════════
-const ADMIN_PHONE = '47999999999'; // troque pelo seu número sem formatação
+const ADMIN_PHONE = '47999357131'; // troque pelo seu número sem formatação
 
 function renderAdmin(){
   const el=document.getElementById('app-content'); if(!el)return;
-  const users=getUsers(), mkt=getMarket(), ch=getChats()||{};
-  const now=Date.now(), DAY=86400000;
-  const joined=getJoined();
-  const onlineNow=users.filter(u=>isOnline(u.phone)).length;
-  const newToday=users.filter(u=>now-u.ts<DAY).length;
-  const activeWeek=users.filter(u=>{const o=getOnline();return o[u.phone]&&now-o[u.phone]<DAY*7;}).length;
-  const totalAds=mkt.length, adsToday=mkt.filter(m=>now-m.ts<DAY).length;
-  const totalMsgs=Object.values(ch).reduce((s,a)=>s+(a||[]).length,0);
-  const completions=users.map(u=>{const st=u.stickers||{};return Math.round(Object.values(st).filter(v=>v>=1).length/ALL_STICKERS.length*100);});
-  const avgCompletion=completions.length?Math.round(completions.reduce((a,b)=>a+b,0)/completions.length):0;
-  const notJoined=users.filter(u=>!joined.has(u.phone));
+  const me=getCurrentUser(); if(!me)return;
+  if(me.phone!==ADMIN_PHONE){el.innerHTML='<div class="card a-card"><div class="alert warn"><div class="alert-ico">🔒</div><div><div class="alert-ttl">Acesso restrito</div>Apenas o administrador pode acessar este painel.</div></div></div>';return;}
 
   el.innerHTML=`
-<div style="display:flex;flex-direction:column;gap:11px;width:100%;max-width:520px;">
-  <div style="background:linear-gradient(135deg,rgba(245,197,24,.14),rgba(10,24,40,.92));border:1.5px solid rgba(245,197,24,.4);border-radius:16px;padding:14px 17px;display:flex;align-items:center;gap:12px;">
-    <div style="font-size:28px;">🔐</div>
-    <div style="flex:1;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;">Painel Administrativo</div>
-      <div style="font-size:10px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Família Tomelin · Copa 2026</div>
-    </div>
-    <div style="text-align:right;">
-      <div style="font-size:10px;color:var(--gray);">${new Date().toLocaleDateString('pt-BR')}</div>
-      <div style="font-size:10px;color:var(--green2);">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
-    </div>
+<div style="width:100%;max-width:520px;">
+
+<!-- ADMIN HEADER -->
+<div style="background:linear-gradient(135deg,rgba(229,57,53,.15),rgba(8,16,28,.9));border:1.5px solid rgba(229,57,53,.4);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+  <span style="font-size:28px;">⚙️</span>
+  <div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;letter-spacing:1px;">Painel Admin</div>
+    <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:2px;color:#ef9a9a;text-transform:uppercase;">Família Tomelin · Copa 2026</div>
   </div>
-  <!-- KPI GRID -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;">
-    ${_kpi('👥','Membros',users.length,'var(--gold)')}
-    ${_kpi('🟢','Online',onlineNow,'#4caf50')}
-    ${_kpi('🆕','Hoje',newToday,'#42a5f5')}
-    ${_kpi('📱','No Grupo WA',joined.size,'var(--wa)')}
-    ${_kpi('❌','Sem grupo',notJoined.length,'var(--red)')}
-    ${_kpi('📊','Média álbum',avgCompletion+'%','var(--green2)')}
-  </div>
-  <!-- WA ALERT -->
-  ${notJoined.length?`<div style="background:rgba(229,57,53,.08);border:1.5px solid rgba(229,57,53,.25);border-radius:11px;padding:11px 13px;display:flex;align-items:flex-start;gap:9px;">
-    <div style="font-size:18px;">⚠️</div>
-    <div style="font-size:12px;color:#ef9a9a;line-height:1.5;">
-      <strong>${notJoined.length} membro(s)</strong> ainda não entraram no grupo do WhatsApp:<br>
-      <span style="color:rgba(255,255,255,.6);">${notJoined.map(u=>u.name.split(' ')[0]).join(', ')}</span>
-    </div>
-  </div>`:`<div style="background:rgba(37,211,102,.07);border:1px solid rgba(37,211,102,.2);border-radius:11px;padding:10px 13px;font-size:12px;color:#a5d6a7;">✅ Todos os membros já entraram no grupo do WhatsApp!</div>`}
-  <!-- PROG BAR -->
-  <div class="card" style="border-radius:13px;padding:13px 15px;">
-    <div class="sec-lbl" style="margin-bottom:7px;">📊 Progresso médio do álbum</div>
-    <div class="prog-row"><div class="prog-lbl">Média</div><div class="prog-track"><div class="prog-fill" style="width:${avgCompletion}%"></div></div><div class="prog-pct">${avgCompletion}%</div></div>
-    <div style="font-size:10px;color:var(--gray);margin-top:3px;">📦 ${adsToday} anúncios hoje · 💬 ${Object.keys(ch).length} conversas</div>
-  </div>
-  <!-- TABS -->
-  <div class="tabs" style="margin-bottom:0;">
-    <button class="tab on" id="adm-t0" onclick="admTab(0,this)">👥 Membros</button>
-    <button class="tab" id="adm-t1" onclick="admTab(1,this)">🏷️ Ads</button>
-    <button class="tab" id="adm-t2" onclick="admTab(2,this)">💬 Chats</button>
-    <button class="tab" id="adm-t3" onclick="admTab(3,this)">📊 Stats</button>
-    <button class="tab" id="adm-t4" onclick="admTab(4,this)">⚡ Ações</button>
-  </div>
-  <div id="adm-content"></div>
+</div>
+
+<!-- TABS -->
+<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;" id="admin-tabs">
+  ${['👥 Membros','🛒 Mercado','💬 Chats','📊 Stats','⚙️ Ações'].map((t,i)=>
+    `<button onclick="admTab(${i})" id="atb${i}" style="flex:1;min-width:60px;padding:8px 6px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;border:1.5px solid ${i===0?'rgba(245,197,24,.5)':'rgba(255,255,255,.1)'};background:${i===0?'rgba(245,197,24,.15)':'transparent'};color:${i===0?'var(--gold)':'rgba(255,255,255,.4)'};cursor:pointer;">${t}</button>`
+  ).join('')}
+</div>
+
+<!-- TAB CONTENT -->
+<div id="admin-content"></div>
+
 </div>`;
-  admTab(0,document.getElementById('adm-t0'));
+
+  admTab(0);
 }
+
+let _admCurTab = 0;
+function admTab(i){
+  _admCurTab = i;
+  // Update tab styles
+  ['👥 Membros','🛒 Mercado','💬 Chats','📊 Stats','⚙️ Ações'].forEach((_,j)=>{
+    const b=document.getElementById('atb'+j);
+    if(!b)return;
+    if(j===i){
+      b.style.borderColor='rgba(245,197,24,.5)';b.style.background='rgba(245,197,24,.15)';b.style.color='var(--gold)';
+    } else {
+      b.style.borderColor='rgba(255,255,255,.1)';b.style.background='transparent';b.style.color='rgba(255,255,255,.4)';
+    }
+  });
+  const ct=document.getElementById('admin-content');
+  if(!ct)return;
+  if(i===0) ct.innerHTML=_admMembers();
+  else if(i===1) ct.innerHTML=_admMarket();
+  else if(i===2) ct.innerHTML=_admChats();
+  else if(i===3) ct.innerHTML=_admStats();
+  else if(i===4) ct.innerHTML=_admActions();
+}
+
+function _admCard(title, content){
+  return `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:13px;padding:14px;margin-bottom:10px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;">${title}</div>
+    ${content}
+  </div>`;
+}
+
+function _admKpi(label, val, color){
+  return `<div style="text-align:center;flex:1;min-width:70px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:${color||'var(--gold)'};line-height:1;">${val}</div>
+    <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">${label}</div>
+  </div>`;
+}
+
+function admDeleteUser(phone){
+  if(!confirm('Deletar usuário '+phone+'? Esta ação não pode ser desfeita.'))return;
+  const users=getUsers().filter(u=>u.phone!==phone);
+  js(K.USERS,users);
+  // Also remove from market, chats
+  const mkt=getMarket().filter(m=>m.owner!==phone);
+  js(K.MARKET,mkt);
+  toast('🗑️ Usuário '+phone+' removido','var(--red)');
+  admTab(0);
+}
+
+function admResetStickers(phone){
+  if(!confirm('Resetar todas as figurinhas de '+phone+'?'))return;
+  const users=getUsers();
+  const idx=users.findIndex(u=>u.phone===phone);
+  if(idx>=0){users[idx].stickers={};js(K.USERS,users);}
+  toast('🔄 Figurinhas resetadas','var(--gold)');
+  admTab(0);
+}
+
+function admSetAdmin(phone){
+  if(!confirm('Definir '+phone+' como admin?'))return;
+  toast('⚙️ Admin atualizado — edite ADMIN_PHONE no código para persistir','var(--gold)');
+}
+
+function admClearMarket(){
+  if(!confirm('Limpar TODO o mercado?'))return;
+  js(K.MARKET,[]);
+  toast('🗑️ Mercado limpo','var(--red)');
+  admTab(1);
+}
+
+function admDeleteAd(id){
+  const mkt=getMarket().filter(m=>m.id!==id);
+  js(K.MARKET,mkt);
+  toast('🗑️ Anúncio removido','var(--red)');
+  admTab(1);
+}
+
+function admClearChats(){
+  if(!confirm('Limpar TODOS os chats?'))return;
+  js(K.CHAT,{});
+  toast('🗑️ Chats apagados','var(--red)');
+  admTab(2);
+}
+
+function admSendGroupMsg(){
+  const msg=document.getElementById('adm-msg')?.value?.trim();
+  if(!msg){toast('Digite uma mensagem','var(--red)');return;}
+  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+  fetch(railwayUrl+'/api/send-group',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({message:msg}),signal:AbortSignal.timeout(10000)
+  }).then(r=>r.json()).then(d=>{
+    if(d.ok||d.messageId||d.zaapId) toast('✅ Mensagem enviada no grupo!','var(--wa)');
+    else toast('❌ Erro: '+JSON.stringify(d),'var(--red)');
+  }).catch(e=>toast('❌ '+e.message,'var(--red)'));
+}
+
+function admSaveRailway(){
+  const url=document.getElementById('adm-railway')?.value?.trim();
+  if(!url)return;
+  localStorage.setItem('t26_railway_url',url);
+  toast('✅ Railway URL salvo!','var(--green2)');
+}
+
+function _admMembers(){
+  const users=getUsers();
+  const now=Date.now();
+  const online=getOnline();
+  const joined=getJoined();
+
+  const kpis=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;background:rgba(255,255,255,.04);border-radius:10px;padding:12px;">
+    ${_admKpi('Total',users.length,'var(--gold)')}
+    ${_admKpi('Online',users.filter(u=>isOnline(u.phone)).length,'var(--green2)')}
+    ${_admKpi('Hoje',users.filter(u=>now-u.ts<86400000).length,'#42a5f5')}
+    ${_admKpi('No grupo',users.filter(u=>joined.has(u.phone)).length,'var(--wa)')}
+  </div>`;
+
+  const list=users.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).map(u=>{
+    const have=Object.values(u.stickers||{}).filter(v=>v>=1).length;
+    const pct=Math.round(have/980*100);
+    const onl=isOnline(u.phone);
+    const inGroup=joined.has(u.phone);
+    const isAdm=u.phone===ADMIN_PHONE;
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:11px 12px;margin-bottom:7px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:22px;">${u.avatar||'⚽'}</div>
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;">
+              ${u.name||u.phone} ${isAdm?'<span style="font-size:10px;color:#ef9a9a;">👑 ADMIN</span>':''}
+            </div>
+            <div style="font-size:10px;color:var(--gray);">${u.phone} · ${onl?'<span style="color:var(--green2);">🟢 Online</span>':'⚫ Offline'} · ${inGroup?'✅ Grupo':'❌ Sem grupo'}</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);">${pct}%</div>
+          <div style="font-size:9px;color:var(--gray);">${have}/980</div>
+        </div>
+      </div>
+      <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:8px 0;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green2),var(--gold));border-radius:2px;transition:.3s;"></div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">
+        <button onclick="admResetStickers('${u.phone}')" style="padding:5px 9px;border-radius:6px;background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.2);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;cursor:pointer;">🔄 Reset</button>
+        ${!isAdm?`<button onclick="admDeleteUser('${u.phone}')" style="padding:5px 9px;border-radius:6px;background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;cursor:pointer;">🗑️ Deletar</button>`:''}
+        ${!inGroup?`<a href="https://wa.me/${u.phone.startsWith('55')?u.phone:'55'+u.phone}" target="_blank" style="padding:5px 9px;border-radius:6px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:var(--wa);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;text-decoration:none;">📱 WA</a>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  return kpis + (users.length ? list : '<div style="text-align:center;color:var(--gray);padding:20px;font-size:13px;">Nenhum usuário cadastrado</div>');
+}
+
+function _admMarket(){
+  const mkt=getMarket();
+  const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;">${mkt.length} anúncios</span>
+    ${mkt.length?`<button onclick="admClearMarket()" style="padding:6px 12px;border-radius:7px;background:rgba(229,57,53,.15);border:1px solid rgba(229,57,53,.3);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🗑️ Limpar tudo</button>`:''}
+  </div>`;
+  if(!mkt.length) return header+'<div style="text-align:center;color:var(--gray);padding:20px;font-size:13px;">Mercado vazio</div>';
+  return header+mkt.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).map(m=>{
+    const u=getUserByPhone(m.owner);
+    const uName=u?u.name:m.owner;
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">${m.code||m.id} · ${m.type||'troca'}</div>
+        <div style="font-size:11px;color:var(--gray);">${uName} · ${m.price?'R$'+m.price:''} · ${new Date(m.ts||0).toLocaleDateString('pt-BR')}</div>
+        ${m.lockedBy?'<div style="font-size:10px;color:#ffb74d;">🔒 Em negociação</div>':''}
+      </div>
+      <button onclick="admDeleteAd('${m.id}')" style="padding:5px 9px;border-radius:6px;background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function _admChats(){
+  const ch=getChats()||{};
+  const users=getUsers();
+  const convs=Object.entries(ch).sort((a,b)=>{
+    const la=a[1]&&a[1][a[1].length-1];const lb=b[1]&&b[1][b[1].length-1];
+    return (lb?lb.ts:0)-(la?la.ts:0);
+  });
+  const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;">${convs.length} conversas</span>
+    ${convs.length?`<button onclick="admClearChats()" style="padding:6px 12px;border-radius:7px;background:rgba(229,57,53,.15);border:1px solid rgba(229,57,53,.3);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🗑️ Limpar</button>`:''}
+  </div>`;
+  if(!convs.length) return header+'<div style="text-align:center;color:var(--gray);padding:20px;font-size:13px;">Sem conversas</div>';
+  return header+convs.slice(0,20).map(([cid,msgs])=>{
+    const phones=cid.split('__');
+    const names=phones.map(p=>{const u=getUserByPhone(p);return u?u.name.split(' ')[0]:p;});
+    const last=msgs&&msgs[msgs.length-1];
+    const count=(msgs||[]).length;
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:7px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;margin-bottom:3px;">${names.join(' ↔ ')} <span style="font-size:10px;color:var(--gray);">(${count} msgs)</span></div>
+      ${last?`<div style="font-size:11px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">${last.text||'[mídia]'}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function _admStats(){
+  const users=getUsers();
+  const mkt=getMarket();
+  const matches=getMatches();
+  const now=Date.now();
+
+  // Ranking completude
+  const ranking=users.map(u=>{
+    const have=Object.values(u.stickers||{}).filter(v=>v>=1).length;
+    return {name:u.name,phone:u.phone,avatar:u.avatar||'⚽',have,pct:Math.round(have/980*100)};
+  }).sort((a,b)=>b.pct-a.pct);
+
+  const avg=ranking.length?Math.round(ranking.reduce((s,u)=>s+u.pct,0)/ranking.length):0;
+
+  const statsKpi=`<div style="display:flex;gap:8px;flex-wrap:wrap;background:rgba(255,255,255,.04);border-radius:10px;padding:12px;margin-bottom:12px;">
+    ${_admKpi('Usuários',users.length,'var(--gold)')}
+    ${_admKpi('Anúncios',mkt.length,'#42a5f5')}
+    ${_admKpi('Matches',matches.filter(m=>m.status!=='cancelled').length,'#ba68c8')}
+    ${_admKpi('Média álbum',avg+'%','var(--green2)')}
+  </div>`;
+
+  const rankList=ranking.slice(0,10).map((u,i)=>`
+    <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:${i<3?'var(--gold)':'var(--gray)'};width:20px;text-align:right;">${i+1}</div>
+      <div style="font-size:20px;">${u.avatar}</div>
+      <div style="flex:1;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">${u.name}</div>
+        <div style="font-size:10px;color:var(--gray);">${u.have} figurinhas</div>
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);">${u.pct}%</div>
+    </div>`).join('');
+
+  return statsKpi
+    + _admCard('🏆 Ranking Álbum', rankList||'<div style="color:var(--gray);font-size:13px;">Sem dados</div>');
+}
+
+function _admActions(){
+  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+  return `
+  ${_admCard('📡 Railway URL', `
+    <input id="adm-railway" value="${railwayUrl}" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:12px;font-family:'Barlow Condensed',sans-serif;margin-bottom:8px;">
+    <button onclick="admSaveRailway()" style="width:100%;padding:10px;border-radius:8px;background:rgba(22,168,75,.2);border:1px solid rgba(22,168,75,.35);color:var(--green2);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;cursor:pointer;">💾 Salvar URL</button>
+  `)}
+  ${_admCard('📨 Mensagem no Grupo WA', `
+    <textarea id="adm-msg" placeholder="Digite a mensagem para enviar no grupo..." style="width:100%;height:80px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:13px;font-family:'Barlow',sans-serif;resize:vertical;margin-bottom:8px;"></textarea>
+    <button onclick="admSendGroupMsg()" style="width:100%;padding:10px;border-radius:8px;background:rgba(37,211,102,.2);border:1px solid rgba(37,211,102,.35);color:var(--wa);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;cursor:pointer;">📱 Enviar no Grupo WhatsApp</button>
+  `)}
+  ${_admCard('🗑️ Ações de Reset', `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="if(confirm('Limpar TODO o mercado?')){js(K.MARKET,[]);toast('Mercado limpo','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todo o mercado</button>
+      <button onclick="if(confirm('Limpar todos os chats?')){js(K.CHAT,{});toast('Chats limpos','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todos os chats</button>
+      <button onclick="if(confirm('Resetar TODAS as figurinhas de TODOS os usuários?')){const u=getUsers().map(u=>{u.stickers={};return u;});js(K.USERS,u);toast('Figurinhas resetadas','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🔄 Resetar figurinhas de todos</button>
+      <button onclick="if(confirm('Exportar todos os dados como JSON?')){const d={users:getUsers(),market:getMarket(),matches:getMatches()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tomelin-backup-'+Date.now()+'.json';a.click();}" style="padding:10px;border-radius:8px;background:rgba(66,165,245,.1);border:1px solid rgba(66,165,245,.25);color:#90caf9;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">📤 Exportar backup JSON</button>
+    </div>
+  `)}`;
+}
+
 
 function _kpi(ico,lbl,val,color){
   return `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:9px 7px;text-align:center;">
