@@ -149,30 +149,30 @@ let DB = {
 
 // ── MENSAGENS ─────────────────────────────────────────────────
 const CURIOSIDADES = [
-  `⚽ *SABIA DISSO? — COPA 2026*\n\nA Copa 2026 vai ter *48 seleções* pela 1ª vez na história!\nSão *104 jogos* em *16 estádios* em 3 países! 🌎\n\n👉 ${APP_URL}\n_Família Tomelin · Copa 2026_ 🏆`,
-  `🇧🇷 *SABIA DISSO? — COPA 2026*\n\nO Brasil é o ÚNICO país a disputar TODAS as 23 edições da Copa!\nSomos únicos! 💛💚🏆\n\n👉 ${APP_URL}\n_Família Tomelin · Copa 2026_ 🏆`,
+  `⚽ *SABIA DISSO? — COPA 2026*\n\nA Copa 2026 vai ter *48 seleções* pela 1ª vez na história!\nSão *104 jogos* em *16 estádios* em 3 países! 🌎\n\n_Família Tomelin · Copa 2026_ 🏆`,
+  `🇧🇷 *SABIA DISSO? — COPA 2026*\n\nO Brasil é o ÚNICO país a disputar TODAS as 23 edições da Copa!\nSomos únicos! 💛💚🏆\n\n_Família Tomelin · Copa 2026_ 🏆`,
   `🏟️ *SABIA DISSO? — COPA 2026*\n\nO Estadio Azteca no México vai sediar sua *3ª Copa do Mundo* (1970, 1986 e 2026)! Único estádio do mundo com essa marca! 🎉\n\n_Família Tomelin · Copa 2026_ 🏆`,
-  `⭐ *SABIA DISSO? — COPA 2026*\n\nO *MetLife Stadium* em Nova York recebe a *FINAL* em 19 de julho!\nO Brasil também joga lá na fase de grupos! 🇧🇷🏟️\n\n👉 ${APP_URL}\n_Família Tomelin · Copa 2026_ 🏆`,
-  `🎴 *SABIA DISSO? — PANINI*\n\nPara completar o álbum com sorte média você precisaria de cerca de *196 pacotinhos*!\nPor isso troque figurinhas com o grupo! 😄🔄\n\n👉 ${APP_URL}\n_Família Tomelin · Copa 2026_ 🏆`,
+  `⭐ *SABIA DISSO? — COPA 2026*\n\nO *MetLife Stadium* em Nova York recebe a *FINAL* em 19 de julho!\nO Brasil também joga lá na fase de grupos! 🇧🇷🏟️\n\n_Família Tomelin · Copa 2026_ 🏆`,
+  `🎴 *SABIA DISSO? — PANINI*\n\nPara completar o álbum com sorte média você precisaria de cerca de *196 pacotinhos*!\nPor isso troque figurinhas com o grupo! 😄🔄\n\n_Família Tomelin · Copa 2026_ 🏆`,
   `🏆 *SABIA DISSO? — COPA 2026*\n\nA premiação total da Copa 2026 é de *US$ 1 bilhão*!\nO campeão leva US$ 200 milhões! 💰⚽\n\n_Família Tomelin · Copa 2026_ 🏆`,
   `🥅 *SABIA DISSO? — COPA 2026*\n\nMiroslav Klose (Alemanha) é o maior artilheiro da história das Copas com *16 gols*!\nSerá que alguém vai superar? 👀⚽\n\n_Família Tomelin · Copa 2026_ 🏆`,
-  `💡 *SABIA DISSO? — PANINI*\n\nA Panini produz figurinhas de Copa desde *1970*, no México!\nO mesmo lugar onde a Copa 2026 vai começar! 🎴🌎\n\n👉 ${APP_URL}\n_Família Tomelin · Copa 2026_ 🏆`,
+  `💡 *SABIA DISSO? — PANINI*\n\nA Panini produz figurinhas de Copa desde *1970*, no México!\nO mesmo lugar onde a Copa 2026 vai começar! 🎴🌎\n\n_Família Tomelin · Copa 2026_ 🏆`,
 ];
 
 const MSGS_FIGURINHA = [
-  `🎴 *ATENÇÃO — TROCAS DE FIGURINHAS!*\n\nJá marcou suas figurinhas no sistema? 📱\n\n✅ Veja o que falta no álbum\n⭐ Anuncie suas repetidas\n🔄 Troque com outros membros\n💬 Chat interno para combinar\n\n👉 ${APP_URL}\n\n*Bora completar o álbum!* 🏆🎴`,
-  `📦 *LEMBRETE — FIGURINHAS!*\n\nVocê tem figurinhas *repetidas* guardadas sem usar? 😅\n\nNo nosso sistema você anuncia e troca com outros membros do grupo sem sair do WhatsApp!\n\n👉 ${APP_URL}\n\n_Família Tomelin · Copa 2026_ 🏆`,
-  `🔄 *HORA DE TROCAR FIGURINHAS!*\n\nNossa plataforma cruza automaticamente quem tem as figuras que faltam pra você!\n\nÉ só marcar as suas repetidas que o sistema já te mostra quem chamar! 🤝\n\n👉 ${APP_URL}\n\n_Família Tomelin · Copa 2026_ 🏆`,
+  `🎴 *ATENÇÃO — TROCAS DE FIGURINHAS!*\n\nJá marcou suas figurinhas no sistema? 📱\n\n✅ Veja o que falta no álbum\n⭐ Anuncie suas repetidas\n🔄 Troque com outros membros\n💬 Chat interno para combinar\n\n\n*Bora completar o álbum!* 🏆🎴`,
+  `📦 *LEMBRETE — FIGURINHAS!*\n\nVocê tem figurinhas *repetidas* guardadas sem usar? 😅\n\nNo nosso sistema você anuncia e troca com outros membros do grupo sem sair do WhatsApp!\n\n\n_Família Tomelin · Copa 2026_ 🏆`,
+  `🔄 *HORA DE TROCAR FIGURINHAS!*\n\nNossa plataforma cruza automaticamente quem tem as figuras que faltam pra você!\n\nÉ só marcar as suas repetidas que o sistema já te mostra quem chamar! 🤝\n\n\n_Família Tomelin · Copa 2026_ 🏆`,
 ];
 
 const MSGS_BRASIL = [
-  `🇧🇷🇧🇷🇧🇷 *É JOGO DO BRASIL HOJE!* 🇧🇷🇧🇷🇧🇷\n\n⚽ *BORA HEXA! BORA BRASIL!* 💛💚🏆\n\nToda a Família Tomelin está na torcida!\nJá fez seu palpite no sistema? 🎲\n\n👉 ${APP_URL}\n\n#VaiBrasil #Hexa #Copa2026 #FamíliaTomelin`,
-  `💛💚 *BRASIL EM CAMPO — COPA 2026!* 💛💚\n\n🦁 É HOJE! A Seleção vai em busca do *HEXACAMPEONATO*!\n\nFamília Tomelin toda unida na torcida! 🏆🔥\nAposte no resultado pelo sistema:\n👉 ${APP_URL}\n\n#BoraBrasil #Hexa #FamíliaTomelin`,
+  `🇧🇷🇧🇷🇧🇷 *É JOGO DO BRASIL HOJE!* 🇧🇷🇧🇷🇧🇷\n\n⚽ *BORA HEXA! BORA BRASIL!* 💛💚🏆\n\nToda a Família Tomelin está na torcida!\nJá fez seu palpite no sistema? 🎲\n\n\n#VaiBrasil #Hexa #Copa2026 #FamíliaTomelin`,
+  `💛💚 *BRASIL EM CAMPO — COPA 2026!* 💛💚\n\n🦁 É HOJE! A Seleção vai em busca do *HEXACAMPEONATO*!\n\nFamília Tomelin toda unida na torcida! 🏆🔥\nAposte no resultado pelo sistema:\n\n#BoraBrasil #Hexa #FamíliaTomelin`,
 ];
 
 const MSGS_HYPE = [
-  `🔥 *A COPA TÁ AÍ!* 🔥\n\n48 seleções · 104 jogos · 16 estádios\nEUA 🇺🇸 + Canadá 🇨🇦 + México 🇲🇽\n\nO Brasil vai buscar o *HEXACAMPEONATO!* 🏆🇧🇷\n\nJá completou seu álbum? Corre! 😂🎴\n👉 ${APP_URL}\n\n*#FamíliaTomelin #Copa2026 #Hexa*`,
-  `🏆 *FAMÍLIA TOMELIN — COPA 2026!* ⚽\n\nFaltam poucos dias para o maior evento esportivo do planeta!\n\n📅 Abertura: 11 de junho — México × África do Sul\n🇧🇷 Brasil estreia: 13 de junho contra o Marrocos\n\nCorre completar o álbum! 🎴\n👉 ${APP_URL}\n\n_#FamíliaTomelin #Copa2026_`,
+  `🔥 *A COPA TÁ AÍ!* 🔥\n\n48 seleções · 104 jogos · 16 estádios\nEUA 🇺🇸 + Canadá 🇨🇦 + México 🇲🇽\n\nO Brasil vai buscar o *HEXACAMPEONATO!* 🏆🇧🇷\n\nJá completou seu álbum? Corre! 😂🎴\n\n*#FamíliaTomelin #Copa2026 #Hexa*`,
+  `🏆 *FAMÍLIA TOMELIN — COPA 2026!* ⚽\n\nFaltam poucos dias para o maior evento esportivo do planeta!\n\n📅 Abertura: 11 de junho — México × África do Sul\n🇧🇷 Brasil estreia: 13 de junho contra o Marrocos\n\nCorre completar o álbum! 🎴\n\n_#FamíliaTomelin #Copa2026_`,
 ];
 
 function getRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -195,7 +195,7 @@ async function monitorJogos() {
     // Jogo começou
     if (!prev && isLive) {
       DB.lastScores[key] = { hs: m.hs, as_: m.as_, phase: m.phase };
-      const msg = `🔴 *BOLA ROLANDO! COPA 2026!*\n\n*${m.home} ⚔️ ${m.away}* COMEÇOU!\n\n${isBR ? '🇧🇷 *BORA BRASIL! BORA HEXA!* 💛💚🔥\n' : ''}🏟️ ${m.stadium}\n\nAcompanhe pelo sistema!\n👉 ${APP_URL}\n\n#Copa2026 #FamíliaTomelin`;
+      const msg = `🔴 *BOLA ROLANDO! COPA 2026!*\n\n*${m.home} ⚔️ ${m.away}* COMEÇOU!\n\n${isBR ? '🇧🇷 *BORA BRASIL! BORA HEXA!* 💛💚🔥\n' : ''}🏟️ ${m.stadium}\n\nAcompanhe pelo sistema!\n\n#Copa2026 #FamíliaTomelin`;
       await sendGroup(msg);
       await delay(1500);
       continue;
@@ -233,7 +233,7 @@ async function monitorJogos() {
                   : brScore === adScore ? '🇧🇷 Empate do Brasil. Vamos em frente! 💪'
                   : '😟 Derrota do Brasil. Cabeça erguida, ainda temos a Copa! 🇧🇷';
       }
-      const msg = `🏁 *FIM DE JOGO — RESULTADO FINAL!*\n\n*${m.home} ${m.hs} ✕ ${m.as_} ${m.away}*\n\n${resultado ? resultado + '\n\n' : 'Que partida! '}Já apostou no próximo jogo? 🎲\n👉 ${APP_URL}\n#Copa2026 #FamíliaTomelin`;
+      const msg = `🏁 *FIM DE JOGO — RESULTADO FINAL!*\n\n*${m.home} ${m.hs} ✕ ${m.as_} ${m.away}*\n\n${resultado ? resultado + '\n\n' : 'Que partida! '}Já apostou no próximo jogo? 🎲\n#Copa2026 #FamíliaTomelin`;
       await sendGroup(msg);
       await delay(1500);
     }
@@ -300,11 +300,11 @@ app.post('/api/new-user', async (req, res) => {
 
   const firstName = name.split(' ')[0];
   const templates = [
-    `🎉 *NOVO MEMBRO NA FAMÍLIA TOMELIN!* 🎉\n\n👋 Bem-vindo(a), *${firstName}*! Que bom ter você aqui!\n\nAgora é só marcar suas figurinhas e trocar com a galera! 🎴🔄\n\n👉 ${APP_URL}\n\n_Família Tomelin · Copa 2026_ 🏆⚽`,
-    `🎴 *${firstName} ENTROU NO SISTEMA!* 🎉\n\nBoa notícia! *${firstName}* acaba de se cadastrar no sistema de trocas da Família Tomelin! 👏\n\nBem-vindo(a)! 🇧🇷🏆\n\n👉 ${APP_URL}`,
-    `⚽ *CHEGOU MAIS UM NA FAMÍLIA TOMELIN!* ⚽\n\n🙌 *${firstName}* acabou de entrar no sistema!\n\nQuanto mais gente, mais trocas! 🔥🎴\n\n👉 ${APP_URL}\n\n_Copa 2026 · Família Tomelin_ 🏆`,
-    `🌟 *FAMÍLIA TOMELIN CRESCENDO!* 🌟\n\n*${firstName}* acabou de se juntar ao nosso sistema de trocas! 🎉\n\nBem-vindo(a)! 🎴 ${APP_URL}\n\n#FamíliaTomelin #Copa2026`,
-    `🏆 *NOVO COLECIONADOR NA ÁREA!* 🏆\n\n👋 *${firstName}* entrou na Família Tomelin!\n\nBora completar o álbum juntos! 💪🎴\n\n👉 ${APP_URL}\n\n_Família Tomelin · Copa 2026_ ⚽`,
+    `🎉 *NOVO MEMBRO NA FAMÍLIA TOMELIN!* 🎉\n\n👋 Bem-vindo(a), *${firstName}*! Que bom ter você aqui!\n\nAgora é só marcar suas figurinhas e trocar com a galera! 🎴🔄\n\n\n_Família Tomelin · Copa 2026_ 🏆⚽`,
+    `🎴 *${firstName} ENTROU NO SISTEMA!* 🎉\n\nBoa notícia! *${firstName}* acaba de se cadastrar no sistema de trocas da Família Tomelin! 👏\n\nBem-vindo(a)! 🇧🇷🏆\n`,
+    `⚽ *CHEGOU MAIS UM NA FAMÍLIA TOMELIN!* ⚽\n\n🙌 *${firstName}* acabou de entrar no sistema!\n\nQuanto mais gente, mais trocas! 🔥🎴\n\n\n_Copa 2026 · Família Tomelin_ 🏆`,
+    `🌟 *FAMÍLIA TOMELIN CRESCENDO!* 🌟\n\n*${firstName}* acabou de se juntar ao nosso sistema de trocas! 🎉\n\nBem-vindo(a)! 🎴\n\n#FamíliaTomelin #Copa2026`,
+    `🏆 *NOVO COLECIONADOR NA ÁREA!* 🏆\n\n👋 *${firstName}* entrou na Família Tomelin!\n\nBora completar o álbum juntos! 💪🎴\n\n\n_Família Tomelin · Copa 2026_ ⚽`,
   ];
 
   const msg = templates[Math.floor(Math.random() * templates.length)];
@@ -406,7 +406,7 @@ app.post('/api/sync-users', async (req, res) => {
     if (!existing) {
       // Novo usuário — boas-vindas no grupo
       DB.users.push(u);
-      const msg = `🎉 *Novo membro na Família Tomelin!*\n\n👋 Seja bem-vindo(a), *${u.name}*!\n\nAcesse o sistema e marque suas figurinhas:\n👉 ${APP_URL}\n\n_Família Tomelin · Copa 2026_ 🏆`;
+      const msg = `🎉 *Novo membro na Família Tomelin!*\n\n👋 Seja bem-vindo(a), *${u.name}*!\n\nAcesse o sistema e marque suas figurinhas:\n\n_Família Tomelin · Copa 2026_ 🏆`;
       await sendGroup(msg);
       await delay(800);
     } else {
