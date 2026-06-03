@@ -1917,11 +1917,17 @@ const ALL_STICKERS = [
 // Total: 980 figurinhas (960 seleções + 20 especiais Copa)
 const TEAMS_MAP = Object.fromEntries(TEAMS.map(([c,n,f,g])=>[c,{name:n,flag:f,group:g}]));
 
+// Helper: figurinhas "jogador" contáveis (sem escudo/equipe/FWC/special)
+const COUNTABLE_STICKERS = ALL_STICKERS.filter(s => 
+  s.tipo !== 'escudo' && s.tipo !== 'equipe' && s.team !== 'FWC' && !s.special
+);
+const TOTAL_ALBUM = ALL_STICKERS.length; // 980 total
+const TOTAL_PLAYERS = 864; // 864 jogadores nomeados
 
-TEAMS.forEach(([code,name,flag]) => {
-  for (let i=1;i<=20;i++) ALL_STICKERS.push({id:code+i,team:code,n:i,teamName:name,flag});
-});
-const TEAM_MAP = Object.fromEntries(TEAMS.map(([c,n,f])=>[c,{name:n,flag:f}]));
+
+
+// Stickers already defined in ALL_STICKERS constant above
+// TEAM_MAP replaced by TEAMS_MAP
 
 // ═══════════════════════════════════════════════════
 // STORAGE
@@ -2033,6 +2039,13 @@ function doLogout(){
   }
 }
 function enterApp(u){
+  // Run sticker format migration if needed
+  u = migrateOldStickers(u);
+  if (u._migrated2026) {
+    const users = getUsers();
+    const idx = users.findIndex(x => x.phone === u.phone);
+    if (idx >= 0) { users[idx] = u; js(K.USERS, users); }
+  }
   // Hide footer on auth
   const pf2=document.querySelector('.pom-footer');
   if(pf2)pf2.style.display='none';
@@ -2056,6 +2069,59 @@ function enterApp(u){
   navTo(0);
   updateBadges();
 }
+
+// ═══════════════════════════════════════════════════
+// 🔄 MIGRAÇÃO DE DADOS: stickers antigos → formato novo
+// ═══════════════════════════════════════════════════
+function migrateOldStickers(user) {
+  if (!user || user._migrated2026) return user;
+  const st = user.stickers || {};
+  const newSt = {};
+  let migrated = 0;
+  
+  // Copiar stickers no formato novo (BRA-3) como estão
+  Object.keys(st).forEach(key => {
+    if (key.includes('-')) {
+      newSt[key] = st[key]; // Já no formato novo
+    } else {
+      // Formato antigo: 'BRA5' → mapear para 'BRA-5'
+      const m = key.match(/^([A-Z]{2,3})(\d+)$/);
+      if (m) {
+        const newKey = m[1] + '-' + m[2];
+        newSt[newKey] = st[key];
+        migrated++;
+      }
+    }
+  });
+  
+  if (migrated > 0) {
+    console.log('[Migration] Migrated ' + migrated + ' stickers to new format');
+    user.stickers = newSt;
+    user._migrated2026 = true;
+  } else if (Object.keys(st).length > 0) {
+    user._migrated2026 = true;
+  }
+  return user;
+}
+
+// Roda a migração para o usuário atual
+function runMigration() {
+  try {
+    const users = getUsers();
+    let changed = false;
+    const migrated = users.map(u => {
+      const before = JSON.stringify(u.stickers || {}).length;
+      const after = migrateOldStickers(u);
+      if (JSON.stringify(after.stickers || {}).length !== before) changed = true;
+      return after;
+    });
+    if (changed) {
+      js(K.USERS, migrated);
+      console.log('[Migration] Sticker migration complete');
+    }
+  } catch(e) { console.warn('[Migration]', e); }
+}
+
 // Auto-login
 window.addEventListener('DOMContentLoaded',()=>{
   // Build team filter options (for album page)
@@ -2136,8 +2202,8 @@ function renderAlbum(){
   const mktCodes=new Set(getMarket().filter(m=>m.owner===u.phone).map(m=>m.code));
 
   const _countable=ALL_STICKERS.filter(s=>s.tipo!=='escudo'&&s.tipo!=='equipe'&&s.team!=='FWC'&&!s.special);
-  let total=_countable.length,have=0,need=0,dup=0;
-  _countable.forEach(s=>{const v=st[s.id]||0;if(v===1)have++;else if(v===2)dup++;else need++;});
+  let total=TOTAL_ALBUM,have=0,need=0,dup=0; // 980 total
+  ALL_STICKERS.forEach(s=>{const v=st[s.id]||0;if(v===1)have++;else if(v===2)dup++;else need++;});
   const pct=Math.round((have+dup)/total*100);
 
   // Build album HTML
