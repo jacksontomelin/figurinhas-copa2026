@@ -344,7 +344,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
     </div>
   </div>
   <!-- BOTÃO GRUPO WA -->
-  <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4" target="_blank" rel="noopener"
+  <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4" target="_blank" rel="noopener" onclick="trackWaClick()"
     style="flex-shrink:0;background:var(--wa);color:#fff;
       font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
       letter-spacing:1px;padding:0 12px;height:100%;display:flex;align-items:center;
@@ -500,7 +500,11 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
       <div class="pbar-av" id="pb-av">⚽<div class="online-dot"></div></div>
       <div><div class="pbar-name" id="pb-name">—</div><div class="pbar-sub" id="pb-sub">—</div></div>
     </div>
-    <button class="logout-btn" onclick="doLogout()">Sair</button>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+      <button class="logout-btn" onclick="doLogout()">Sair</button>
+      <div id="online-badge" style="font-family:'Barlow Condensed',sans-serif;font-size:10px;
+        font-weight:700;letter-spacing:1px;color:#4caf50;white-space:nowrap;"></div>
+    </div>
   </div>
   <!-- Content area (changes per nav) -->
   <div id="app-content" style="width:100%;max-width:520px;"></div>
@@ -880,7 +884,7 @@ function doRegister(){
   js(K.SESSION,{phone}); pingOnline(); enterApp(nu);
   launchConfetti();
   toast('🎉 Conta criada! Abrindo grupo...','#22a04a');
-  setTimeout(()=>window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank'),1800);
+  setTimeout(()=>{trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},1800);
 }
 function doLogout(){
   // set offline
@@ -901,6 +905,10 @@ function enterApp(u){
   document.getElementById('bnav').classList.add('on');
   document.getElementById('pb-name').textContent=u.name.split(' ')[0]+' '+u.name.split(' ').slice(-1)[0];
   document.getElementById('pb-sub').textContent='🟢 Online agora';
+  // Online badge update
+  setTimeout(updateOnlineBadge, 200);
+  // WA reminder (after short delay so screen loads first)
+  setTimeout(showWaReminder, 1200);
   // Show footer in app
   const pf=document.querySelector('.pom-footer');
   if(pf){pf.style.display='flex';}
@@ -1618,6 +1626,84 @@ function launchConfetti(){
   const _acdTimer = setInterval(tick, 1000);
   tick();
 })();
+
+
+// ═══════════════════════════════════════════════════
+// 🟢 ONLINE COUNTER + GRUPO WA TRACKER
+// ═══════════════════════════════════════════════════
+const K_WA_JOINED = 't26_wa_joined'; // Set of phones that clicked the WA link
+
+function getJoined(){ try{return new Set(JSON.parse(localStorage.getItem(K_WA_JOINED)||'[]'));}catch{return new Set();} }
+function markJoined(phone){ const j=getJoined(); j.add(phone); js(K_WA_JOINED,Array.from(j)); }
+function hasJoined(phone){ return getJoined().has(phone); }
+
+function trackWaClick(){
+  const u=getCurrentUser(); if(!u)return;
+  markJoined(u.phone);
+  // dismiss reminder if showing
+  const rem=document.getElementById('wa-reminder');
+  if(rem){rem.style.transition='opacity .4s,transform .4s';rem.style.opacity='0';rem.style.transform='scale(.95)';setTimeout(()=>rem&&rem.remove(),400);}
+}
+
+// ── ONLINE COUNTER BADGE ─────────────────────────────────
+function updateOnlineBadge(){
+  const users=getUsers();
+  const onlineCount=users.filter(u=>isOnline(u.phone)).length;
+  const el=document.getElementById('online-badge');
+  if(!el)return;
+  el.textContent=onlineCount>0?`🟢 ${onlineCount} online agora`:'⚪ Nenhum online';
+  el.style.color=onlineCount>0?'#4caf50':'var(--gray)';
+}
+setInterval(updateOnlineBadge,15000);
+
+// ── WA REMINDER ON LOGIN ──────────────────────────────────
+function showWaReminder(){
+  const u=getCurrentUser(); if(!u)return;
+  if(hasJoined(u.phone))return; // already joined, don't nag
+  // Check if reminder already shown this session
+  if(sessionStorage.getItem('wa_reminded'))return;
+  sessionStorage.setItem('wa_reminded','1');
+
+  // Inject reminder card above the profile bar
+  const existing=document.getElementById('wa-reminder');
+  if(existing)return;
+  const div=document.createElement('div');
+  div.id='wa-reminder';
+  div.style.cssText='max-width:520px;width:100%;margin-bottom:10px;animation:fadeUp .5s cubic-bezier(.34,1.56,.64,1) both;';
+  div.innerHTML=`
+    <div style="background:linear-gradient(135deg,rgba(37,211,102,.15),rgba(18,140,126,.1));
+      border:1.5px solid rgba(37,211,102,.35);border-radius:14px;padding:13px 15px;
+      display:flex;align-items:center;gap:11px;position:relative;">
+      <div style="font-size:26px;flex-shrink:0;">📱</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;
+          letter-spacing:.5px;color:#fff;margin-bottom:3px;">
+          Você ainda não entrou no grupo! 👀
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.4;">
+          Entre no grupo do WhatsApp para trocar figurinhas com a galera da Família Tomelin!
+        </div>
+        <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4"
+          target="_blank" rel="noopener" onclick="trackWaClick()"
+          style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;
+            background:var(--wa);color:#fff;border-radius:8px;padding:7px 14px;
+            font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;
+            letter-spacing:1px;text-decoration:none;text-transform:uppercase;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Entrar no grupo agora!
+        </a>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove();sessionStorage.setItem('wa_dismissed','1')"
+        style="position:absolute;top:8px;right:8px;background:none;border:none;
+          color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;line-height:1;
+          transition:.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.3)'">×</button>
+    </div>
+  `;
+  // Insert before pbar
+  const pbar=document.getElementById('pbar');
+  if(pbar&&pbar.parentNode) pbar.parentNode.insertBefore(div,pbar);
+  else{const ac=document.getElementById('app-content');if(ac)ac.prepend(div);}
+}
 
 </script>
 
@@ -2370,6 +2456,237 @@ function copaTab(i,btn){
     document.querySelectorAll('[id^="copa-t"]').forEach((b,j)=>b.classList.toggle('on',j===0));
   }
 }
+
+
+// ═══════════════════════════════════════════════════
+// 🔐 PAINEL ADMINISTRATIVO COMPLETO
+// ═══════════════════════════════════════════════════
+const ADMIN_PHONE = '47999999999'; // troque pelo seu número sem formatação
+
+function renderAdmin(){
+  const el=document.getElementById('app-content'); if(!el)return;
+  const users=getUsers(), mkt=getMarket(), ch=getChats()||{};
+  const now=Date.now(), DAY=86400000;
+  const joined=getJoined();
+  const onlineNow=users.filter(u=>isOnline(u.phone)).length;
+  const newToday=users.filter(u=>now-u.ts<DAY).length;
+  const activeWeek=users.filter(u=>{const o=getOnline();return o[u.phone]&&now-o[u.phone]<DAY*7;}).length;
+  const totalAds=mkt.length, adsToday=mkt.filter(m=>now-m.ts<DAY).length;
+  const totalMsgs=Object.values(ch).reduce((s,a)=>s+(a||[]).length,0);
+  const completions=users.map(u=>{const st=u.stickers||{};return Math.round(Object.values(st).filter(v=>v>=1).length/ALL_STICKERS.length*100);});
+  const avgCompletion=completions.length?Math.round(completions.reduce((a,b)=>a+b,0)/completions.length):0;
+  const notJoined=users.filter(u=>!joined.has(u.phone));
+
+  el.innerHTML=`
+<div style="display:flex;flex-direction:column;gap:11px;width:100%;max-width:520px;">
+  <div style="background:linear-gradient(135deg,rgba(245,197,24,.14),rgba(10,24,40,.92));border:1.5px solid rgba(245,197,24,.4);border-radius:16px;padding:14px 17px;display:flex;align-items:center;gap:12px;">
+    <div style="font-size:28px;">🔐</div>
+    <div style="flex:1;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;">Painel Administrativo</div>
+      <div style="font-size:10px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Família Tomelin · Copa 2026</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:10px;color:var(--gray);">${new Date().toLocaleDateString('pt-BR')}</div>
+      <div style="font-size:10px;color:var(--green2);">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+    </div>
+  </div>
+  <!-- KPI GRID -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;">
+    ${_kpi('👥','Membros',users.length,'var(--gold)')}
+    ${_kpi('🟢','Online',onlineNow,'#4caf50')}
+    ${_kpi('🆕','Hoje',newToday,'#42a5f5')}
+    ${_kpi('📱','No Grupo WA',joined.size,'var(--wa)')}
+    ${_kpi('❌','Sem grupo',notJoined.length,'var(--red)')}
+    ${_kpi('📊','Média álbum',avgCompletion+'%','var(--green2)')}
+  </div>
+  <!-- WA ALERT -->
+  ${notJoined.length?`<div style="background:rgba(229,57,53,.08);border:1.5px solid rgba(229,57,53,.25);border-radius:11px;padding:11px 13px;display:flex;align-items:flex-start;gap:9px;">
+    <div style="font-size:18px;">⚠️</div>
+    <div style="font-size:12px;color:#ef9a9a;line-height:1.5;">
+      <strong>${notJoined.length} membro(s)</strong> ainda não entraram no grupo do WhatsApp:<br>
+      <span style="color:rgba(255,255,255,.6);">${notJoined.map(u=>u.name.split(' ')[0]).join(', ')}</span>
+    </div>
+  </div>`:`<div style="background:rgba(37,211,102,.07);border:1px solid rgba(37,211,102,.2);border-radius:11px;padding:10px 13px;font-size:12px;color:#a5d6a7;">✅ Todos os membros já entraram no grupo do WhatsApp!</div>`}
+  <!-- PROG BAR -->
+  <div class="card" style="border-radius:13px;padding:13px 15px;">
+    <div class="sec-lbl" style="margin-bottom:7px;">📊 Progresso médio do álbum</div>
+    <div class="prog-row"><div class="prog-lbl">Média</div><div class="prog-track"><div class="prog-fill" style="width:${avgCompletion}%"></div></div><div class="prog-pct">${avgCompletion}%</div></div>
+    <div style="font-size:10px;color:var(--gray);margin-top:3px;">📦 ${adsToday} anúncios hoje · 💬 ${Object.keys(ch).length} conversas</div>
+  </div>
+  <!-- TABS -->
+  <div class="tabs" style="margin-bottom:0;">
+    <button class="tab on" id="adm-t0" onclick="admTab(0,this)">👥 Membros</button>
+    <button class="tab" id="adm-t1" onclick="admTab(1,this)">🏷️ Ads</button>
+    <button class="tab" id="adm-t2" onclick="admTab(2,this)">💬 Chats</button>
+    <button class="tab" id="adm-t3" onclick="admTab(3,this)">📊 Stats</button>
+    <button class="tab" id="adm-t4" onclick="admTab(4,this)">⚡ Ações</button>
+  </div>
+  <div id="adm-content"></div>
+</div>`;
+  admTab(0,document.getElementById('adm-t0'));
+}
+
+function _kpi(ico,lbl,val,color){
+  return `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:9px 7px;text-align:center;">
+    <div style="font-size:15px;">${ico}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:${color};line-height:1.1;">${val}</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">${lbl}</div>
+  </div>`;
+}
+
+function admTab(i,btn){
+  document.querySelectorAll('[id^="adm-t"]').forEach((b,j)=>b.classList.toggle('on',j===i));
+  const el=document.getElementById('adm-content');if(!el)return;
+  el.innerHTML='';
+  if(i===0)_admMembersNew(el);
+  if(i===1)_admMarket(el);
+  if(i===2)_admChats(el);
+  if(i===3)_admData(el);
+  if(i===4)_admActions(el);
+}
+
+function _admMembersNew(el){
+  const users=getUsers();
+  const joined=getJoined();
+  if(!users.length){el.innerHTML='<div class="empty"><div class="empty-ico">👥</div>Nenhum membro.</div>';return;}
+  users.sort((a,b)=>b.ts-a.ts).forEach(u=>{
+    const st=u.stickers||{};
+    const have=ALL_STICKERS.filter(s=>(st[s.id]||0)>=1).length;
+    const dup=ALL_STICKERS.filter(s=>(st[s.id]||0)===2).length;
+    const pct=Math.round(have/ALL_STICKERS.length*100);
+    const online=isOnline(u.phone);
+    const didJoin=joined.has(u.phone);
+    const d=document.createElement('div');d.className='list-item';d.style.marginBottom='7px';
+    d.innerHTML=`
+      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">
+        <div style="font-size:20px;position:relative;">${u.avatar||'⚽'}${online?'<span style="position:absolute;bottom:0;right:-2px;width:8px;height:8px;border-radius:50%;background:#4caf50;border:1.5px solid var(--navy);"></span>':''}</div>
+        <div style="flex:1;min-width:100px;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">${esc(u.name)} ${online?'<span style="color:#4caf50;font-size:9px;">🟢 Online</span>':''}</div>
+          <div style="font-size:10px;color:var(--gray);">${u.phone} · ${new Date(u.ts).toLocaleDateString('pt-BR')}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);">${pct}%</div>
+          <div style="font-size:10px;color:var(--gray);">${have}fig/${dup}rep</div>
+        </div>
+      </div>
+      <div style="margin-top:5px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green),var(--green2));border-radius:2px;"></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-blue btn-xs" onclick="navTo(3);openChatWith('${u.phone}')">💬 Chat</button>
+        <button class="btn btn-xs" style="background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);" onclick="if(confirm('Remover ${esc(u.name)}?')){js(K.USERS,getUsers().filter(x=>x.phone!=='${u.phone}'));js(K.MARKET,getMarket().filter(m=>m.owner!=='${u.phone}'));renderAdmin();toast('Removido','#ef9a9a');}">🗑️</button>
+        <span style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;${didJoin?'color:var(--wa);':'color:#ef9a9a;'}">
+          ${didJoin?'✅ No grupo WA':'❌ Não entrou no WA'}
+        </span>
+        ${!didJoin?`<button class="btn btn-xs" style="background:rgba(37,211,102,.15);color:var(--wa);border:1px solid rgba(37,211,102,.25);" onclick="openChatWith('${u.phone}');navTo(3);">📨 Lembrar</button>`:''}
+      </div>`;
+    el.appendChild(d);
+  });
+}
+
+function _admMarket(el){
+  const mkt=[...getMarket()].sort((a,b)=>b.ts-a.ts);
+  if(!mkt.length){el.innerHTML='<div class="empty"><div class="empty-ico">🏷️</div>Sem anúncios.</div>';return;}
+  mkt.forEach(m=>{
+    const d=document.createElement('div');d.className='list-item';d.style.marginBottom='7px';
+    const tl={troca:'🔄 Troca',venda:'💰 Venda',ambos:'🔄💰 Ambos'};
+    d.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);">${esc(m.code)}</div>
+          <div style="font-size:11px;color:var(--gray);">${m.ownerAvatar||'⚽'} ${esc(m.ownerName)}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.3);">${new Date(m.ts).toLocaleString('pt-BR')}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="badge ${m.type}" style="margin-bottom:4px;">${tl[m.type]||m.type}</div>
+          ${m.price?`<div style="color:var(--green2);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;">R$ ${m.price.toFixed(2)}</div>`:''}
+        </div>
+      </div>
+      ${m.obs?`<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px;">${esc(m.obs)}</div>`:''}
+      <div style="margin-top:7px;">
+        <button class="btn btn-xs" style="background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);" onclick="js(K.MARKET,getMarket().filter(x=>String(x.id)!=='${m.id}'));renderAdmin();toast('Removido','#ef9a9a');">🗑️ Remover</button>
+      </div>`;
+    el.appendChild(d);
+  });
+}
+
+function _admChats(el){
+  const ch=getChats()||{};
+  const keys=Object.keys(ch);
+  if(!keys.length){el.innerHTML='<div class="empty"><div class="empty-ico">💬</div>Sem conversas.</div>';return;}
+  keys.forEach(cid=>{
+    const msgs=ch[cid]||[];if(!msgs.length)return;
+    const phones=cid.split('__');
+    const u1=getUserByPhone(phones[0]);const u2=getUserByPhone(phones[1]);
+    const last=msgs[msgs.length-1];
+    const d=document.createElement('div');d.className='list-item';d.style.marginBottom='7px';
+    d.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">${u1?esc(u1.name):'?'} ↔ ${u2?esc(u2.name):'?'}</div>
+          <div style="font-size:10px;color:var(--gray);">💬 ${msgs.length} mensagens</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;">"${esc((last?.text||'').substring(0,40))}"</div>
+        </div>
+        <div style="font-size:10px;color:var(--gray);">${formatTime(last?.ts||0)}</div>
+      </div>`;
+    el.appendChild(d);
+  });
+}
+
+function _admData(el){
+  const users=getUsers();
+  const wantCount={},dupCount={},teamCount={};
+  users.forEach(u=>{
+    const st=u.stickers||{};
+    ALL_STICKERS.forEach(s=>{
+      const v=st[s.id]||0;
+      if(v===0)wantCount[s.id]=(wantCount[s.id]||0)+1;
+      if(v===2)dupCount[s.id]=(dupCount[s.id]||0)+1;
+      if(v>=1){const t=s.id.replace(/[0-9]/g,'');teamCount[t]=(teamCount[t]||0)+1;}
+    });
+  });
+  const topWant=Object.entries(wantCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const topDup=Object.entries(dupCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const topTeams=Object.entries(teamCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  el.innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 14px;">
+        <div class="sec-lbl">🔥 Mais procuradas</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;">
+          ${topWant.map(([c,n])=>`<div style="background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.22);border-radius:20px;padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;color:#ef9a9a;">${c}<span style="color:rgba(255,255,255,.35);font-size:9px;"> ${n}x</span></div>`).join('')}
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 14px;">
+        <div class="sec-lbl">⭐ Mais repetidas</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;">
+          ${topDup.map(([c,n])=>`<div style="background:rgba(245,197,24,.09);border:1px solid rgba(245,197,24,.22);border-radius:20px;padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;color:var(--gold);">${c}<span style="color:rgba(255,255,255,.35);font-size:9px;"> ${n}x</span></div>`).join('')}
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 14px;">
+        <div class="sec-lbl">🌍 Times mais colecionados</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+          ${topTeams.map(([tc,n])=>{const ti=TEAM_MAP[tc]||{name:tc,flag:'🏳️'};const maxN=topTeams[0]?topTeams[0][1]:1;const pct2=Math.round(n/(maxN||1)*100);return `<div style="display:flex;align-items:center;gap:7px;"><div style="font-size:13px;">${ti.flag}</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#fff;min-width:70px;">${ti.name}</div><div style="flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${pct2}%;background:linear-gradient(90deg,var(--green),var(--green2));border-radius:3px;"></div></div><div style="font-size:10px;color:var(--gray);min-width:22px;text-align:right;">${n}</div></div>`;}).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function _admActions(el){
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;padding-top:4px;">
+    <button class="btn btn-outline" onclick="window.open('dashboard.html','_blank')">📺 Abrir Dashboard TV</button>
+    <button class="btn btn-outline" onclick="_admBroadcast()">📢 Notificar todos os membros</button>
+    <button class="btn btn-outline" onclick="_admClearAds()">🗑️ Limpar anúncios +7 dias</button>
+    <button class="btn btn-outline" onclick="_admExport()">📤 Exportar dados JSON</button>
+    <div style="background:rgba(229,57,53,.07);border:1px solid rgba(229,57,53,.15);border-radius:11px;padding:12px 14px;margin-top:4px;">
+      <div class="sec-lbl" style="color:#ef9a9a;">⚠️ Zona perigosa</div>
+      <button class="btn btn-red" style="font-size:12px;margin-top:9px;" onclick="if(confirm('RESETAR TODOS OS DADOS?')){['t26_users','t26_sess','t26_mkt','t26_chat','t26_notifs','t26_online','t26_bets','t26_chall','t26_coins','t26_wa_joined'].forEach(k=>localStorage.removeItem(k));location.reload();}">🗑️ Resetar TODOS os dados</button>
+    </div>
+  </div>`;
+}
+
+function _admBroadcast(){const msg=prompt('Mensagem para todos:');if(!msg)return;const users=getUsers(),ns=getNotifs();users.forEach(u=>ns.unshift({type:'broadcast',ico:'📢',text:'📢 <strong>Admin Tomelin:</strong> '+esc(msg),for:u.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()}));js(K.NOTIFS,ns.slice(0,300));toast('📢 Enviado para '+users.length+' membros!','var(--gold)');}
+function _admClearAds(){const cutoff=Date.now()-7*86400000;const old=getMarket().filter(m=>m.ts<cutoff).length;js(K.MARKET,getMarket().filter(m=>m.ts>=cutoff));renderAdmin();toast('🗑️ '+old+' anúncios removidos.','#ef9a9a');}
+function _admExport(){const data={users:getUsers(),market:getMarket(),chats:getChats(),bets:jg('t26_bets')||[],waJoined:Array.from(getJoined()),exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='tomelin-'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();URL.revokeObjectURL(url);}
 
 // 🤖 MOTOR DE MENSAGENS INTELIGENTES
 // ═══════════════════════════════════════════════════════════════
