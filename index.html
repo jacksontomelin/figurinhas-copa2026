@@ -385,6 +385,69 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
     <div class="app-title">Família <span>Tomelin</span></div>
     <div class="app-sub">Copa do Mundo FIFA 2026 · Figurinhas</div>
   </div>
+
+  <!-- ═══ COUNTDOWN COPA (desaparece quando a Copa começa) ═══ -->
+  <div id="auth-countdown" style="
+    max-width:390px;width:100%;margin-bottom:16px;
+    background:linear-gradient(135deg,rgba(26,122,58,.25),rgba(10,24,40,.85));
+    border:1.5px solid rgba(245,197,24,.35);border-radius:18px;
+    padding:16px 18px;text-align:center;
+    box-shadow:0 0 30px rgba(245,197,24,.12),0 8px 32px rgba(0,0,0,.5);
+    animation:fadeUp .6s .3s cubic-bezier(.34,1.56,.64,1) both;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+      letter-spacing:3px;color:var(--green2);text-transform:uppercase;margin-bottom:10px;">
+      ⚽ Copa do Mundo FIFA 2026
+    </div>
+    <!-- dias grandes -->
+    <div id="acd-dias-wrap">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(56px,18vw,88px);
+        color:var(--gold);line-height:1;letter-spacing:2px;
+        text-shadow:0 0 40px rgba(245,197,24,.5);" id="acd-dias">0</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
+        letter-spacing:3px;color:rgba(255,255,255,.55);text-transform:uppercase;margin-bottom:8px;">
+        dias para a Copa
+      </div>
+    </div>
+    <!-- horas/min/seg pequenos -->
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;" id="acd-hms">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;
+          background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+          border-radius:8px;padding:4px 10px;min-width:44px;text-align:center;
+          line-height:1.2;" id="acd-h">00</div>
+        <div style="font-size:9px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;
+          font-weight:700;letter-spacing:2px;text-transform:uppercase;">Horas</div>
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:rgba(255,255,255,.3);
+        padding-top:4px;">:</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;
+          background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+          border-radius:8px;padding:4px 10px;min-width:44px;text-align:center;
+          line-height:1.2;" id="acd-m">00</div>
+        <div style="font-size:9px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;
+          font-weight:700;letter-spacing:2px;text-transform:uppercase;">Min</div>
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:rgba(255,255,255,.3);
+        padding-top:4px;">:</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;
+          background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+          border-radius:8px;padding:4px 10px;min-width:44px;text-align:center;
+          line-height:1.2;" id="acd-s">00</div>
+        <div style="font-size:9px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;
+          font-weight:700;letter-spacing:2px;text-transform:uppercase;">Seg</div>
+      </div>
+    </div>
+    <!-- próximo jogo do brasil -->
+    <div style="background:rgba(0,92,32,.25);border:1px solid rgba(255,223,0,.2);
+      border-radius:10px;padding:8px 12px;font-size:12px;color:rgba(255,255,255,.7);
+      line-height:1.4;">
+      🇧🇷 <strong style="color:#ffdf00;">Brasil estreia</strong> em
+      <strong style="color:#fff;">13 Jun · 16h00 BRT</strong>
+      vs Marrocos 🇲🇦 no MetLife Stadium
+    </div>
+  </div>
   <div class="card a-card" style="max-width:390px;">
     <!-- LOGIN -->
     <div id="f-login">
@@ -1516,6 +1579,46 @@ function launchConfetti(){
   }
   tick();
 }
+
+// ─── COUNTDOWN AUTH ────────────────────────────────────────
+(function(){
+  const COPA = new Date('2026-06-11T16:00:00-03:00');
+  function tick(){
+    const el = document.getElementById('auth-countdown');
+    if(!el) return;
+    const diff = COPA - Date.now();
+    if(diff <= 0){
+      // Copa começou — some o bloco
+      el.style.transition = 'opacity .8s, transform .8s';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(.9)';
+      setTimeout(() => { if(el) el.remove(); }, 800);
+      clearInterval(_acdTimer);
+      return;
+    }
+    const totalH = Math.floor(diff / 3600000);
+    const d  = Math.floor(diff / 86400000);
+    const h  = Math.floor((diff % 86400000) / 3600000);
+    const m  = Math.floor((diff % 3600000) / 60000);
+    const s  = Math.floor((diff % 60000) / 1000);
+    const ed = document.getElementById('acd-dias');
+    const eh = document.getElementById('acd-h');
+    const em = document.getElementById('acd-m');
+    const es = document.getElementById('acd-s');
+    if(ed) ed.textContent = d;
+    if(eh) eh.textContent = String(h).padStart(2,'0');
+    if(em) em.textContent = String(m).padStart(2,'0');
+    if(es) es.textContent = String(s).padStart(2,'0');
+    // Pulsa dourado quando < 1 dia
+    if(d === 0 && ed){
+      ed.style.color = '#ff6b35';
+      ed.style.textShadow = '0 0 50px rgba(255,107,53,.6)';
+    }
+  }
+  const _acdTimer = setInterval(tick, 1000);
+  tick();
+})();
+
 </script>
 
 <!-- ══════════════════════════════════════════════════
