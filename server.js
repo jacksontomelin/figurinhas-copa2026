@@ -639,6 +639,8 @@ function parseRSS(xml) {
       .replace(/<[^>]+>/g,'')
       // 3ª passagem: remove qualquer URL que sobrou (links do Google News etc)
       .replace(/https?:\/\/\S+/g,'')
+      // Remove nome da fonte que às vezes vaza no final (ex: "...texto ge")
+      .replace(/\s+[-–]?\s*[a-zA-ZÀ-ú]{1,20}\s*$/, '')
       // Limpa espaços extras
       .replace(/\s+/g,' ').trim()
       .substring(0, 220);
@@ -982,13 +984,27 @@ function formatNewsMsg(item, idx) {
 
   const src  = item.src || 'Copa 2026';
 
-  // Desc: limpa novamente para garantir (double-check)
-  const desc = (item.desc || '')
+  // Desc: limpa, desduplicada e validada
+  let desc = (item.desc || '')
     .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+    .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
+    .replace(/&#\d+;/g,'')
     .replace(/<[^>]+>/g,'')
     .replace(/https?:\/\/\S+/g,'')
-    .replace(/\s+/g,' ').trim()
-    .substring(0, 200);
+    .replace(/\s+/g,' ').trim();
+
+  // Remove o título do início (Google News duplica title no desc)
+  if (desc.toLowerCase().startsWith(title.toLowerCase().substring(0, 30))) {
+    desc = desc.substring(title.length).replace(/^[\s\-–·|]+/, '').trim();
+  }
+
+  // Remove nome da fonte do final (ex: "...Copa do Mundo ge" → remove " ge")
+  desc = desc.replace(/\s+[-–]?\s*[a-zA-ZÀ-ú]{2,20}\s*$/, '').trim();
+
+  // Descarta se muito curto ou igual ao título
+  if (desc.length < 25 || desc.toLowerCase() === title.toLowerCase()) desc = '';
+
+  desc = desc.substring(0, 200);
 
   // Link encurtado
   let linkLine = '';
