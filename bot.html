@@ -2,826 +2,559 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🤖 Bot Família Tomelin · Z-API</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>🤖 Bot Painel · Família Tomelin</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --navy:#081220;--blue:#0d2d58;--gold:#f5c518;--gold2:#dba800;
-  --green:#176832;--green2:#1e9640;--white:#fff;--red:#e53935;
-  --gray:#8faab8;--wa:#25D366;--wa2:#128C7E;--orange:#e07800;
+  --navy:#081220;--blue:#0d2d58;--gold:#f5c518;--gold2:#c9970b;
+  --green:#1e9640;--red:#e53935;--gray:#8faab8;
+  --wa:#25D366;--wa2:#128C7E;
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Barlow',sans-serif;background:var(--navy);color:#fff;min-height:100vh;padding:16px;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+body{font-family:'Barlow',sans-serif;background:var(--navy);color:#fff;min-height:100vh;
+  padding:14px 14px 30px;-webkit-text-size-adjust:100%;}
 .bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.03;
   background-image:url("data:image/svg+xml,%3Csvg width='60' height='52' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='30,2 58,17 58,35 30,50 2,35 2,17' fill='none' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E");
   background-size:60px 52px;}
-.container{max-width:680px;margin:0 auto;position:relative;z-index:1;}
-/* HEADER */
-.header{background:linear-gradient(135deg,rgba(37,211,102,.2),rgba(8,18,32,.95));
-  border:1.5px solid rgba(37,211,102,.4);border-radius:16px;padding:18px 20px;
-  margin-bottom:14px;display:flex;align-items:center;gap:14px;}
-.header-ico{font-size:36px;}
-.header-title{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--wa);letter-spacing:1px;line-height:1.1;}
-.header-sub{font-size:11px;color:rgba(255,255,255,.55);letter-spacing:1px;margin-top:2px;}
-/* STATUS */
+.wrap{max-width:680px;margin:0 auto;position:relative;z-index:1;}
+
+/* ── HEADER ── */
+.header{background:linear-gradient(135deg,rgba(37,211,102,.18),rgba(8,18,32,.97));
+  border:1.5px solid rgba(37,211,102,.4);border-radius:16px;padding:16px 18px;
+  margin-bottom:12px;display:flex;align-items:center;gap:12px;}
+.header-ico{font-size:34px;flex-shrink:0;}
+.header-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--wa);letter-spacing:1px;line-height:1.1;}
+.header-sub{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;}
+.railway-edit{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;padding:7px 10px;margin-top:8px;display:flex;gap:6px;align-items:center;}
+.railway-edit input{background:transparent;border:none;color:#fff;font-size:11px;
+  font-family:'Barlow Condensed',sans-serif;flex:1;outline:none;min-width:0;}
+.railway-edit button{background:rgba(245,197,24,.2);border:1px solid rgba(245,197,24,.3);
+  color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:1px;border-radius:5px;padding:4px 8px;cursor:pointer;white-space:nowrap;}
+
+/* ── STATUS BAR ── */
 .status-bar{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
-  border-radius:12px;padding:12px 15px;margin-bottom:14px;
+  border-radius:12px;padding:11px 14px;margin-bottom:12px;
   display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
-.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.status-dot.online{background:#4caf50;box-shadow:0 0 8px #4caf50;}
-.status-dot.offline{background:var(--red);}
-.status-dot.checking{background:var(--gold);animation:blink 1s infinite;}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
-/* CARDS */
+.status-left{display:flex;align-items:center;gap:9px;}
+.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:.3s;}
+.status-dot.on{background:#4caf50;box-shadow:0 0 8px #4caf50;}
+.status-dot.off{background:var(--red);}
+.status-dot.check{background:var(--gold);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.status-txt{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#fff;}
+.status-sub{font-size:10px;color:var(--gray);margin-top:1px;}
+.kpis{display:flex;gap:14px;}
+.kpi{text-align:center;}
+.kpi-n{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);line-height:1;}
+.kpi-l{font-size:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;
+  color:var(--gray);text-transform:uppercase;}
+
+/* ── CARDS ── */
 .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
-  border-radius:13px;padding:16px;margin-bottom:12px;}
-.card-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+  border-radius:13px;padding:14px;margin-bottom:10px;}
+.card-hdr{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
   letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px;
-  display:flex;align-items:center;gap:7px;}
-/* BTNS */
+  display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-hdr .badge{font-size:10px;padding:2px 8px;border-radius:20px;
+  background:rgba(22,168,75,.2);border:1px solid rgba(22,168,75,.3);color:#a5d6a7;
+  font-weight:700;letter-spacing:1px;transition:.2s;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap;}
+.tab{flex:1;min-width:70px;padding:9px 8px;border-radius:9px;
+  font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1.5px solid;
+  transition:.2s;text-align:center;}
+.tab.active{background:rgba(245,197,24,.15);border-color:rgba(245,197,24,.4);color:var(--gold);}
+.tab.inactive{background:transparent;border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.4);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ── BUTTONS ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
   border:none;border-radius:9px;padding:11px 16px;cursor:pointer;
-  font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;
-  letter-spacing:1px;text-transform:uppercase;transition:.2s;width:100%;}
-.btn:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.1);}
-.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:900;
+  letter-spacing:1px;text-transform:uppercase;transition:.18s;width:100%;
+  -webkit-tap-highlight-color:transparent;}
+.btn:active:not(:disabled){transform:scale(.97);}
+.btn:disabled{opacity:.38;cursor:not-allowed;}
+.btn+.btn{margin-top:7px;}
 .btn-wa{background:linear-gradient(135deg,var(--wa),var(--wa2));color:#fff;}
 .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);}
-.btn-blue{background:linear-gradient(135deg,#1976d2,#0d47a1);color:#fff;}
-.btn-green{background:linear-gradient(135deg,var(--green2),var(--green));color:#fff;}
-.btn-red{background:linear-gradient(135deg,#c62828,#b71c1c);color:#fff;}
-.btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,.18);color:#fff;}
-.btn-sm{padding:8px 13px;font-size:11px;width:auto;}
-.row{display:flex;gap:8px;flex-wrap:wrap;}
-/* FORM */
-.fg{margin-bottom:11px;}
-.fg label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:10px;
-  font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;margin-bottom:5px;}
-.fg input,.fg select,.fg textarea{width:100%;background:rgba(255,255,255,.07);
-  border:1.5px solid rgba(255,255,255,.1);border-radius:9px;padding:10px 12px;
-  color:#fff;font-size:13px;outline:none;transition:.2s;font-family:'Barlow',sans-serif;}
-.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold);}
-.fg textarea{resize:vertical;min-height:70px;}
-.fg select option{background:#0d2d58;}
-/* LOG */
-.log{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:10px;
-  padding:12px;max-height:280px;overflow-y:auto;font-family:monospace;font-size:11px;
-  line-height:1.6;}
-.log::-webkit-scrollbar{width:3px;}
-.log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
-.log-line{padding:2px 0;}
-.log-line.ok{color:#69f0ae;}
-.log-line.err{color:#ef9a9a;}
-.log-line.info{color:#90caf9;}
-.log-line.warn{color:#ffd54f;}
-/* MATCH CARDS */
-.match-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
-  border-radius:10px;padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:.2s;}
-.match-card:hover{background:rgba(255,255,255,.09);}
-.match-card.selected{background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.35);}
-.match-teams{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;}
-.match-meta{font-size:11px;color:var(--gray);margin-top:3px;}
-/* PHRASE CHIPS */
-.phrase-grid{display:flex;flex-direction:column;gap:6px;}
-.phrase-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
-  border-radius:8px;padding:9px 12px;font-size:12px;color:rgba(255,255,255,.75);
-  line-height:1.4;cursor:pointer;transition:.2s;}
-.phrase-item:hover{background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);}
-.phrase-item.selected{background:rgba(37,211,102,.15);border-color:var(--wa);}
-/* DIVIDER */
-.div{height:1px;background:rgba(255,255,255,.07);margin:12px 0;}
-/* BADGE */
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;
-  font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
-  letter-spacing:1px;text-transform:uppercase;}
-.badge.live{background:rgba(229,57,53,.18);color:#ef9a9a;border:1px solid rgba(229,57,53,.3);}
-.badge.sched{background:rgba(66,165,245,.12);color:#90caf9;border:1px solid rgba(66,165,245,.25);}
-.badge.ft{background:rgba(158,158,158,.12);color:var(--gray);border:1px solid rgba(158,158,158,.2);}
-.badge.wa{background:rgba(37,211,102,.15);color:var(--wa);border:1px solid rgba(37,211,102,.3);}
-/* ALERT */
-.alert{border-radius:10px;padding:10px 12px;margin-bottom:10px;
-  display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4;}
-.alert.ok{background:rgba(34,160,74,.08);border:1px solid rgba(34,160,74,.22);color:#a5d6a7;}
-.alert.warn{background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.2);color:#ffe082;}
-.alert.err{background:rgba(229,57,53,.07);border:1px solid rgba(229,57,53,.2);color:#ef9a9a;}
+.btn-red{background:rgba(229,57,53,.2);border:1.5px solid rgba(229,57,53,.35);color:#ef9a9a;}
+.btn-blue{background:rgba(42,130,245,.2);border:1.5px solid rgba(42,130,245,.35);color:#90caf9;}
+.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);}
+.btn-sm{padding:8px 12px;font-size:11px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.row2 .btn{margin-top:0;}
+
+/* ── INPUTS ── */
+.inp{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;
+  font-family:'Barlow',sans-serif;outline:none;transition:.2s;margin-bottom:8px;
+  -webkit-appearance:none;}
+.inp:focus{border-color:rgba(245,197,24,.4);background:rgba(255,255,255,.1);}
+textarea.inp{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;}
+select.inp{cursor:pointer;}
+.inp-label{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--gray);margin-bottom:5px;}
+
+/* ── RPA ── */
+.rpa-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;}
+.rpa-kpi{background:rgba(255,255,255,.05);border-radius:9px;padding:10px 6px;text-align:center;}
+.rpa-kpi-n{font-family:'Bebas Neue',sans-serif;font-size:26px;line-height:1;}
+.rpa-kpi-l{font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--gray);}
+
+/* ── LOG ── */
+.log-box{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:9px;
+  padding:10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;
+  max-height:160px;overflow-y:auto;color:rgba(255,255,255,.6);}
+.log-box div{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.log-ok{color:#a5d6a7;}
+.log-err{color:#ef9a9a;}
+.log-info{color:#90caf9;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  z-index:999;background:rgba(13,30,56,.97);border-radius:10px;padding:10px 18px;
+  font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:.5px;color:#fff;box-shadow:0 4px 20px rgba(0,0,0,.4);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s;opacity:0;
+  white-space:nowrap;max-width:90vw;text-align:center;}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 </style>
 </head>
 <body>
 <div class="bg"></div>
-<div class="container">
+<div class="wrap">
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="header-ico">🤖</div>
-    <div>
-      <div class="header-title">Bot Família Tomelin · Z-API</div>
-      <div class="header-sub">Automação WhatsApp · Copa do Mundo FIFA 2026</div>
-    </div>
-    <div style="margin-left:auto;text-align:right;">
-      <div style="font-size:10px;color:var(--gray);">Instância</div>
-      <div style="font-family:monospace;font-size:11px;color:var(--gold);">...B0810B48</div>
-    </div>
-  </div>
-
-  <!-- STATUS Z-API -->
-  <div class="status-bar">
-    <div style="display:flex;align-items:center;gap:9px;">
-      <div class="status-dot checking" id="status-dot"></div>
-      <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;" id="status-txt">Verificando conexão...</div>
-        <div style="font-size:10px;color:var(--gray);" id="status-num">Z-API WhatsApp</div>
-      </div>
-    </div>
-    <button class="btn btn-outline btn-sm" onclick="checkStatus()">🔄 Verificar</button>
-  </div>
-
-  <!-- TABS -->
-  <div style="display:flex;background:rgba(255,255,255,.05);border-radius:11px;padding:4px;margin-bottom:14px;gap:3px;">
-    <button class="tab-btn active" id="tab-0" onclick="switchTab(0)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(245,197,24,.18);color:var(--gold);transition:.25s;">📢 Grupo</button>
-    <button class="tab-btn" id="tab-1" onclick="switchTab(1)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.4);transition:.25s;">⚽ Jogos ao Vivo</button>
-    <button class="tab-btn" id="tab-2" onclick="switchTab(2)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.4);transition:.25s;">🎴 Figurinhas</button>
-    <button class="tab-btn" id="tab-3" onclick="switchTab(3)" style="flex:1;padding:9px 6px;border-radius:8px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.4);transition:.25s;">⚙️ Config</button>
-  </div>
-
-  <!-- TAB 0: GRUPO (mensagens animadas) -->
-  <div id="panel-0">
-    
-<!-- RPA NOTÍCIAS -->
-<div style="background:linear-gradient(135deg,rgba(13,45,88,.8),rgba(5,16,28,.95));border:1.5px solid rgba(66,165,245,.3);border-radius:14px;padding:16px;margin-bottom:12px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-    <div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:1px;">📰 RPA de Notícias</div>
-      <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:2px;color:#90caf9;text-transform:uppercase;">Puxa e envia ao vivo a cada 10 min</div>
-    </div>
-    <div style="display:flex;gap:7px;align-items:center;">
-      <span id="rpa-status-badge" style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;background:rgba(22,168,75,.2);border:1px solid rgba(22,168,75,.3);color:#a5d6a7;">— Aguardando</span>
+<!-- HEADER -->
+<div class="header">
+  <div class="header-ico">🤖</div>
+  <div style="flex:1;min-width:0;">
+    <div class="header-title">Bot Painel · Família Tomelin</div>
+    <div class="header-sub">Z-API · Railway · Copa 2026</div>
+    <div class="railway-edit">
+      <span style="font-size:10px;color:var(--gray);white-space:nowrap;">🔗 Railway:</span>
+      <input id="inp-railway" type="url" placeholder="https://...railway.app" value="https://figurinhas-copa2026-production.up.railway.app">
+      <button onclick="saveRailway()">💾 Salvar</button>
     </div>
   </div>
-  <div id="rpa-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;">
-    <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:9px;padding:10px 6px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:#42a5f5;" id="rpa-sent">—</div>
-      <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">Enviadas</div>
-    </div>
-    <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:9px;padding:10px 6px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);" id="rpa-queued">—</div>
-      <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">No cache</div>
-    </div>
-    <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:9px;padding:10px 6px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--green2);" id="rpa-count">—</div>
-      <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">Notícias</div>
-    </div>
-  </div>
-  <div style="display:flex;gap:7px;flex-wrap:wrap;">
-    <button onclick="rpaToggle()" id="btn-rpa-toggle" style="flex:1;padding:10px;border-radius:9px;background:rgba(22,168,75,.2);border:1.5px solid rgba(22,168,75,.35);color:#a5d6a7;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;">⏸ Toggle RPA</button>
-    <button onclick="rpaRunNow()" style="flex:1;padding:10px;border-radius:9px;background:rgba(245,197,24,.15);border:1.5px solid rgba(245,197,24,.3);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;">▶ Rodar agora</button>
-  </div>
-  <div id="rpa-last" style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.3);font-family:'Barlow Condensed',sans-serif;text-align:center;"></div>
 </div>
-<div class="card">
-      <div class="card-title">📱 Número do grupo / destinatário</div>
-      <div class="alert warn">
-        <div>⚠️</div>
-        <div>Para enviar ao grupo do WhatsApp, cole o <strong>número do grupo</strong> (com sufixo <code>@g.us</code>) ou o número de um membro. Para grupos, use o formato: <code>5547999...@g.us</code></div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-left">
+    <div class="status-dot check" id="status-dot"></div>
+    <div>
+      <div class="status-txt" id="status-txt">Verificando...</div>
+      <div class="status-sub" id="status-sub">Aguardando Railway</div>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-n" id="kpi-sent">—</div><div class="kpi-l">Enviados</div></div>
+    <div class="kpi"><div class="kpi-n" style="color:var(--green);" id="kpi-uptime">—</div><div class="kpi-l">Uptime</div></div>
+    <div class="kpi"><div class="kpi-n" style="color:#ef9a9a;" id="kpi-erros">—</div><div class="kpi-l">Erros</div></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active"   onclick="switchTab('rpa')"    id="tab-rpa">📰 RPA</div>
+  <div class="tab inactive" onclick="switchTab('enviar')" id="tab-enviar">📨 Enviar</div>
+  <div class="tab inactive" onclick="switchTab('links')"  id="tab-links">🔗 Links</div>
+  <div class="tab inactive" onclick="switchTab('config')" id="tab-config">⚙️ Config</div>
+</div>
+
+<!-- TAB: RPA NOTÍCIAS -->
+<div class="tab-content active" id="tab-content-rpa">
+
+  <div class="card">
+    <div class="card-hdr">
+      📰 RPA de Notícias — Ao Vivo
+      <span class="badge" id="rpa-badge">— Aguardando</span>
+    </div>
+    <div class="rpa-kpis">
+      <div class="rpa-kpi">
+        <div class="rpa-kpi-n" style="color:#42a5f5;" id="rpa-enviadas">—</div>
+        <div class="rpa-kpi-l">Enviadas</div>
       </div>
-      <div class="fg">
-        <label>Número do destinatário</label>
-        <input type="text" id="grp-phone" placeholder="5547989001508 ou ID do grupo" value="120363409442378564-group">
+      <div class="rpa-kpi">
+        <div class="rpa-kpi-n" style="color:var(--gold);" id="rpa-cache">—</div>
+        <div class="rpa-kpi-l">No cache</div>
       </div>
-      <div class="div"></div>
-      <div class="card-title">🎉 Frases de animação do grupo</div>
-      <div class="phrase-grid" id="phrase-list"></div>
-      <div class="div"></div>
-      <div class="fg">
-        <label>Mensagem personalizada</label>
-        <textarea id="custom-msg" placeholder="Digite uma mensagem personalizada para o grupo..."></textarea>
+      <div class="rpa-kpi">
+        <div class="rpa-kpi-n" style="color:var(--green);" id="rpa-noticias">—</div>
+        <div class="rpa-kpi-l">Notícias</div>
       </div>
-      <div class="row">
-        <button class="btn btn-wa" onclick="sendCustomMsg()">📤 Enviar mensagem</button>
-      </div>
-      <div class="div"></div>
-      <div class="card-title">🤖 Envio automático programado</div>
-      <div class="row" style="margin-bottom:10px;">
-        <select id="auto-interval" style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:9px;padding:10px 12px;color:#fff;font-size:13px;outline:none;">
-          <option value="0">Desativado</option>
-          <option value="5">A cada 5 minutos</option>
-          <option value="15">A cada 15 minutos</option>
-          <option value="30">A cada 30 minutos</option>
-          <option value="60">A cada 1 hora</option>
-        </select>
-        <button class="btn btn-green btn-sm" onclick="toggleAutoSend()" id="auto-btn">▶ Ativar</button>
-      </div>
-      <div id="auto-status" style="font-size:11px;color:var(--gray);">Auto-envio desativado.</div>
+    </div>
+    <div id="rpa-ultima" style="font-size:11px;color:var(--gray);text-align:center;margin-bottom:10px;min-height:16px;"></div>
+    <div class="row2">
+      <button class="btn btn-ghost btn-sm" id="btn-toggle" onclick="rpaToggle()">⏸ Pausar RPA</button>
+      <button class="btn btn-gold  btn-sm" id="btn-runnow" onclick="rpaRunNow()">▶ Rodar agora</button>
     </div>
   </div>
 
-  <!-- TAB 1: JOGOS AO VIVO -->
-  <div id="panel-1" style="display:none;">
-    <div class="card">
-      <div class="card-title">⚽ Buscar jogos ao vivo agora</div>
-      <div class="row" style="margin-bottom:12px;">
-        <button class="btn btn-blue" onclick="fetchLiveMatches()">🔄 Buscar jogos agora</button>
-      </div>
-      <div id="live-matches-list">
-        <div style="text-align:center;color:rgba(255,255,255,.3);padding:20px;font-size:13px;">Clique em "Buscar jogos" para carregar</div>
-      </div>
-      <div class="div"></div>
-      <div class="card-title">📤 Enviar atualização de jogo</div>
-      <div class="fg">
-        <label>Destinatário</label>
-        <input type="text" id="live-phone" placeholder="5547989001508" value="120363409442378564-group">
-      </div>
-      <div class="fg">
-        <label>Tipo de mensagem</label>
-        <select id="live-msg-type" onchange="updateLiveMsgPreview()">
-          <option value="live">🔴 Jogo ao vivo (placar atual)</option>
-          <option value="goal">⚽ Gol marcado!</option>
-          <option value="ht">☕ Intervalo</option>
-          <option value="ft">🏁 Fim de jogo</option>
-          <option value="start">🎉 Início do jogo</option>
-          <option value="brasil">🇧🇷 Jogo do Brasil</option>
-        </select>
-      </div>
-      <div id="live-preview" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:12px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:12px;white-space:pre-wrap;"></div>
-      <button class="btn btn-wa" onclick="sendLiveUpdate()">📤 Enviar para WhatsApp</button>
-    </div>
-    <div class="card">
-      <div class="card-title">🤖 Monitor automático de jogos</div>
-      <div class="alert warn">
-        <div>💡</div>
-        <div>O monitor busca atualizações a cada 2 minutos durante jogos ao vivo e envia automaticamente para o grupo!</div>
-      </div>
-      <div class="fg">
-        <label>Destinatário do monitor</label>
-        <input type="text" id="monitor-phone" placeholder="5547989001508" value="120363409442378564-group">
-      </div>
-      <div class="row">
-        <button class="btn btn-green" id="monitor-btn" onclick="toggleMonitor()">▶ Iniciar monitor de jogos</button>
-      </div>
-      <div id="monitor-status" style="font-size:11px;color:var(--gray);margin-top:8px;">Monitor parado.</div>
+  <div class="card">
+    <div class="card-hdr">📋 Log de atividade</div>
+    <div class="log-box" id="log-box">
+      <div class="log-info">Aguardando atividade...</div>
     </div>
   </div>
 
-  <!-- TAB 2: FIGURINHAS -->
-  <div id="panel-2" style="display:none;">
-    <div class="card">
-      <div class="card-title">🎴 Notificação de figurinha disponível</div>
-      <div class="alert ok">
-        <div>💡</div>
-        <div>Quando alguém disponibiliza uma figurinha que outro membro precisa, o bot manda mensagem privada avisando!</div>
-      </div>
-      <div class="fg">
-        <label>Usuários do sistema (do localStorage)</label>
-        <select id="sticker-user-sel" onchange="onStickerUserChange()">
-          <option value="">Selecione um usuário...</option>
-        </select>
-      </div>
-      <div id="sticker-matches-area"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">📨 Enviar notificação privada de figurinha</div>
-      <div class="fg">
-        <label>Telefone de quem vai receber</label>
-        <input type="text" id="stk-phone-dest" placeholder="5547989001508">
-      </div>
-      <div class="fg">
-        <label>Mensagem</label>
-        <textarea id="stk-msg" rows="4" placeholder="Mensagem será gerada automaticamente..."></textarea>
-      </div>
-      <button class="btn btn-wa" onclick="sendStickerNotif()">📱 Enviar via WhatsApp</button>
+</div>
+
+<!-- TAB: ENVIAR -->
+<div class="tab-content" id="tab-content-enviar">
+
+  <div class="card">
+    <div class="card-hdr">📨 Mensagem para o Grupo</div>
+    <textarea class="inp" id="msg-grupo" placeholder="Digite a mensagem para enviar no grupo WhatsApp..."></textarea>
+    <button class="btn btn-wa" onclick="enviarGrupo()">📱 Enviar no Grupo</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">🧪 Notícia Teste</div>
+    <p style="font-size:12px;color:var(--gray);margin-bottom:10px;line-height:1.5;">
+      Dispara o RPA manualmente e envia a próxima notícia disponível com link encurtado para o grupo.
+    </p>
+    <button class="btn btn-gold" onclick="rpaRunNow()">🚀 Enviar notícia teste agora</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">📬 Mensagem Privada</div>
+    <div class="inp-label">Telefone (55 + DDD + número)</div>
+    <input class="inp" id="msg-phone" type="tel" placeholder="5547999357131">
+    <textarea class="inp" id="msg-priv" placeholder="Mensagem privada..."></textarea>
+    <button class="btn btn-blue" onclick="enviarPrivado()">📩 Enviar privado</button>
+  </div>
+
+</div>
+
+<!-- TAB: LINKS -->
+<div class="tab-content" id="tab-content-links">
+
+  <div class="card">
+    <div class="card-hdr">🔗 Encurtador · <span style="color:#90caf9;font-size:9px;">copa2026.familiatomelin.com.br/s/...</span></div>
+    <div class="inp-label">URL para encurtar</div>
+    <input class="inp" id="url-longa" type="url" placeholder="https://...">
+    <button class="btn btn-gold" onclick="encurtarUrl()">✂️ Encurtar</button>
+    <div id="url-resultado" style="display:none;margin-top:10px;background:rgba(245,197,24,.1);
+      border:1px solid rgba(245,197,24,.2);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:10px;color:var(--gray);margin-bottom:4px;">Link encurtado:</div>
+      <div id="url-curta" style="font-family:'Barlow Condensed',sans-serif;font-size:15px;
+        color:var(--gold);word-break:break-all;"></div>
+      <button onclick="copiarLink()" class="btn btn-ghost btn-sm" style="margin-top:8px;width:auto;padding:6px 14px;">📋 Copiar</button>
     </div>
   </div>
 
-  <!-- TAB 3: CONFIG -->
-  <div id="panel-3" style="display:none;">
-    <div class="card">
-      <div class="card-title">🔧 Credenciais Z-API</div>
-      <div class="fg">
-        <label>Instance ID</label>
-        <input type="text" id="cfg-instance" value="3F155B355FA8410212E52295B0810B48" readonly style="opacity:.6;">
-      </div>
-      <div class="fg">
-        <label>Token</label>
-        <input type="password" id="cfg-token" value="9B855EED9711E32684160EE5" readonly style="opacity:.6;">
-      </div>
-      <div class="fg">
-        <label>Client-Token</label>
-        <input type="password" id="cfg-client" value="Ff0f0920827ca4987818cafa9ba0f97a7S" readonly style="opacity:.6;">
-      </div>
-      <button class="btn btn-blue" onclick="checkStatus()">🔄 Testar conexão</button>
+  <div class="card">
+    <div class="card-hdr">
+      📊 Links criados
+      <button onclick="carregarLinks()" class="btn btn-ghost btn-sm" style="width:auto;padding:4px 10px;font-size:10px;">🔄 Atualizar</button>
     </div>
-    <div class="card">
-      <div class="card-title">📋 Log de envios</div>
-      <div class="log" id="send-log">
-        <div class="log-line info">— Bot inicializado. Aguardando ações. —</div>
-      </div>
-      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="document.getElementById('send-log').innerHTML='<div class=\'log-line info\'>— Log limpo —</div>'">🗑️ Limpar log</button>
+    <div id="lista-links" style="color:var(--gray);font-size:12px;text-align:center;padding:14px;">
+      Clique em Atualizar para carregar
     </div>
   </div>
 
-</div><!-- /container -->
+</div>
+
+<!-- TAB: CONFIG -->
+<div class="tab-content" id="tab-content-config">
+
+  <div class="card">
+    <div class="card-hdr">⚙️ Configurações do Bot</div>
+
+    <div class="inp-label">Monitor de jogos ao vivo</div>
+    <div class="row2" style="margin-bottom:8px;">
+      <button class="btn btn-ghost btn-sm" id="btn-monitor-on"  onclick="setMonitor(true)">🟢 Ativar</button>
+      <button class="btn btn-red   btn-sm" id="btn-monitor-off" onclick="setMonitor(false)">⛔ Pausar</button>
+    </div>
+
+    <div class="inp-label" style="margin-top:8px;">Status Railway</div>
+    <button class="btn btn-blue btn-sm" onclick="checkStatus()">🔍 Verificar conexão</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">📌 Links do sistema</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <a href="https://copa2026.familiatomelin.com.br/app.html" target="_blank" style="text-decoration:none;">
+        <button class="btn btn-ghost btn-sm">🎴 Abrir App</button>
+      </a>
+      <a href="https://copa2026.familiatomelin.com.br/dashboard.html" target="_blank" style="text-decoration:none;">
+        <button class="btn btn-ghost btn-sm">📺 Abrir Dashboard TV</button>
+      </a>
+      <a href="https://figurinhas-copa2026-production.up.railway.app/health" target="_blank" style="text-decoration:none;">
+        <button class="btn btn-ghost btn-sm">🏥 Health Check Railway</button>
+      </a>
+      <a href="https://figurinhas-copa2026-production.up.railway.app/api/links" target="_blank" style="text-decoration:none;">
+        <button class="btn btn-ghost btn-sm">🔗 Ver todos os links (JSON)</button>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- /wrap -->
+<div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════
-// Z-API CONFIG
-// ═══════════════════════════════════════════════════
-const ZAPI = {
-  instance: '3F155B355FA8410212E52295B0810B48',
-  token: '9B855EED9711E32684160EE5',
-  clientToken: 'Ff0f0920827ca4987818cafa9ba0f97a7S',
-  base: 'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5'
-};
+'use strict';
 
-// ═══════════════════════════════════════════════════
-// FRASES ANIMADAS PARA O GRUPO
-// ═══════════════════════════════════════════════════
-const GROUP_PHRASES = [
-  {emoji:'🏆',tag:'Hype',txt:'🏆 FAMÍLIA TOMELIN NA COPA 2026! 🔥\n\nVamos juntos torcer, trocar figurinhas e torcer pela nossa seleção! Bora completar o álbum! 🎴⚽🇧🇷'},
-  {emoji:'⚽',tag:'Álbum',txt:'⚽ Quem tem figurinhas repetidas?\n\nMarca aqui no sistema que todo mundo pode ver e fazer trocas! 🎴\nAcesse: https://jacksontomelin.github.io/figurinhas-copa2026\nFamília Tomelin Copa 2026 🏆'},
-  {emoji:'🎴',tag:'Troca',txt:'🎴 HEY! Já cadastrou suas figurinhas no sistema?\n\nLá você vê quem tem as que faltam pra você, troca e vende! É grátis e fácil!\n👉 https://jacksontomelin.github.io/figurinhas-copa2026\nBora Família Tomelin! 🇧🇷🏆'},
-  {emoji:'🔥',tag:'Aquecimento',txt:'🔥 A Copa do Mundo 2026 está chegando!\n\n48 seleções, 104 jogos, 16 estádios em 3 países!\nO Brasil estreia em 13 de junho contra o Marrocos 🇧🇷🆚🇲🇦\nJá completou seu álbum? Corre trocar figurinhas no grupo! 🎴'},
-  {emoji:'📱',tag:'Sistema',txt:'📱 ATENÇÃO Família Tomelin!\n\nNosso sistema de trocas está no ar! 🎉\n✅ Marque suas figurinhas\n🔄 Veja quem tem as que faltam\n💬 Converse pelo chat\n🎲 Aposte nos jogos\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
-  {emoji:'🇧🇷',tag:'Brasil',txt:'🇧🇷 BORA BRASIL! HEXA EM 2026! 🏆\n\nO Brasil é o único país a disputar TODAS as Copas do Mundo!\n5 títulos... o 6º vem aí! Vamos juntos! ⚽🔥\n#FamíliaTomelin #Copa2026 #Hexa'},
-  {emoji:'🎲',tag:'Apostas',txt:'🎲 APOSTAS ABERTAS!\n\nJá fez seu palpite nos jogos da Copa?\nUse o sistema da Família Tomelin e ganhe Tomelin Coins! 💰\nÉ só diversão — mas todo mundo quer ser o campeão dos palpites! 😄\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
-  {emoji:'🌟',tag:'Ranking',txt:'🌟 Quem está liderando o álbum da Família Tomelin?\n\nAcesse o sistema, veja o ranking e descubra quem está mais perto de completar o álbum da Copa 2026! 🎴🏆\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
-  {emoji:'📦',tag:'Pacotinhos',txt:'📦 DICA DE HOJE!\n\nSabia que para completar o álbum da Copa 2026 você precisa de pelo menos 196 pacotinhos? 😅\nMas com as trocas da Família Tomelin você gasta muito menos! Cadastre suas repetidas! 🎴'},
-  {emoji:'💰',tag:'Economia',txt:'💰 ECONOMIZE na Copa 2026!\n\nEm vez de comprar todos os pacotinhos, troque figurinhas com a Família Tomelin! 🤝\nCada troca é uma figurinha a menos pra comprar! 💪\n👉 https://jacksontomelin.github.io/figurinhas-copa2026'},
-];
+// ── Configuração ──────────────────────────────────────────────
+let RAILWAY = localStorage.getItem('bot_railway_url')
+  || 'https://figurinhas-copa2026-production.up.railway.app';
+document.getElementById('inp-railway').value = RAILWAY;
 
-// ═══════════════════════════════════════════════════
-// FRASES DE JOGO AO VIVO
-// ═══════════════════════════════════════════════════
-function getLiveMsg(type, match){
-  const h = match?.home||'Time A', a = match?.away||'Time B';
-  const hf = match?.home_flag||'🏳️', af = match?.away_flag||'🏳️';
-  const hs = match?.home_score??0, as_ = match?.away_score??0;
-  const now = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  const msgs = {
-    live: `⚽ JOGO AO VIVO — COPA 2026! 🔴\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\n⏱️ ${now} BRT\n🏟️ ${match?.stadium||''}\n\nAcesse o sistema da Família Tomelin para ver detalhes e fazer apostas! 🎲\n👉 https://jacksontomelin.github.io/figurinhas-copa2026`,
-    goal: `⚽ GOOOOOOL! 🎉🔥\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\nQue momento emocionante! A Família Tomelin está na torcida! 🇧🇷🏆\n#Copa2026 #FamíliaTomelin`,
-    ht: `☕ INTERVALO — COPA 2026\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\nMeia hora terminada! Segundo tempo começa em breve! ⚽\nA Família Tomelin continua na torcida! 🔥🇧🇷`,
-    ft: `🏁 FIM DE JOGO — RESULTADO FINAL!\n\n${hf} ${h} ${hs} x ${as_} ${a} ${af}\n\nQue jogo emocionante! 🎉 Família Tomelin presente! 🏆\n\nJá apostou no próximo jogo? Acesse:\n👉 https://jacksontomelin.github.io/figurinhas-copa2026`,
-    start: `🎉 BOLA ROLANDO! COPA 2026!\n\n${hf} ${h} x ${a} ${af} COMEÇOU!\n\n⚽ Vamos torcer juntos, Família Tomelin! 🇧🇷🔥\n🏟️ ${match?.stadium||''}\n\n#Copa2026 #FamíliaTomelin`,
-    brasil: `🇧🇷🇧🇷🇧🇷 É JOGO DO BRASIL! 🇧🇷🇧🇷🇧🇷\n\n🦁 BRASIL ${hs} x ${as_} ${a} ${af}\n\n⚽ BORA HEXA! BORA BRASIL! 💛💚\nToda a Família Tomelin está na torcida! 🏆🔥\n\n#VaiBrasil #Hexa #Copa2026 #FamíliaTomelin`,
-  };
-  return msgs[type]||msgs.live;
+function saveRailway(){
+  const v = document.getElementById('inp-railway').value.trim().replace(/\/$/, '');
+  if(!v || !v.startsWith('http')){ toast('URL inválida','var(--red)'); return; }
+  RAILWAY = v;
+  localStorage.setItem('bot_railway_url', v);
+  toast('✅ Railway URL salvo!', 'var(--gold)');
+  checkStatus();
 }
 
-// ═══════════════════════════════════════════════════
-// Z-API REQUESTS (via fetch com proxy CORS)
-// ═══════════════════════════════════════════════════
-async function zapiPost(endpoint, body){
-  const url = `${ZAPI.base}/${endpoint}`;
-  try {
-    const r = await fetch(url, {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Client-Token': ZAPI.clientToken
-      },
-      body: JSON.stringify(body)
-    });
-    const data = await r.json();
-    return {ok: r.ok, status: r.status, data};
-  } catch(e) {
-    return {ok:false, error: e.message};
-  }
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, color){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderLeft = '3px solid ' + (color||'var(--gold)');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
 }
 
-async function zapiGet(endpoint){
-  const url = `${ZAPI.base}/${endpoint}`;
-  try {
-    const r = await fetch(url, {
-      headers:{'Client-Token': ZAPI.clientToken}
-    });
-    const data = await r.json();
-    return {ok: r.ok, data};
-  } catch(e) {
-    return {ok:false, error: e.message};
-  }
+// ── Log ───────────────────────────────────────────────────────
+function addLog(msg, type){
+  const box = document.getElementById('log-box');
+  const d   = document.createElement('div');
+  d.className = type==='ok'?'log-ok':type==='err'?'log-err':'log-info';
+  const hora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  d.textContent = hora + ' · ' + msg;
+  box.insertBefore(d, box.firstChild);
+  // Keep max 30 lines
+  while(box.children.length > 30) box.removeChild(box.lastChild);
 }
 
-function sanitizePhone(phone){
-  let p = phone.trim().replace(/\D/g,'');
-  if(!phone.includes('@g.us')){
-    if(p.length===10||p.length===11) p='55'+p;
-  }
-  return phone.includes('@g.us') ? phone.trim() : p;
+// ── Tabs ─────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>{
+    const active = t.id === 'tab-' + name;
+    t.className = 'tab ' + (active ? 'active' : 'inactive');
+  });
+  document.querySelectorAll('.tab-content').forEach(c=>{
+    c.className = 'tab-content' + (c.id === 'tab-content-' + name ? ' active' : '');
+  });
 }
 
-async function sendText(phone, message){
-  const p = sanitizePhone(phone);
-  const r = await zapiPost('send-text', {phone:p, message});
-  log(r.ok ? `✅ Mensagem enviada para ${p}` : `❌ Erro: ${JSON.stringify(r.data||r.error)}`, r.ok?'ok':'err');
-  return r;
-}
-
-// ═══════════════════════════════════════════════════
-// STATUS CHECK
-// ═══════════════════════════════════════════════════
+// ── Status geral ──────────────────────────────────────────────
 async function checkStatus(){
   const dot = document.getElementById('status-dot');
   const txt = document.getElementById('status-txt');
-  const num = document.getElementById('status-num');
-  dot.className='status-dot checking';
-  txt.textContent='Verificando...';
-  const r = await zapiGet('status');
-  if(r.ok && r.data?.connected){
-    dot.className='status-dot online';
-    txt.textContent='✅ WhatsApp conectado!';
-    num.textContent=r.data.number||'Conectado';
-    log(`✅ Z-API conectada — Número: ${r.data.number||'?'}`, 'ok');
-  } else {
-    dot.className='status-dot offline';
-    txt.textContent='❌ Desconectado ou erro';
-    num.textContent=r.data?.message||'Verifique a instância Z-API';
-    log(`❌ Z-API desconectada: ${JSON.stringify(r.data||r.error)}`, 'err');
-  }
-}
-
-// ═══════════════════════════════════════════════════
-// PHRASES / GROUP
-// ═══════════════════════════════════════════════════
-let selectedPhrase = null;
-function buildPhrases(){
-  const el = document.getElementById('phrase-list');
-  el.innerHTML = GROUP_PHRASES.map((p,i)=>`
-    <div class="phrase-item" id="phrase-${i}" onclick="selectPhrase(${i})">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
-        <span style="font-size:16px;">${p.emoji}</span>
-        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;
-          letter-spacing:1px;color:var(--gold);text-transform:uppercase;">${p.tag}</span>
-      </div>
-      <div>${p.txt.substring(0,80)}...</div>
-    </div>`).join('');
-}
-function selectPhrase(i){
-  selectedPhrase = i;
-  document.querySelectorAll('.phrase-item').forEach((el,j)=>el.classList.toggle('selected',j===i));
-  document.getElementById('custom-msg').value = GROUP_PHRASES[i].txt;
-}
-async function sendCustomMsg(){
-  const phone = document.getElementById('grp-phone').value;
-  const msg = document.getElementById('custom-msg').value.trim();
-  if(!phone||!msg){alert('Preencha o telefone e a mensagem!');return;}
-  await sendText(phone, msg);
-}
-
-// ═══════════════════════════════════════════════════
-// AUTO SEND
-// ═══════════════════════════════════════════════════
-let _autoTimer = null;
-let _autoIdx = 0;
-function toggleAutoSend(){
-  const btn = document.getElementById('auto-btn');
-  const statusEl = document.getElementById('auto-status');
-  if(_autoTimer){
-    clearInterval(_autoTimer);
-    _autoTimer = null;
-    btn.textContent='▶ Ativar';
-    btn.className='btn btn-green btn-sm';
-    statusEl.textContent='Auto-envio desativado.';
-    log('⏹️ Auto-envio desativado.','info');
-    return;
-  }
-  const mins = parseInt(document.getElementById('auto-interval').value);
-  if(!mins){alert('Selecione o intervalo!');return;}
-  const phone = document.getElementById('grp-phone').value;
-  if(!phone){alert('Informe o destinatário!');return;}
-  btn.textContent='⏹ Parar';
-  btn.className='btn btn-red btn-sm';
-  statusEl.textContent=`Enviando a cada ${mins} minuto(s)...`;
-  log(`▶️ Auto-envio ativado — a cada ${mins}min para ${phone}`,'ok');
-  async function autoSend(){
-    const p = GROUP_PHRASES[_autoIdx % GROUP_PHRASES.length];
-    await sendText(phone, p.txt);
-    statusEl.textContent=`Última: "${p.tag}" — ${new Date().toLocaleTimeString('pt-BR')}`;
-    _autoIdx++;
-  }
-  autoSend();
-  _autoTimer = setInterval(autoSend, mins*60000);
-}
-
-// ═══════════════════════════════════════════════════
-// JOGOS AO VIVO (Z-API Copa)
-// ═══════════════════════════════════════════════════
-let _liveMatches = [];
-let _selectedMatch = null;
-let _monitorTimer = null;
-let _lastScores = {};
-
-async function fetchLiveMatches(){
-  const el = document.getElementById('live-matches-list');
-  el.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.4);padding:14px;">🔄 Buscando jogos...</div>';
+  const sub = document.getElementById('status-sub');
+  dot.className = 'status-dot check';
+  txt.textContent = 'Verificando...';
   try {
-    const r = await fetch('https://api.wc2026api.com/matches', {
-      headers:{Authorization:'Bearer wc2026_free'},
-      signal:AbortSignal.timeout(6000)
-    });
-    if(r.ok){
-      const data = await r.json();
-      _liveMatches = (Array.isArray(data)?data:data.matches||data.data||[]).map(m=>({
-        ...m,
-        home: m.home_team||m.home||'TBD',
-        away: m.away_team||m.away||'TBD',
-        home_flag: flagOf(m.home_team||m.home||''),
-        away_flag: flagOf(m.away_team||m.away||''),
-        home_score: m.home_score??m.score?.home??null,
-        away_score: m.away_score??m.score?.away??null,
-      }));
-      log(`✅ ${_liveMatches.length} jogos carregados da API`,'ok');
-    } else {
-      _liveMatches = getMockMatches();
-      log('⚠️ API offline, usando dados simulados','warn');
+    const r = await fetch(RAILWAY + '/health', { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    dot.className = 'status-dot on';
+    txt.textContent = '🟢 Railway Online';
+    sub.textContent = 'Versão · ' + (d.version||'—') + ' · ' + new Date().toLocaleTimeString('pt-BR');
+    if(d.stats) {
+      document.getElementById('kpi-sent').textContent   = d.stats.enviados ?? d.stats.sent ?? '—';
+      document.getElementById('kpi-erros').textContent  = d.stats.erros ?? d.stats.errors ?? '—';
+    }
+    if(d.uptime) {
+      const u = Math.floor(d.uptime/60);
+      document.getElementById('kpi-uptime').textContent = u < 60 ? u+'m' : Math.floor(u/60)+'h';
+    }
+    addLog('Railway online · ' + (d.version||'ok'), 'ok');
+  } catch(e) {
+    dot.className = 'status-dot off';
+    txt.textContent = '🔴 Railway Offline';
+    sub.textContent = e.message;
+    addLog('Railway offline: ' + e.message, 'err');
+  }
+  loadRpaStatus();
+}
+
+// ── RPA ───────────────────────────────────────────────────────
+async function loadRpaStatus(){
+  try {
+    const r = await fetch(RAILWAY + '/api/rpa/status', { signal: AbortSignal.timeout(6000) });
+    if(!r.ok) return;
+    const d = await r.json();
+
+    const badge   = document.getElementById('rpa-badge');
+    const btnTog  = document.getElementById('btn-toggle');
+    const enabled = d.enabled !== false;
+
+    badge.textContent  = enabled ? '🟢 Ativo' : '🔴 Pausado';
+    badge.style.background    = enabled ? 'rgba(22,168,75,.2)' : 'rgba(229,57,53,.15)';
+    badge.style.borderColor   = enabled ? 'rgba(22,168,75,.3)' : 'rgba(229,57,53,.3)';
+    badge.style.color         = enabled ? '#a5d6a7' : '#ef9a9a';
+    btnTog.textContent        = enabled ? '⏸ Pausar RPA' : '▶ Retomar RPA';
+
+    const el = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+    el('rpa-enviadas', d.sent    ?? '—');
+    el('rpa-cache',    d.queued  ?? '—');
+    el('rpa-noticias', d.newsCount ?? '—');
+
+    if(d.lastNews){
+      document.getElementById('rpa-ultima').textContent =
+        '🕐 Cache atualizado: ' + new Date(d.lastNews).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }
   } catch(e) {
-    _liveMatches = getMockMatches();
-    log(`⚠️ Erro API: ${e.message} — usando simulado`,'warn');
-  }
-  renderMatchList();
-}
-
-function getMockMatches(){
-  return [
-    {id:5,home:'Brasil',away:'Marrocos',home_flag:'🇧🇷',away_flag:'🇲🇦',home_score:null,away_score:null,status:'scheduled',phase:'PRE',stadium:'MetLife Stadium',kickoff_utc:'2026-06-13T19:00:00Z'},
-    {id:19,home:'Argentina',away:'Argélia',home_flag:'🇦🇷',away_flag:'🇩🇿',home_score:null,away_score:null,status:'scheduled',phase:'PRE',stadium:'Hard Rock Stadium',kickoff_utc:'2026-06-16T22:00:00Z'},
-    {id:17,home:'França',away:'Senegal',home_flag:'🇫🇷',away_flag:'🇸🇳',home_score:null,away_score:null,status:'scheduled',phase:'PRE',stadium:'MetLife Stadium',kickoff_utc:'2026-06-16T16:00:00Z'},
-  ];
-}
-
-const FLAG_MAP={'Brasil':'🇧🇷','Brazil':'🇧🇷','Argentina':'🇦🇷','França':'🇫🇷','France':'🇫🇷','Espanha':'🇪🇸','Spain':'🇪🇸','Alemanha':'🇩🇪','Germany':'🇩🇪','Portugal':'🇵🇹','Inglaterra':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Holanda':'🇳🇱','Netherlands':'🇳🇱','Marrocos':'🇲🇦','Morocco':'🇲🇦','Senegal':'🇸🇳','Argélia':'🇩🇿','Algeria':'🇩🇿','México':'🇲🇽','Mexico':'🇲🇽','EUA':'🇺🇸','USA':'🇺🇸','United States':'🇺🇸','Canadá':'🇨🇦','Canada':'🇨🇦','Coreia do Sul':'🇰🇷','South Korea':'🇰🇷','Japão':'🇯🇵','Japan':'🇯🇵','Austrália':'🇦🇺','Australia':'🇦🇺','Irã':'🇮🇷','Iran':'🇮🇷'};
-function flagOf(n){return FLAG_MAP[n]||'🏳️';}
-
-function renderMatchList(){
-  const el = document.getElementById('live-matches-list');
-  if(!_liveMatches.length){
-    el.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);padding:14px;">Nenhum jogo encontrado</div>';
-    return;
-  }
-  const live = _liveMatches.filter(m=>['1H','HT','2H','ET1','ET2','PEN'].includes(m.phase||m.status));
-  const soon = _liveMatches.filter(m=>{
-    const ph=m.phase||m.status;
-    if(['1H','HT','2H','ET1','ET2','PEN','FT','FT_PEN'].includes(ph))return false;
-    const dt=new Date(m.kickoff_utc||m.kickoff||0);
-    return dt-Date.now()<7200000&&dt>Date.now();
-  });
-  const all = [...live,...soon,..._liveMatches.filter(m=>!live.includes(m)&&!soon.includes(m))].slice(0,10);
-  el.innerHTML = all.map((m,i)=>{
-    const ph=m.phase||m.status;
-    const isLive=['1H','HT','2H','ET1','ET2','PEN'].includes(ph);
-    const isFT=['FT','FT_PEN'].includes(ph);
-    const score=m.home_score!==null?`${m.home_score} — ${m.away_score}`:'vs';
-    const badgeHtml=isLive?'<span class="badge live">🔴 Ao vivo</span>':isFT?'<span class="badge ft">Encerrado</span>':'<span class="badge sched">Agendado</span>';
-    return `<div class="match-card" id="mc-${i}" onclick="selectMatch(${i})">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;">
-        <div class="match-teams">${m.home_flag} ${m.home} ${score} ${m.away} ${m.away_flag}</div>
-        ${badgeHtml}
-      </div>
-      <div class="match-meta">${m.stadium||''} ${m.group_name?'· Grupo '+m.group_name:''}</div>
-    </div>`;
-  }).join('');
-  _liveMatches = all;
-}
-
-function selectMatch(i){
-  _selectedMatch = _liveMatches[i];
-  document.querySelectorAll('.match-card').forEach((el,j)=>el.classList.toggle('selected',j===i));
-  updateLiveMsgPreview();
-  log(`✅ Jogo selecionado: ${_selectedMatch.home} x ${_selectedMatch.away}`,'info');
-}
-
-function updateLiveMsgPreview(){
-  const type = document.getElementById('live-msg-type').value;
-  const msg = getLiveMsg(type, _selectedMatch);
-  document.getElementById('live-preview').textContent = msg;
-}
-
-async function sendLiveUpdate(){
-  const phone = document.getElementById('live-phone').value;
-  if(!phone){alert('Informe o destinatário!');return;}
-  const type = document.getElementById('live-msg-type').value;
-  const msg = getLiveMsg(type, _selectedMatch);
-  await sendText(phone, msg);
-}
-
-// ── MONITOR AUTOMÁTICO ──────────────────────────────
-async function toggleMonitor(){
-  const btn = document.getElementById('monitor-btn');
-  const statusEl = document.getElementById('monitor-status');
-  if(_monitorTimer){
-    clearInterval(_monitorTimer);
-    _monitorTimer=null;
-    btn.textContent='▶ Iniciar monitor de jogos';
-    btn.className='btn btn-green';
-    statusEl.textContent='Monitor parado.';
-    log('⏹️ Monitor de jogos parado.','info');
-    return;
-  }
-  const phone = document.getElementById('monitor-phone').value;
-  if(!phone){alert('Informe o destinatário!');return;}
-  btn.textContent='⏹ Parar monitor';
-  btn.className='btn btn-red';
-  statusEl.textContent='Monitor ativo — verificando a cada 2 minutos...';
-  log(`▶️ Monitor ativado para ${phone}`,'ok');
-  async function monitorCheck(){
-    try {
-      const r = await fetch('https://api.wc2026api.com/matches',{headers:{Authorization:'Bearer wc2026_free'},signal:AbortSignal.timeout(5000)});
-      if(!r.ok) return;
-      const data = await r.json();
-      const matches = Array.isArray(data)?data:data.matches||data.data||[];
-      for(const m of matches){
-        const ph=m.phase||m.status;
-        const key=m.id;
-        const hs=m.home_score??null, as_=m.away_score??null;
-        const prev=_lastScores[key];
-        const home=m.home_team||m.home||'?', away=m.away_team||m.away||'?';
-        const hf=flagOf(home), af=flagOf(away);
-        const mObj={home,away,home_flag:hf,away_flag:af,home_score:hs,away_score:as_,stadium:m.stadium||''};
-        // Detectar início
-        if(!prev&&['1H','2H'].includes(ph)){
-          _lastScores[key]={hs,as_,ph};
-          await sendText(phone,getLiveMsg('start',mObj));
-          log(`🎉 Jogo iniciado: ${home} x ${away}`,'ok');
-        }
-        // Detectar gol
-        if(prev&&hs!==null&&as_!==null&&(hs!==prev.hs||as_!==prev.as_)){
-          _lastScores[key]={hs,as_,ph};
-          await sendText(phone,getLiveMsg('goal',mObj));
-          log(`⚽ GOL! ${home} ${hs} x ${as_} ${away}`,'ok');
-        }
-        // Detectar intervalo
-        if(prev&&ph==='HT'&&prev.ph!=='HT'){
-          _lastScores[key]={...prev,ph};
-          await sendText(phone,getLiveMsg('ht',mObj));
-          log(`☕ Intervalo: ${home} x ${away}`,'info');
-        }
-        // Detectar fim
-        if(prev&&['FT','FT_PEN'].includes(ph)&&!['FT','FT_PEN'].includes(prev.ph)){
-          _lastScores[key]={hs,as_,ph};
-          await sendText(phone,getLiveMsg('ft',mObj));
-          log(`🏁 Fim de jogo: ${home} ${hs} x ${as_} ${away}`,'ok');
-        }
-        if(!prev) _lastScores[key]={hs,as_,ph};
-      }
-      statusEl.textContent=`Última verificação: ${new Date().toLocaleTimeString('pt-BR')} — ${matches.filter(m=>['1H','2H'].includes(m.phase||m.status)).length} jogo(s) ao vivo`;
-    } catch(e){ log(`⚠️ Monitor: ${e.message}`,'warn'); }
-  }
-  monitorCheck();
-  _monitorTimer = setInterval(monitorCheck, 2*60000);
-}
-
-// ═══════════════════════════════════════════════════
-// FIGURINHAS — cross-match de usuários
-// ═══════════════════════════════════════════════════
-const ALL_TEAMS=[['ARG','Argentina','🇦🇷'],['BRA','Brasil','🇧🇷'],['FRA','França','🇫🇷'],['ESP','Espanha','🇪🇸'],['ENG','Inglaterra','🏴󠁧󠁢󠁥󠁮󠁧󠁿'],['GER','Alemanha','🇩🇪'],['POR','Portugal','🇵🇹'],['NED','Holanda','🇳🇱'],['BEL','Bélgica','🇧🇪'],['ITA','Itália','🇮🇹'],['URU','Uruguai','🇺🇾'],['USA','EUA','🇺🇸'],['MEX','México','🇲🇽'],['CAN','Canadá','🇨🇦'],['COL','Colômbia','🇨🇴'],['ECU','Equador','🇪🇨'],['CHI','Chile','🇨🇱'],['VEN','Venezuela','🇻🇪'],['MAR','Marrocos','🇲🇦'],['SEN','Senegal','🇸🇳'],['NGA','Nigéria','🇳🇬'],['EGY','Egito','🇪🇬'],['JPN','Japão','🇯🇵'],['KOR','Coreia do Sul','🇰🇷'],['AUS','Austrália','🇦🇺'],['IRN','Irã','🇮🇷'],['SAU','Arábia Saudita','🇸🇦'],['CHN','China','🇨🇳'],['SUI','Suíça','🇨🇭'],['AUT','Áustria','🇦🇹'],['POL','Polônia','🇵🇱'],['CRO','Croácia','🇭🇷'],['DEN','Dinamarca','🇩🇰'],['SWE','Suécia','🇸🇪'],['SCO','Escócia','🏴󠁧󠁢󠁳󠁣󠁴󠁿'],['UKR','Ucrânia','🇺🇦'],['SRB','Sérvia','🇷🇸'],['GHA','Gana','🇬🇭'],['PAR','Paraguai','🇵🇾'],['QAT','Catar','🇶🇦'],['IRQ','Iraque','🇮🇶'],['NOR','Noruega','🇳🇴'],['BOL','Bolívia','🇧🇴'],['HAI','Haiti','🇭🇹'],['ALG','Argélia','🇩🇿'],['UZB','Uzbequistão','🇺🇿'],['NZL','Nova Zelândia','🇳🇿'],['CIV','Costa do Marfim','🇨🇮']];
-const ALL_STICKERS=[]; ALL_TEAMS.forEach(([c,n,f])=>{for(let i=1;i<=20;i++)ALL_STICKERS.push({id:c+i,team:c,n:i,teamName:n,flag:f});});
-
-function getUsers(){ try{return JSON.parse(localStorage.getItem('t26_users')||'[]');}catch{return[];} }
-
-function loadStickerUsers(){
-  const users = getUsers();
-  const sel = document.getElementById('sticker-user-sel');
-  sel.innerHTML='<option value="">Selecione um usuário...</option>';
-  users.forEach(u=>{
-    const o=document.createElement('option');
-    o.value=u.phone;
-    o.textContent=`${u.name} (${u.phone})`;
-    sel.appendChild(o);
-  });
-  if(!users.length){
-    document.getElementById('sticker-matches-area').innerHTML='<div class="alert warn"><div>⚠️</div><div>Nenhum usuário encontrado no localStorage. Abra o sistema principal primeiro.</div></div>';
+    addLog('Erro ao carregar status RPA: ' + e.message, 'err');
   }
 }
 
-function onStickerUserChange(){
-  const phone = document.getElementById('sticker-user-sel').value;
-  if(!phone){document.getElementById('sticker-matches-area').innerHTML='';return;}
-  const users = getUsers();
-  const me = users.find(u=>u.phone===phone);
-  if(!me)return;
-  const mySt=me.stickers||{};
-  const myNeed=new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)===0).map(s=>s.id));
-  const others=users.filter(u=>u.phone!==phone);
-  const matches=[];
-  others.forEach(u=>{
-    const ust=u.stickers||{};
-    const theyHave=ALL_STICKERS.filter(s=>myNeed.has(s.id)&&(ust[s.id]||0)===2).map(s=>s.id);
-    if(theyHave.length) matches.push({u,theyHave});
-  });
-  const area=document.getElementById('sticker-matches-area');
-  if(!matches.length){
-    area.innerHTML='<div class="alert ok"><div>✅</div><div>Nenhum membro tem figurinhas que este usuário precisa no momento.</div></div>';
-    return;
-  }
-  area.innerHTML=matches.map(m=>`
-    <div style="background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);border-radius:10px;padding:10px 12px;margin-bottom:7px;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;margin-bottom:4px;">
-        ${m.u.avatar||'⚽'} ${m.u.name} — ${m.theyHave.length} figurinha(s) para ${me.name.split(' ')[0]}
-      </div>
-      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:7px;">${m.theyHave.slice(0,8).join(', ')}${m.theyHave.length>8?` +${m.theyHave.length-8} mais`:''}</div>
-      <button onclick="prepStickerNotif('${me.phone}','${me.name}','${m.u.phone}','${m.u.name}','${m.theyHave.slice(0,5).join(',')}','${m.u.phone}')" class="btn btn-wa btn-sm">📱 Notificar ${me.name.split(' ')[0]} agora</button>
-    </div>`).join('');
-}
-
-function prepStickerNotif(destPhone, destName, ownerPhone, ownerName, codes, ownerWaPhone){
-  const codesArr=codes.split(',');
-  const msg = `🎴 OI ${destName.split(' ')[0].toUpperCase()}! NOVIDADE! 🎉\n\n*${ownerName}* tem ${codesArr.length>1?'as figurinhas':'a figurinha'} que você precisa!\n\n🃏 ${codesArr.join(', ')}\n\nChama ele(a) agora e combinem a troca! 👇\n📱 WhatsApp: wa.me/55${ownerWaPhone.replace(/\D/g,'')}\n\n#FamíliaTomelin #Copa2026 🏆🇧🇷`;
-  document.getElementById('stk-phone-dest').value=destPhone;
-  document.getElementById('stk-msg').value=msg;
-  log(`✏️ Mensagem preparada para ${destName} sobre ${ownerName}`,'info');
-}
-
-async function sendStickerNotif(){
-  const phone=document.getElementById('stk-phone-dest').value.trim();
-  const msg=document.getElementById('stk-msg').value.trim();
-  if(!phone||!msg){alert('Preencha o telefone e a mensagem!');return;}
-  await sendText(phone,msg);
-}
-
-// ═══════════════════════════════════════════════════
-// TABS
-// ═══════════════════════════════════════════════════
-function switchTab(i){
-  [0,1,2,3].forEach(j=>{
-    document.getElementById(`panel-${j}`).style.display=j===i?'block':'none';
-    const btn=document.getElementById(`tab-${j}`);
-    btn.style.background=j===i?'rgba(245,197,24,.18)':'transparent';
-    btn.style.color=j===i?'var(--gold)':'rgba(255,255,255,.4)';
-  });
-  if(i===2)loadStickerUsers();
-  if(i===1){if(!_liveMatches.length)fetchLiveMatches();updateLiveMsgPreview();}
-}
-
-// ═══════════════════════════════════════════════════
-// LOG
-// ═══════════════════════════════════════════════════
-function log(msg, type='info'){
-  const el=document.getElementById('send-log');
-  const d=document.createElement('div');
-  d.className=`log-line ${type}`;
-  d.textContent=`[${new Date().toLocaleTimeString('pt-BR')}] ${msg}`;
-  el.appendChild(d);
-  el.scrollTop=el.scrollHeight;
-}
-
-// ═══════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════
-buildPhrases();
-checkStatus();
-updateLiveMsgPreview();
-
-// ── RPA NOTÍCIAS ──────────────────────────────────────
-async function loadRpaStatus() {
+async function rpaToggle(){
+  const btn = document.getElementById('btn-toggle');
+  btn.disabled = true;
   try {
-    const r = await fetch(RAILWAY_URL + '/api/rpa/status', { signal: AbortSignal.timeout(6000) });
-    if (!r.ok) return;
+    const r = await fetch(RAILWAY + '/api/rpa/toggle', { method:'POST', signal: AbortSignal.timeout(8000) });
     const d = await r.json();
-    const badge = document.getElementById('rpa-status-badge');
-    if (badge) {
-      badge.textContent = d.enabled ? '🟢 Ativo' : '🔴 Pausado';
-      badge.style.background = d.enabled ? 'rgba(22,168,75,.2)' : 'rgba(229,57,53,.15)';
-      badge.style.borderColor = d.enabled ? 'rgba(22,168,75,.3)' : 'rgba(229,57,53,.3)';
-      badge.style.color = d.enabled ? '#a5d6a7' : '#ef9a9a';
-    }
-    const el = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
-    el('rpa-sent',   d.sent    ?? '—');
-    el('rpa-queued', d.queued  ?? '—');
-    el('rpa-count',  d.newsCount ?? '—');
-    if (d.lastNews) {
-      const last = document.getElementById('rpa-last');
-      if (last) last.textContent = '🕐 Última atualização: ' + new Date(d.lastNews).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-    }
-  } catch(e) { console.warn('[RPA]', e.message); }
-}
-
-async function rpaToggle() {
-  try {
-    const r = await fetch(RAILWAY_URL + '/api/rpa/toggle', { method: 'POST', signal: AbortSignal.timeout(6000) });
-    const d = await r.json();
-    showToast(d.enabled ? '📰 RPA ativado!' : '⏸ RPA pausado', d.enabled ? '#a5d6a7' : '#ef9a9a');
+    toast(d.enabled ? '📰 RPA ativado!' : '⏸ RPA pausado', d.enabled ? '#a5d6a7' : '#ef9a9a');
+    addLog('RPA ' + (d.enabled ? 'ativado' : 'pausado'), d.enabled ? 'ok' : 'info');
     loadRpaStatus();
-  } catch(e) { showToast('❌ ' + e.message, '#ef9a9a'); }
+  } catch(e) {
+    toast('❌ ' + e.message, 'var(--red)');
+    addLog('Erro toggle RPA: ' + e.message, 'err');
+  }
+  btn.disabled = false;
 }
 
-async function rpaRunNow() {
+async function rpaRunNow(){
+  const btn = document.getElementById('btn-runnow');
+  btn.disabled = true;
+  btn.textContent = '⏳ Executando...';
+  addLog('Disparando RPA manualmente...', 'info');
   try {
-    const btn = event.target;
-    btn.disabled = true; btn.textContent = '⏳ Executando...';
-    const r = await fetch(RAILWAY_URL + '/api/rpa/run-now', { method: 'POST', signal: AbortSignal.timeout(15000) });
+    const r = await fetch(RAILWAY + '/api/rpa/run-now', { method:'POST', signal: AbortSignal.timeout(20000) });
     const d = await r.json();
-    showToast('▶ RPA executado!', 'var(--gold)');
-    setTimeout(() => { btn.disabled = false; btn.textContent = '▶ Rodar agora'; loadRpaStatus(); }, 3000);
-  } catch(e) { 
-    event.target.disabled = false; event.target.textContent = '▶ Rodar agora';
-    showToast('❌ ' + e.message, '#ef9a9a'); 
+    toast('🚀 RPA executado! Verifique o WhatsApp.', 'var(--gold)');
+    addLog('RPA executado com sucesso', 'ok');
+    setTimeout(()=>{ loadRpaStatus(); checkStatus(); }, 3000);
+  } catch(e) {
+    toast('❌ ' + e.message, 'var(--red)');
+    addLog('Erro ao executar RPA: ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.textContent = '▶ Rodar agora';
+}
+
+// ── Enviar ────────────────────────────────────────────────────
+async function enviarGrupo(){
+  const msg = document.getElementById('msg-grupo').value.trim();
+  if(!msg){ toast('⚠️ Digite uma mensagem','var(--red)'); return; }
+  try {
+    const r = await fetch(RAILWAY + '/api/send-group', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message: msg }), signal: AbortSignal.timeout(12000)
+    });
+    const d = await r.json();
+    if(d.ok || d.messageId || d.zaapId){
+      toast('✅ Mensagem enviada no grupo!','var(--wa)');
+      addLog('Grupo ← ' + msg.substring(0,50), 'ok');
+      document.getElementById('msg-grupo').value = '';
+    } else {
+      toast('❌ Falha: ' + JSON.stringify(d).substring(0,60),'var(--red)');
+      addLog('Erro grupo: ' + JSON.stringify(d).substring(0,60), 'err');
+    }
+  } catch(e){ toast('❌ ' + e.message,'var(--red)'); addLog('Erro envio grupo: '+e.message,'err'); }
+}
+
+async function enviarPrivado(){
+  const phone = document.getElementById('msg-phone').value.trim();
+  const msg   = document.getElementById('msg-priv').value.trim();
+  if(!phone||!msg){ toast('⚠️ Preencha telefone e mensagem','var(--red)'); return; }
+  try {
+    const r = await fetch(RAILWAY + '/api/send', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ phone, message: msg }), signal: AbortSignal.timeout(12000)
+    });
+    const d = await r.json();
+    if(d.ok||d.messageId||d.zaapId){
+      toast('✅ Mensagem privada enviada!','var(--wa)');
+      addLog('Privado → '+phone+': '+msg.substring(0,40),'ok');
+      document.getElementById('msg-priv').value='';
+    } else {
+      toast('❌ Falha: '+JSON.stringify(d).substring(0,60),'var(--red)');
+    }
+  } catch(e){ toast('❌ '+e.message,'var(--red)'); }
+}
+
+// ── Encurtador ────────────────────────────────────────────────
+async function encurtarUrl(){
+  const url = document.getElementById('url-longa').value.trim();
+  if(!url||!url.startsWith('http')){ toast('⚠️ URL inválida','var(--red)'); return; }
+  try {
+    const r = await fetch(RAILWAY + '/api/shorten?url=' + encodeURIComponent(url),
+      { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    if(d.ok && d.short){
+      document.getElementById('url-resultado').style.display = 'block';
+      document.getElementById('url-curta').textContent = d.short;
+      addLog('Link encurtado: ' + d.short, 'ok');
+    } else { toast('❌ Erro ao encurtar','var(--red)'); }
+  } catch(e){ toast('❌ '+e.message,'var(--red)'); }
+}
+
+function copiarLink(){
+  const link = document.getElementById('url-curta').textContent;
+  if(navigator.clipboard){ navigator.clipboard.writeText(link); }
+  else { const ta=document.createElement('textarea');ta.value=link;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta); }
+  toast('📋 Copiado!','var(--gold)');
+}
+
+async function carregarLinks(){
+  const el = document.getElementById('lista-links');
+  el.innerHTML = '<div style="color:var(--gray);text-align:center;">Carregando...</div>';
+  try {
+    const r = await fetch(RAILWAY + '/api/links', { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    if(!d.links||!d.links.length){
+      el.innerHTML = '<div style="color:var(--gray);text-align:center;padding:10px;">Nenhum link ainda</div>';
+      return;
+    }
+    el.innerHTML = d.links.slice(0,20).map(l=>`
+      <div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--gold);">/s/${l.code}</div>
+          <div style="font-size:10px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.url.substring(0,60)}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;">${l.hits}</div>
+          <div style="font-size:9px;color:var(--gray);">cliques</div>
+        </div>
+      </div>`).join('');
+  } catch(e){
+    el.innerHTML = '<div style="color:#ef9a9a;text-align:center;">Erro: '+e.message+'</div>';
   }
 }
 
-// Load RPA status on page load and every 30s
-loadRpaStatus();
-setInterval(loadRpaStatus, 30000);
+// ── Monitor ───────────────────────────────────────────────────
+async function setMonitor(active){
+  try {
+    const r = await fetch(RAILWAY + '/api/monitor/' + (active?'on':'off'),
+      { method:'POST', signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    toast(active ? '🟢 Monitor ativado' : '⛔ Monitor pausado', active?'#a5d6a7':'#ef9a9a');
+    addLog('Monitor '+(active?'ativado':'pausado'), active?'ok':'info');
+  } catch(e){ toast('❌ '+e.message,'var(--red)'); }
+}
 
+// ── Init ─────────────────────────────────────────────────────
+checkStatus();
+setInterval(loadRpaStatus, 30000);
+setInterval(checkStatus,   120000);
 </script>
 </body>
 </html>
