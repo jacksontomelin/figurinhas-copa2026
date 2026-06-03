@@ -460,10 +460,46 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
         <input type="password" id="a-pass" placeholder="••••••" autocomplete="current-password">
         <div class="emsg" id="e-apass">Senha incorreta.</div></div>
       <button class="btn btn-gold" onclick="doLogin()">🔐 Entrar</button>
-      <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray);">
-        Não tem conta? <button class="link-btn" onclick="showForm('reg')">Cadastrar-se grátis</button>
+      <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--gray);">
+        <button class="link-btn" onclick="showForm('reg')">Criar conta grátis</button>
+        &nbsp;·&nbsp;
+        <button class="link-btn" onclick="showForm('recover')" style="color:var(--gray);">Esqueci a senha</button>
       </div>
     </div>
+    <!-- RECUPERAÇÃO DE SENHA -->
+    <div id="f-recover" style="display:none;">
+      <div class="sec-lbl">🔐 Recuperar acesso</div>
+      <div class="card-ttl">Redefinir minha senha</div>
+      <div id="recover-step-1">
+        <div class="fg"><label>Seu telefone WhatsApp</label>
+          <input type="tel" id="rec-phone" placeholder="(47) 00000-0000">
+          <div class="emsg" id="e-recphone">Telefone não encontrado.</div>
+        </div>
+        <button class="btn btn-gold" onclick="doSendRecovery()">📱 Enviar código pelo WhatsApp</button>
+      </div>
+      <div id="recover-step-2" style="display:none;">
+        <div style="background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.25);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;color:#a5d6a7;">
+          ✅ Código enviado! Verifique seu WhatsApp.
+        </div>
+        <div class="fg"><label>Código recebido (6 dígitos)</label>
+          <input type="text" id="rec-code" placeholder="000000" maxlength="6" style="letter-spacing:8px;font-size:20px;text-align:center;">
+          <div class="emsg" id="e-reccode">Código inválido ou expirado.</div>
+        </div>
+        <div class="fg"><label>Nova senha</label>
+          <input type="password" id="rec-newpass" placeholder="Mínimo 4 caracteres">
+          <div class="emsg" id="e-recpass">Senha muito curta.</div>
+        </div>
+        <div class="fg"><label>Confirmar nova senha</label>
+          <input type="password" id="rec-newpass2" placeholder="Repita a senha">
+          <div class="emsg" id="e-recpass2">As senhas não coincidem.</div>
+        </div>
+        <button class="btn btn-gold" onclick="doConfirmRecovery()">✅ Redefinir senha</button>
+      </div>
+      <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray);">
+        <button class="link-btn" onclick="showForm('login')">← Voltar ao login</button>
+      </div>
+    </div>
+
     <!-- REGISTER -->
     <div id="f-reg" style="display:none;">
       <div class="sec-lbl">🎴 Criar conta</div>
@@ -1870,6 +1906,8 @@ function hash(s){let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCode
 function showForm(w){
   document.getElementById('f-login').style.display=w==='login'?'block':'none';
   document.getElementById('f-reg').style.display=w==='reg'?'block':'none';
+  const fRec=document.getElementById('f-recover');
+  if(fRec) fRec.style.display=w==='recover'?'block':'none';
 }
 function doLogin(){
   const phone=document.getElementById('a-phone').value.replace(/\D/g,'');
@@ -2011,8 +2049,9 @@ function renderAlbum(){
   const st=u.stickers||{};
   const mktCodes=new Set(getMarket().filter(m=>m.owner===u.phone).map(m=>m.code));
 
-  let total=ALL_STICKERS.length,have=0,need=0,dup=0;
-  ALL_STICKERS.forEach(s=>{const v=st[s.id]||0;if(v===1)have++;else if(v===2)dup++;else need++;});
+  const _countable=ALL_STICKERS.filter(s=>!s.special);
+  let total=_countable.length,have=0,need=0,dup=0;
+  _countable.forEach(s=>{const v=st[s.id]||0;if(v===1)have++;else if(v===2)dup++;else need++;});
   const pct=Math.round((have+dup)/total*100);
 
   // Build album HTML
@@ -2217,7 +2256,7 @@ function renderTrades(){
       <div class="div"></div>
       <!-- Matches ativos -->
       <div class="sec-lbl">🤝 Meus matches de troca</div>
-      <div id="my-matches-section">${renderMyMatches()}</div>
+      <div id="my-matches-section">${(()=>{try{return renderMyMatches();}catch(e){return "";}})()}</div>
       <div class="div"></div>
       <!-- Sugestões de match -->
       <div class="sec-lbl">🎯 Melhores parceiros para trocar</div>
@@ -2823,6 +2862,141 @@ async function sendConfirmationWA(name, phone) {
   } catch(e) { console.warn('[Bot] Falha confirmação:', e.message); }
 }
 
+
+// ═══════════════════════════════════════════════════
+// 🔐 RECUPERAÇÃO DE SENHA VIA WHATSAPP
+// ═══════════════════════════════════════════════════
+const _recCodes = {}; // { phone: { code, ts, attempts } }
+
+function doSendRecovery(){
+  const phoneRaw = document.getElementById('rec-phone').value.replace(/\D/g,'');
+  const phone = phoneRaw.startsWith('55') ? phoneRaw : '55'+phoneRaw;
+  const phoneShort = phoneRaw.replace(/^55/,'');
+  const errEl = document.getElementById('e-recphone');
+
+  // Validate user exists
+  const u = getUserByPhone(phoneShort) || getUserByPhone(phone) || getUserByPhone(phoneRaw);
+  if(!u){
+    document.getElementById('rec-phone').classList.add('err');
+    errEl.classList.add('show');
+    return;
+  }
+  document.getElementById('rec-phone').classList.remove('err');
+  errEl.classList.remove('show');
+
+  // Generate 6-digit code
+  const code = String(Math.floor(100000 + Math.random()*900000));
+  _recCodes[phoneShort] = { code, ts: Date.now(), phone: u.phone };
+
+  const msg = `🔐 *Família Tomelin — Recuperação de Senha*\n\nOlá, *${u.name.split(' ')[0]}*!\n\nSeu código de verificação é:\n\n*${code}*\n\nDigite este código no sistema para redefinir sua senha.\nO código expira em 10 minutos.\n\n_Família Tomelin · Copa 2026_ 🏆`;
+
+  // Send via Z-API
+  const railwayUrl = localStorage.getItem('t26_railway_url')||'';
+  if(railwayUrl){
+    fetch(railwayUrl+'/api/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone: u.phone, message: msg}),
+      signal:AbortSignal.timeout(8000)
+    }).then(r=>r.json()).then(d=>{
+      if(d.ok) _showRecoveryStep2(phoneShort);
+      else _zapiSendRecovery(u.phone, msg, phoneShort);
+    }).catch(()=>_zapiSendRecovery(u.phone, msg, phoneShort));
+  } else {
+    _zapiSendRecovery(u.phone, msg, phoneShort);
+  }
+
+  toast('📱 Enviando código...','var(--gold)');
+}
+
+function _zapiSendRecovery(phone, msg, phoneShort){
+  let p = phone.replace(/\D/g,'');
+  if(!p.startsWith('55')) p = '55'+p;
+  fetch('https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Client-Token':'Ff0f0920827ca4987818cafa9ba0f97a7S'},
+    body:JSON.stringify({phone:p, message:msg}),
+    signal:AbortSignal.timeout(8000)
+  }).then(r=>r.json()).then(d=>{
+    if(d.zaapId||d.messageId) _showRecoveryStep2(phoneShort);
+    else toast('❌ Erro ao enviar. Verifique seu número.','var(--red)');
+  }).catch(()=>toast('❌ Sem conexão. Tente novamente.','var(--red)'));
+}
+
+function _showRecoveryStep2(phoneShort){
+  document.getElementById('recover-step-1').style.display='none';
+  document.getElementById('recover-step-2').style.display='block';
+  // Store for verification
+  document.getElementById('rec-code').dataset.phone = phoneShort;
+  toast('✅ Código enviado! Confira seu WhatsApp.','var(--wa)');
+}
+
+function doConfirmRecovery(){
+  const phoneShort = document.getElementById('rec-code').dataset.phone||'';
+  const code = document.getElementById('rec-code').value.trim();
+  const newPass = document.getElementById('rec-newpass').value;
+  const newPass2 = document.getElementById('rec-newpass2').value;
+
+  let valid = true;
+
+  // Validate code
+  const stored = _recCodes[phoneShort];
+  const expired = !stored || (Date.now()-stored.ts > 10*60*1000);
+  if(!stored || stored.code !== code || expired){
+    document.getElementById('rec-code').classList.add('err');
+    document.getElementById('e-reccode').classList.add('show');
+    document.getElementById('e-reccode').textContent = expired ? 'Código expirado. Solicite um novo.' : 'Código inválido.';
+    valid = false;
+  } else {
+    document.getElementById('rec-code').classList.remove('err');
+    document.getElementById('e-reccode').classList.remove('show');
+  }
+
+  if(newPass.length < 4){
+    document.getElementById('rec-newpass').classList.add('err');
+    document.getElementById('e-recpass').classList.add('show');
+    valid = false;
+  } else {
+    document.getElementById('rec-newpass').classList.remove('err');
+    document.getElementById('e-recpass').classList.remove('show');
+  }
+
+  if(newPass !== newPass2){
+    document.getElementById('rec-newpass2').classList.add('err');
+    document.getElementById('e-recpass2').classList.add('show');
+    valid = false;
+  } else {
+    document.getElementById('rec-newpass2').classList.remove('err');
+    document.getElementById('e-recpass2').classList.remove('show');
+  }
+
+  if(!valid) return;
+
+  // Update password
+  const users = getUsers();
+  const uIdx = users.findIndex(u=>u.phone===phoneShort||u.phone===(stored&&stored.phone));
+  if(uIdx < 0){ toast('❌ Usuário não encontrado.','var(--red)'); return; }
+  users[uIdx].passHash = hash(newPass);
+  js(K.USERS, users);
+
+  // Clean up code
+  delete _recCodes[phoneShort];
+
+  toast('✅ Senha redefinida com sucesso!','var(--wa)');
+  launchConfetti();
+
+  // Return to login after 2s
+  setTimeout(()=>{
+    document.getElementById('rec-phone').value='';
+    document.getElementById('rec-code').value='';
+    document.getElementById('rec-newpass').value='';
+    document.getElementById('rec-newpass2').value='';
+    document.getElementById('recover-step-1').style.display='block';
+    document.getElementById('recover-step-2').style.display='none';
+    showForm('login');
+  }, 2000);
+}
+
 // 🟢 ONLINE COUNTER + GRUPO WA TRACKER
 // ═══════════════════════════════════════════════════
 const K_WA_JOINED = 't26_wa_joined'; // Set of phones that clicked the WA link
@@ -2987,30 +3161,24 @@ async function onMarketPublish(ownerPhone, codes){
   if(sent>0) console.log(`[Z-API] Notificados ${sent} usuário(s) sobre figurinhas disponíveis`);
 }
 
-// Hook no doSellNew para disparar notificações
-const _origDoSellNew = window.doSellNew;
-window.doSellNew = async function(){
-  const me = getCurrentUser(); if(!me)return;
-  const codes = [...(_sellSelected||[])];
-  if(typeof _origDoSellNew==='function') _origDoSellNew();
-  // Notify via Railway after save
-  if(codes.length>0){
-    setTimeout(async()=>{
-      try {
-        if(RAILWAY_URL){
-          await fetch(`${RAILWAY_URL}/api/sync-market`,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({items:getMarket(),ownerPhone:me.phone}),
-            signal:AbortSignal.timeout(8000)
-          });
-        } else {
-          await onMarketPublish(me.phone, codes);
-        }
-      } catch(e){ console.warn('[Bot] Notificação falhou:', e); }
-    }, 1500);
-  }
-};
+// Hook automático no mercado — notifica via Railway quando publicado
+// Chamado diretamente de doSellNew após publicar
+async function _afterMarketPublish(ownerPhone, codes){
+  if(!codes||!codes.length) return;
+  const railwayUrl = localStorage.getItem('t26_railway_url')||'';
+  try {
+    if(railwayUrl){
+      await fetch(railwayUrl+'/api/sync-market',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({items:getMarket(),ownerPhone}),
+        signal:AbortSignal.timeout(8000)
+      });
+    } else {
+      await onMarketPublish(ownerPhone, codes);
+    }
+  } catch(e){ console.warn('[Bot] Notificação mercado falhou:', e); }
+}
 
 </script>
 
