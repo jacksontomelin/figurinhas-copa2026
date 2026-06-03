@@ -166,13 +166,36 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 .prog-pct{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);min-width:34px;text-align:right;}
 
 /* FIG GRID */
-.fig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:5px;
-  max-height:280px;overflow-y:auto;padding-right:3px;}
+.fig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:7px;}
+.fig-team-section{margin-bottom:16px;}
+.fig-team-hdr{display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;
+  border-bottom:1px solid rgba(255,255,255,.1);}
+.fig-team-hdr .th-flag{font-size:22px;}
+.fig-team-hdr .th-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:13px;color:#fff;letter-spacing:.5px;}
+.fig-team-hdr .th-prog{font-size:11px;color:var(--gray);margin-left:auto;}
 .fig-grid::-webkit-scrollbar{width:3px;}
 .fig-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
-.fig-btn{padding:5px 3px;border-radius:7px;font-size:10px;font-family:'Barlow Condensed',sans-serif;
-  font-weight:700;letter-spacing:.5px;text-align:center;cursor:pointer;
-  border:1.5px solid;transition:.18s;line-height:1.25;user-select:none;}
+.fig-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:10px;cursor:pointer;border:2px solid;transition:.15s;
+  user-select:none;position:relative;aspect-ratio:3/4;width:100%;
+  padding:4px 2px;gap:1px;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.fig-btn:active{transform:scale(.92);}
+.fig-btn .f-flag{font-size:clamp(18px,4.5vw,26px);line-height:1;}
+.fig-btn .f-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(11px,2.8vw,15px);
+  letter-spacing:.5px;line-height:1;}
+.fig-btn .f-state{position:absolute;top:3px;right:3px;font-size:9px;line-height:1;}
+.fig-btn.s0{background:rgba(30,30,50,.7);border-color:rgba(255,255,255,.12);
+  color:rgba(255,255,255,.25);}
+.fig-btn.s0 .f-flag{opacity:.3;}
+.fig-btn.s1{background:rgba(22,168,75,.18);border-color:rgba(22,168,75,.55);
+  color:#a5d6a7;box-shadow:0 2px 10px rgba(22,168,75,.2);}
+.fig-btn.s2{background:rgba(245,197,24,.18);border-color:rgba(245,197,24,.6);
+  color:var(--gold);box-shadow:0 2px 10px rgba(245,197,24,.2);}
+.fig-btn.s3{background:rgba(245,127,23,.2);border-color:rgba(245,127,23,.5);
+  color:#ffb74d;}
 .fig-btn:hover{transform:scale(1.06);}
 .fig-btn.s0{background:rgba(229,57,53,.11);border-color:rgba(229,57,53,.3);color:#ef9a9a;}
 .fig-btn.s1{background:rgba(34,160,74,.11);border-color:rgba(34,160,74,.3);color:#a5d6a7;}
@@ -2140,7 +2163,7 @@ function renderAlbum(){
         <select id="team-f" onchange="refreshFigs()" style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 9px;color:#fff;font-size:11px;outline:none;">${teamSel}</select>
       </div>
       <input class="search-inp" id="fig-q" placeholder="🔍 Buscar código ex: BRA5..." oninput="refreshFigs()">
-      <div class="fig-grid" id="fig-grid"></div>
+      <div class="fig-grid" id="fig-grid" style="overflow-y:visible;max-height:none;"></div>
       <div style="margin-top:8px;font-size:10px;color:rgba(255,255,255,.22);text-align:center;">
         Toque para ciclar: faltando → tenho → repetida
       </div>
@@ -2169,17 +2192,51 @@ function refreshFigs(){
 
   const grid=document.getElementById('fig-grid'); if(!grid)return;
   grid.innerHTML='';
-  if(!figs.length){grid.innerHTML='<div style="color:rgba(255,255,255,.28);font-size:11px;text-align:center;padding:18px;grid-column:1/-1;">Nenhuma figurinha encontrada</div>';return;}
+  if(!figs.length){
+    grid.innerHTML='<div style="color:rgba(255,255,255,.28);font-size:13px;text-align:center;padding:24px;width:100%;">Nenhuma figurinha encontrada</div>';
+    return;
+  }
+
+  // Agrupar por time quando não há filtro de time específico
+  const byTeam = {};
   figs.forEach(s=>{
-    const v=st[s.id]||0;
-    const isSale=mktCodes.has(s.id);
-    const cls=isSale?'s3':['s0','s1','s2'][v];
-    const b=document.createElement('button');
-    b.className=`fig-btn ${cls}`;
-    b.title=`${s.flag} ${s.teamName} #${s.n}`;
-    b.innerHTML=`${s.flag}<br>${s.id}`;
-    b.onclick=()=>cycleFig(s.id);
-    grid.appendChild(b);
+    if(!byTeam[s.team]) byTeam[s.team]={flag:s.flag,name:s.teamName,stickers:[]};
+    byTeam[s.team].stickers.push(s);
+  });
+
+  const teamFilter = document.getElementById('team-f') ? document.getElementById('team-f').value : 'all';
+
+  Object.entries(byTeam).forEach(([team,data])=>{
+    const sec = document.createElement('div');
+    sec.className = 'fig-team-section';
+
+    // Header do time
+    const have_count = data.stickers.filter(s=>(st[s.id]||0)>=1).length;
+    const total_count = data.stickers.length;
+    const pct = Math.round(have_count/total_count*100);
+    sec.innerHTML = '<div class="fig-team-hdr">'
+      +'<span class="th-flag">'+data.flag+'</span>'
+      +'<span class="th-name">'+data.name+'</span>'
+      +'<span class="th-prog">'+have_count+'/'+total_count+' ('+pct+'%)</span>'
+      +'</div>'
+      +'<div class="fig-grid" id="fg-'+team+'"></div>';
+    grid.appendChild(sec);
+
+    const teamGrid = document.getElementById('fg-'+team);
+    data.stickers.forEach(s=>{
+      const v=st[s.id]||0;
+      const isSale=mktCodes.has(s.id);
+      const cls=isSale?'s3':['s0','s1','s2'][v];
+      const stateIco=['','✓','★'][v]||(isSale?'$':'');
+      const b=document.createElement('button');
+      b.className='fig-btn '+cls;
+      b.title=s.flag+' '+s.teamName+' #'+s.n+' — '+(v===0?'Faltando':v===1?'Tenho':'Repetida');
+      b.innerHTML='<span class="f-flag">'+s.flag+'</span>'
+        +'<span class="f-num">'+s.n+'</span>'
+        +'<span class="f-state">'+(isSale?'🏷️':stateIco)+'</span>';
+      b.onclick=()=>cycleFig(s.id);
+      teamGrid.appendChild(b);
+    });
   });
 }
 
