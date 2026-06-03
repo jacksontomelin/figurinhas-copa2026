@@ -977,60 +977,51 @@ function formatNewsMsg(item, idx) {
   const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡','🔴','📺'];
   const ico = emojis[idx % emojis.length];
 
-  // Título limpo (remove " - Fonte" + limita 90 chars para caber no WA)
-  let title = (item.title || '')
+  // Título limpo (remove " - Fonte" do final, sem truncar)
+  const title = ((item.title || '')
     .replace(/\s+[-–]\s+[\w][^-–,]{1,40}$/, '').trim()
-    || (item.title || '');
-  // título completo sem corte
+    || (item.title || '')).trim();
 
-  const src  = item.src || 'Copa 2026';
+  const src = item.src || 'Copa 2026';
 
-  // Desc: limpa, desduplicada e validada
+  // Desc: limpa, sem duplicar título
   let desc = (item.desc || '')
     .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
     .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
-    .replace(/&#\d+;/g,'')
-    .replace(/<[^>]+>/g,'')
-    .replace(/https?:\/\/\S+/g,'')
-    .replace(/\s+/g,' ').trim();
+    .replace(/&#\d+;/g,'').replace(/<[^>]+>/g,'')
+    .replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();
 
-  // Remove o título do início (Google News duplica title no desc)
   if (desc.toLowerCase().startsWith(title.toLowerCase().substring(0, 30))) {
     desc = desc.substring(title.length).replace(/^[\s\-–·|]+/, '').trim();
   }
-
-  // Remove nome da fonte do final (ex: "...Copa do Mundo ge" → remove " ge")
   desc = desc.replace(/\s+[-–]?\s*[a-zA-ZÀ-ú]{2,20}\s*$/, '').trim();
-
-  // Descarta se muito curto ou igual ao título
   if (desc.length < 25 || desc.toLowerCase() === title.toLowerCase()) desc = '';
+  desc = desc.substring(0, 180);
 
-  desc = desc.substring(0, 200);
-
-  // Link encurtado
+  // Link: remove https:// para não quebrar linha no WA
+  // (WhatsApp reconhece domain.com/path como link clicável)
   let linkLine = '';
   if (item.link && item.link.length > 10) {
     const short = shortenUrl(item.link);
-    linkLine = `🔗 ${short}`;
+    // Remove https:// do display mas mantém o link clicável
+    const display = short.replace(/^https?:\/\//, '');
+    linkLine = `\n🔗 ${display}`;
   }
 
-  // Linha fonte+link compacta numa linha só
-  const srcLine = linkLine
-    ? `📰 _${src}_ ${linkLine.trim()}`   // "📰 _ge_ 🔗 https://..."
-    : `📰 _${src}_`;
-
-  const msg = [
+  // Monta mensagem — link em linha própria, 🏆 junto com assinatura
+  const lines = [
     `${ico} *COPA 2026 — NOTÍCIA*`,
-    ``,
+    '',
     `*${title}*`,
-    desc ? desc : null,
-    ``,
-    srcLine,
-    `Família Tomelin · Copa 2026 🏆`,
-  ].filter(l => l !== null).join('\n');
+  ];
+  if (desc) lines.push(desc);
+  lines.push('');
+  lines.push(`📰 ${src}${linkLine}`);
+  lines.push(`Família Tomelin · Copa 2026 🏆`);
 
-  return msg;
+  return lines.join('\n');
 }
+
 
 // Gera ID único para notícia (evitar reenvio)
 function newsId(item) {
