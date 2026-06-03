@@ -2847,6 +2847,7 @@ function renderFeed(){
   const me=getCurrentUser(); if(!me)return;
   clearNotifBadge();
   const myNotifs=getNotifs().filter(n=>n.for===me.phone);
+  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
 
   document.getElementById('app-content').innerHTML=`
     <div class="card a-card">
@@ -2854,48 +2855,96 @@ function renderFeed(){
       <div class="card-ttl" style="margin-bottom:12px;">Novidades do grupo</div>
       <div id="feed-list"></div>
       <div class="div"></div>
+      <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📰 O que está rolando</span>
+        <span id="news-ts" style="font-size:10px;color:var(--gray);"></span>
+      </div>
+      <div id="feed-news" style="margin-top:8px;">
+        <div style="color:var(--gray);font-size:12px;text-align:center;padding:16px;">Carregando notícias...</div>
+      </div>
+      <div class="div"></div>
       <div class="sec-lbl">💡 Dicas rápidas</div>
       <div id="tips-list"></div>
     </div>
   `;
+
+  // Notificações
   const fl=document.getElementById('feed-list');
   if(!myNotifs.length){
     fl.innerHTML='<div class="empty"><div class="empty-ico">🔔</div>Nenhuma novidade ainda!</div>';
   } else {
     myNotifs.slice(0,20).forEach((n,i)=>{
       const d=document.createElement('div');
-      d.className='notif-item'+(n.read?'':' notif-unread');
-      d.style.animationDelay=i*0.04+'s';
-      d.innerHTML=`<div class="notif-ico">${n.ico||'📢'}</div>
-        <div class="notif-txt">${esc(n.text)}</div>
-        <div class="notif-time">${formatTime(n.ts)}</div>`;
+      d.className='notif-item';
+      const ago=_timeAgo(n.ts);
+      d.innerHTML=`<div class="ni-ico">${n.ico||'🔔'}</div>
+        <div class="ni-body">
+          <div class="ni-msg">${esc(n.msg||'')}</div>
+          <div class="ni-time">${ago}</div>
+        </div>`;
       fl.appendChild(d);
     });
   }
 
-  // Tips
-  const me2=getCurrentUser();
-  const st=me2.stickers||{};
-  const need=ALL_STICKERS.filter(s=>(st[s.id]||0)===0).length;
-  const dup=ALL_STICKERS.filter(s=>(st[s.id]||0)===2).length;
-  const mktMine=getMarket().filter(m=>m.owner===me2.phone).length;
-  const tips=[];
-  if(need>0&&dup===0) tips.push({ico:'⭐',txt:'<strong>Marque suas repetidas!</strong> Vá no álbum, toque nas figurinhas que você tem mais de uma e marque como repetida (⭐) para aparecer nas sugestões de troca.'});
-  if(dup>0&&mktMine===0) tips.push({ico:'🏷️',txt:'<strong>Anuncie suas repetidas!</strong> Você tem '+dup+' figurinha(s) repetida(s) que pode vender ou trocar. Vá em Mercado → Publicar anúncio.'});
-  if(need>100) tips.push({ico:'🎴',txt:'<strong>'+need+' figurinhas faltando!</strong> Compartilhe o link do sistema para que mais pessoas se cadastrem e aumentem as chances de trocas.'});
-  tips.push({ico:'💬',txt:'<strong>Use o Chat interno</strong> para combinar trocas diretamente com outros membros sem sair do app!'});
-  tips.push({ico:'📱',txt:'<strong>Convide amigos</strong> para o grupo do WhatsApp! Quanto mais membros, mais chances de completar o álbum.'});
-  tips.push({ico:'🏆',txt:'<strong>Veja o Ranking</strong> na aba Trocas para ver quem está mais perto de completar o álbum!'});
+  // Notícias do cache/Railway
+  _loadFeedNews(railwayUrl);
 
+  // Tips
   const tl=document.getElementById('tips-list');
-  tips.slice(0,4).forEach((t,i)=>{
-    const d=document.createElement('div');
-    d.className='notif-item';
-    d.style.animationDelay=i*0.06+'s';
-    d.innerHTML=`<div class="notif-ico">${t.ico}</div><div class="notif-txt">${t.txt}</div>`;
-    tl.appendChild(d);
-  });
+  const TIPS=[
+    {ico:'🎴',tip:'Toque numa figurinha para ciclar: faltando → tenho → repetida'},
+    {ico:'🤝',tip:'Vá em Trocas para ver quem tem as figurinhas que você precisa'},
+    {ico:'🏷️',tip:'Anuncie suas repetidas no Mercado para trocar com a galera'},
+    {ico:'⭐',tip:'Figurinhas douradas = repetidas. Use o botão Anunciar!'},
+    {ico:'💬',tip:'Clique em Chat numa troca para combinar direto com o membro'},
+  ];
+  tl.innerHTML=TIPS.map(t=>`<div class="tip-item"><span class="tip-ico">${t.ico}</span><span class="tip-txt">${t.tip}</span></div>`).join('');
 }
+
+async function _loadFeedNews(railwayUrl){
+  const el=document.getElementById('feed-news'); if(!el) return;
+  try {
+    // Try Railway cache first
+    const r=await fetch(railwayUrl+'/api/news',{signal:AbortSignal.timeout(6000)});
+    if(r.ok){
+      const d=await r.json();
+      if(d.items&&d.items.length){
+        _renderFeedNews(d.items, el);
+        const ts=document.getElementById('news-ts');
+        if(ts) ts.textContent='🕐 '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        return;
+      }
+    }
+  } catch(e){}
+  // Fallback: session cache
+  try {
+    const c=JSON.parse(sessionStorage.getItem('t26_news_cache')||'null');
+    if(c&&c.items&&Date.now()-c.ts<120*60*1000){
+      _renderFeedNews(c.items, el);
+      const ts=document.getElementById('news-ts');
+      if(ts) ts.textContent='📦 Cache · '+new Date(c.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      return;
+    }
+  } catch(e){}
+  el.innerHTML='<div style="color:var(--gray);font-size:12px;text-align:center;padding:12px;">Sem conexão com o servidor. Tente mais tarde.</div>';
+}
+
+function _renderFeedNews(items, el){
+  const clean=s=>(s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();
+  el.innerHTML=items.slice(0,5).map((it,i)=>{
+    const title=clean(it.title||'');
+    const src=clean(it.src||'Copa 2026');
+    return `<div onclick="window.open('${it.link||'#'}','_blank')"
+      style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);
+      border-radius:11px;padding:12px 13px;margin-bottom:7px;cursor:pointer;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;
+        letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:4px;">${src}</div>
+      <div style="font-size:13px;color:#fff;font-weight:600;line-height:1.4;">${esc(title)}</div>
+      <div style="font-size:10px;color:var(--gray);margin-top:5px;">📖 Toque para ler</div>
+    </div>`;
+  }).join('');
+}
+
 
 // ═══════════════════════════════════════════════════
 // UTILS
