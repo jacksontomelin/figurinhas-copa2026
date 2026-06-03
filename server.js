@@ -284,6 +284,34 @@ app.use(require('express').static(pathMod.join(__dirname)));
 
 // ── ROTAS ─────────────────────────────────────────────────────
 
+
+// Notificação de novo usuário cadastrado
+app.post('/api/new-user', async (req, res) => {
+  const { name, phone } = req.body;
+  if (!name) return res.status(400).json({ error: 'name obrigatório' });
+
+  const firstName = name.split(' ')[0];
+  const templates = [
+    `🎉 *NOVO MEMBRO NA FAMÍLIA TOMELIN!* 🎉\n\n👋 Bem-vindo(a), *${firstName}*! Que bom ter você aqui!\n\nAgora é só marcar suas figurinhas e trocar com a galera! 🎴🔄\n\n👉 ${APP_URL}\n\n_Família Tomelin · Copa 2026_ 🏆⚽`,
+    `🎴 *${firstName} ENTROU NO SISTEMA!* 🎉\n\nBoa notícia! *${firstName}* acaba de se cadastrar no sistema de trocas da Família Tomelin! 👏\n\nBem-vindo(a)! 🇧🇷🏆\n\n👉 ${APP_URL}`,
+    `⚽ *CHEGOU MAIS UM NA FAMÍLIA TOMELIN!* ⚽\n\n🙌 *${firstName}* acabou de entrar no sistema!\n\nQuanto mais gente, mais trocas! 🔥🎴\n\n👉 ${APP_URL}\n\n_Copa 2026 · Família Tomelin_ 🏆`,
+    `🌟 *FAMÍLIA TOMELIN CRESCENDO!* 🌟\n\n*${firstName}* acabou de se juntar ao nosso sistema de trocas! 🎉\n\nBem-vindo(a)! 🎴 ${APP_URL}\n\n#FamíliaTomelin #Copa2026`,
+    `🏆 *NOVO COLECIONADOR NA ÁREA!* 🏆\n\n👋 *${firstName}* entrou na Família Tomelin!\n\nBora completar o álbum juntos! 💪🎴\n\n👉 ${APP_URL}\n\n_Família Tomelin · Copa 2026_ ⚽`,
+  ];
+
+  const msg = templates[Math.floor(Math.random() * templates.length)];
+
+  // Adiciona usuário ao DB local
+  if (phone && !DB.users.find(u => u.phone === phone)) {
+    DB.users.push({ phone, name, stickers: {}, ts: Date.now() });
+    log('👤', 'Novo usuário: ' + name + ' (' + phone + ')');
+  }
+
+  const r = await sendGroup(msg);
+  DB.cronStats.sent++;
+  res.json(r);
+});
+
 // Health check
 app.get('/health', (_, res) => res.json({
   status: 'online',

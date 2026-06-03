@@ -1898,8 +1898,11 @@ function doRegister(){
   addNotif({type:'welcome',text:`Bem-vindo(a) ao grupo, ${name.split(' ')[0]}! 🎉 Complete seu álbum e troque figurinhas!`,ico:'🎉'});
   js(K.SESSION,{phone}); pingOnline(); enterApp(nu);
   launchConfetti();
-  toast('🎉 Conta criada! Abrindo grupo...','#22a04a');
-  setTimeout(()=>{trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},1800);
+  toast('🎉 Conta criada! Bem-vindo(a) à Família Tomelin! 🎉','#22a04a');
+  // 🤖 Notifica o grupo no WhatsApp que novo membro entrou
+  setTimeout(()=>{ notifyGroupNewUser(name, phone).catch(e=>console.warn('[Bot]',e)); }, 1500);
+  // Abre o grupo WA após 3s
+  setTimeout(()=>{trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},3000);
 }
 function doLogout(){
   // set offline
@@ -2666,6 +2669,101 @@ if(document.readyState === 'loading'){
 
 
 // ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+// 🎉 NOTIFICAÇÃO DE NOVO USUÁRIO NO GRUPO
+// ═══════════════════════════════════════════════════
+const WELCOME_GROUP_MSGS = [
+  `🎉 *NOVO MEMBRO NA FAMÍLIA TOMELIN!* 🎉
+
+👋 Bem-vindo(a), *{NOME}*! Que bom ter você aqui!
+
+Agora é só marcar suas figurinhas, ver quem tem as que faltam e trocar com a galera! 🎴🔄
+
+👉 https://jacksontomelin.github.io/figurinhas-copa2026
+
+_Família Tomelin · Copa 2026_ 🏆⚽`,
+  `🎴 *{NOME} ENTROU NO SISTEMA!* 🎉
+
+Boa notícia! *{NOME}* acaba de se cadastrar no sistema de trocas da Família Tomelin! 👏
+
+Já vai marcar as figurinhas e entrar na dança! 🕺💃
+Bem-vindo(a)! 🇧🇷🏆
+
+👉 https://jacksontomelin.github.io/figurinhas-copa2026`,
+  `⚽ *CHEGOU MAIS UM NA FAMÍLIA TOMELIN!* ⚽
+
+🙌 *{NOME}* acabou de entrar no sistema de figurinhas!
+
+Quanto mais gente, mais trocas! Esse pessoal chega com gás pra completar o álbum! 🔥🎴
+
+👉 https://jacksontomelin.github.io/figurinhas-copa2026
+
+_Copa 2026 · Família Tomelin_ 🏆`,
+  `🌟 *FAMÍLIA TOMELIN CRESCENDO!* 🌟
+
+*{NOME}* acabou de se juntar ao nosso sistema de trocas da Copa 2026! 🎉
+
+Seja bem-vindo(a)! Marque suas figurinhas e veja quem tem as que faltam!
+
+🎴 https://jacksontomelin.github.io/figurinhas-copa2026
+
+#FamíliaTomelin #Copa2026`,
+  `🏆 *NOVO COLECIONADOR NA ÁREA!* 🏆
+
+👋 *{NOME}* entrou no sistema da Família Tomelin!
+
+Bora completar o álbum juntos! Quanto mais membros, mais trocas e mais fácil completar! 💪🎴
+
+👉 https://jacksontomelin.github.io/figurinhas-copa2026
+
+_Família Tomelin · Copa 2026_ ⚽`
+];
+
+async function notifyGroupNewUser(userName, userPhone) {
+  const firstName = (userName||'').split(' ')[0];
+  const railwayUrl = localStorage.getItem('t26_railway_url') || '';
+
+  // Tenta via Railway (envia ao grupo E registra usuário no bot)
+  if (railwayUrl) {
+    try {
+      const r = await fetch(railwayUrl + '/api/new-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: userName, phone: userPhone }),
+        signal: AbortSignal.timeout(8000)
+      });
+      const d = await r.json();
+      if (d.ok) {
+        console.log('[Bot] Boas-vindas enviadas ao grupo via Railway!');
+        return;
+      }
+    } catch(e) { console.warn('[Bot] Railway /api/new-user falhou:', e.message); }
+  }
+
+  // Fallback: monta mensagem localmente e envia direto Z-API
+  const template = WELCOME_GROUP_MSGS[Math.floor(Math.random() * WELCOME_GROUP_MSGS.length)];
+  const msg = template.replace(/\{NOME\}/g, firstName);
+  const GROUP_ID = '120363409442378564-group';
+  try {
+    await fetch(
+      'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Token': 'Ff0f0920827ca4987818cafa9ba0f97a7S'
+        },
+        body: JSON.stringify({ phone: GROUP_ID, message: msg }),
+        signal: AbortSignal.timeout(8000)
+      }
+    );
+    console.log('[Bot] Boas-vindas enviadas direto Z-API!');
+  } catch(e) {
+    console.warn('[Bot] Falha ao notificar grupo:', e.message);
+  }
+}
+
 // 🟢 ONLINE COUNTER + GRUPO WA TRACKER
 // ═══════════════════════════════════════════════════
 const K_WA_JOINED = 't26_wa_joined'; // Set of phones that clicked the WA link
