@@ -1,6 +1,34 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+/* ── Proteção anti-debug ── */
+(function(){
+  'use strict';
+  // 1. Override console
+  const n=()=>{};
+  try{Object.defineProperty(window,'console',{get:()=>({log:n,warn:n,error:n,info:n,debug:n,table:n,dir:n,trace:n})});}catch(e){}
+  // 2. Bloqueia clique direito
+  document.addEventListener('contextmenu',function(e){e.preventDefault();});
+  // 3. Bloqueia F12 e atalhos DevTools
+  document.addEventListener('keydown',function(e){
+    if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['I','J','C','S'].includes(e.key.toUpperCase()))||(e.ctrlKey&&e.key.toUpperCase()==='U')||(e.metaKey&&e.altKey&&['I','J'].includes(e.key.toUpperCase()))){
+      e.preventDefault();e.stopPropagation();return false;
+    }
+  },true);
+  // 4. Detecta DevTools aberto por tamanho
+  let _dv=false;
+  setInterval(function(){
+    const open=(window.outerWidth-window.innerWidth>160)||(window.outerHeight-window.innerHeight>160);
+    if(open&&!_dv){_dv=true;document.body.style.filter='blur(20px)';document.body.style.pointerEvents='none';}
+    if(!open&&_dv){_dv=false;document.body.style.filter='';document.body.style.pointerEvents='';}
+  },1000);
+  // 5. Disable view-source
+  document.addEventListener('keydown',function(e){
+    if(e.ctrlKey&&e.key.toLowerCase()==='u'){e.preventDefault();return false;}
+  });
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <title>🤖 Bot Painel · Família Tomelin</title>
