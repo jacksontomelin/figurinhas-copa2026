@@ -895,6 +895,11 @@ function doLogout(){
   document.getElementById('bnav').classList.remove('on');
   document.getElementById('scr-auth').classList.add('on');
   showForm('login');
+  // Restart countdown if Copa hasn't started
+  if(!_acdTimer && COPA_DATE > Date.now()){
+    _acdTimer = setInterval(_tickCountdown, 1000);
+    _tickCountdown();
+  }
 }
 function enterApp(u){
   // Hide footer on auth
@@ -1589,43 +1594,41 @@ function launchConfetti(){
 }
 
 // ─── COUNTDOWN AUTH ────────────────────────────────────────
-(function(){
-  const COPA = new Date('2026-06-11T16:00:00-03:00');
-  function tick(){
-    const el = document.getElementById('auth-countdown');
-    if(!el) return;
-    const diff = COPA - Date.now();
-    if(diff <= 0){
-      // Copa começou — some o bloco
-      el.style.transition = 'opacity .8s, transform .8s';
-      el.style.opacity = '0';
-      el.style.transform = 'scale(.9)';
-      setTimeout(() => { if(el) el.remove(); }, 800);
-      clearInterval(_acdTimer);
-      return;
-    }
-    const totalH = Math.floor(diff / 3600000);
-    const d  = Math.floor(diff / 86400000);
-    const h  = Math.floor((diff % 86400000) / 3600000);
-    const m  = Math.floor((diff % 3600000) / 60000);
-    const s  = Math.floor((diff % 60000) / 1000);
-    const ed = document.getElementById('acd-dias');
-    const eh = document.getElementById('acd-h');
-    const em = document.getElementById('acd-m');
-    const es = document.getElementById('acd-s');
-    if(ed) ed.textContent = d;
-    if(eh) eh.textContent = String(h).padStart(2,'0');
-    if(em) em.textContent = String(m).padStart(2,'0');
-    if(es) es.textContent = String(s).padStart(2,'0');
-    // Pulsa dourado quando < 1 dia
-    if(d === 0 && ed){
-      ed.style.color = '#ff6b35';
-      ed.style.textShadow = '0 0 50px rgba(255,107,53,.6)';
-    }
+const COPA_DATE = new Date('2026-06-11T19:00:00Z'); // 16h BRT = 19h UTC
+let _acdTimer = null;
+function _tickCountdown(){
+  const el = document.getElementById('auth-countdown');
+  if(!el){ clearInterval(_acdTimer); return; }
+  const diff = COPA_DATE - Date.now();
+  if(diff <= 0){
+    el.style.transition = 'opacity .8s, transform .8s';
+    el.style.opacity = '0';
+    el.style.transform = 'scale(.9)';
+    setTimeout(()=>{ const e=document.getElementById('auth-countdown'); if(e) e.remove(); }, 800);
+    clearInterval(_acdTimer);
+    _acdTimer = null;
+    return;
   }
-  const _acdTimer = setInterval(tick, 1000);
-  tick();
-})();
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  const ed = document.getElementById('acd-dias');
+  const eh = document.getElementById('acd-h');
+  const em = document.getElementById('acd-m');
+  const es = document.getElementById('acd-s');
+  if(ed) ed.textContent = d;
+  if(eh) eh.textContent = String(h).padStart(2,'0');
+  if(em) em.textContent = String(m).padStart(2,'0');
+  if(es) es.textContent = String(s).padStart(2,'0');
+  if(d === 0 && ed){
+    ed.style.color = '#ff6b35';
+    ed.style.textShadow = '0 0 50px rgba(255,107,53,.6)';
+  }
+}
+// Start countdown
+_acdTimer = setInterval(_tickCountdown, 1000);
+_tickCountdown();
 
 
 // ═══════════════════════════════════════════════════
@@ -2351,6 +2354,7 @@ async function renderCopaBets(){
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gray);text-transform:uppercase;">Suas Tomelin Coins 💰</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--gold);line-height:1;">${coins.toLocaleString('pt-BR')}</div>
         <div style="font-size:11px;color:rgba(255,255,255,.5);">🎯 ${wonBets}/${totalBets} apostas certas ${totalBets>0?`(${Math.round(wonBets/totalBets*100)}%)`:''}</div>
+        <div style="font-size:10px;color:rgba(245,197,24,.6);margin-top:3px;">✨ Apostas gratuitas — sem precisar ter álbum!</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <button onclick="openChallengeModal()" style="padding:8px 16px;border-radius:9px;border:none;cursor:pointer;
