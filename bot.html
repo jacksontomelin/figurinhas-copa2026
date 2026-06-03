@@ -16,13 +16,17 @@
       e.preventDefault();e.stopPropagation();return false;
     }
   },true);
-  // 4. Detecta DevTools aberto por tamanho
-  let _dv=false;
-  setInterval(function(){
-    const open=(window.outerWidth-window.innerWidth>160)||(window.outerHeight-window.innerHeight>160);
-    if(open&&!_dv){_dv=true;document.body.style.filter='blur(20px)';document.body.style.pointerEvents='none';}
-    if(!open&&_dv){_dv=false;document.body.style.filter='';document.body.style.pointerEvents='';}
-  },1000);
+  // 4. Detecta DevTools — apenas em desktop (mobile tem variações legítimas de tamanho)
+  if(window.innerWidth>1024){
+    let _dv=false;
+    setInterval(function(){
+      const wDiff=window.outerWidth-window.innerWidth;
+      const hDiff=window.outerHeight-window.innerHeight;
+      const open=(wDiff>300)||(hDiff>300);
+      if(open&&!_dv){_dv=true;document.body.style.filter='blur(20px)';document.body.style.pointerEvents='none';}
+      if(!open&&_dv){_dv=false;document.body.style.filter='';document.body.style.pointerEvents='';}
+    },1000);
+  }
   // 5. Disable view-source
   document.addEventListener('keydown',function(e){
     if(e.ctrlKey&&e.key.toLowerCase()==='u'){e.preventDefault();return false;}

@@ -369,17 +369,20 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);color:#fff;min-heigh
     ){e.preventDefault();e.stopPropagation();return false;}
   },true);
 
-  // Detect DevTools open by size
-  let _devOpen=false;
-  setInterval(()=>{
-    const th=160;
-    const open=(window.outerWidth-window.innerWidth>th)||(window.outerHeight-window.innerHeight>th);
-    if(open&&!_devOpen){
-      _devOpen=true;
-      document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#040d18;color:#ef9a9a;font-family:monospace;font-size:16px;text-align:center;">🔒<br>Acesso não autorizado.<br>Feche o DevTools para continuar.</div>';
-    }
-    if(!open&&_devOpen){location.reload();}
-  },800);
+  // Detect DevTools — apenas em desktop, threshold alto para evitar falso positivo
+  if(window.screen&&window.screen.width>1024){
+    let _devOpen=false;
+    setInterval(()=>{
+      const wD=window.outerWidth-window.innerWidth;
+      const hD=window.outerHeight-window.innerHeight;
+      const open=(wD>300)||(hD>300);
+      if(open&&!_devOpen){
+        _devOpen=true;
+        document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#040d18;color:#ef9a9a;font-family:monospace;font-size:16px;text-align:center;">🔒<br>Acesso não autorizado.<br>Feche o DevTools para continuar.</div>';
+      }
+      if(!open&&_devOpen){location.reload();}
+    },1000);
+  }
 
   // debugger trap
   setInterval(()=>{try{(function(){debugger;})();}catch(e){}},2000);
