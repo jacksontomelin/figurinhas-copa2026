@@ -984,9 +984,42 @@ loadLinks();
 // 📰 RPA DE NOTÍCIAS — Puxa e envia notícias ao vivo a cada 10min
 // ═══════════════════════════════════════════════════════════════
 
-const NEWS_SENT = new Set(); // IDs de notícias já enviadas (evita repetição)
+// ── News Sent — persistido em disco para sobreviver restarts ────
+const NEWS_SENT_FILE = pathMod.join(__dirname, 'data', 'news_sent.json');
+const NEWS_SENT = new Set();
 let newsRpaEnabled = true;
 let newsRpaCount = 0;
+
+function loadNewsSent() {
+  try {
+    if (fs.existsSync(NEWS_SENT_FILE)) {
+      const data = JSON.parse(fs.readFileSync(NEWS_SENT_FILE, 'utf8'));
+      // Só carrega IDs das últimas 48h
+      const cutoff = Date.now() - 48*60*60*1000;
+      (data.sent || []).forEach(({id, ts}) => {
+        if (ts > cutoff) NEWS_SENT.add(id);
+      });
+      log('📰', `News sent carregados: ${NEWS_SENT.size} IDs (últimas 48h)`);
+    }
+  } catch(e) { log('⚠️', 'loadNewsSent: ' + e.message); }
+}
+
+function saveNewsSent() {
+  try {
+    fs.mkdirSync(pathMod.dirname(NEWS_SENT_FILE), { recursive: true });
+    // Salva com timestamp para poder expirar depois
+    const cutoff = Date.now() - 48*60*60*1000;
+    let existing = [];
+    try { existing = JSON.parse(fs.readFileSync(NEWS_SENT_FILE,'utf8')).sent || []; } catch(e){}
+    const updated = existing.filter(x => x.ts > cutoff);
+    NEWS_SENT.forEach(id => {
+      if (!updated.find(x => x.id === id)) updated.push({ id, ts: Date.now() });
+    });
+    fs.writeFileSync(NEWS_SENT_FILE, JSON.stringify({ sent: updated }, null, 2));
+  } catch(e) { log('⚠️', 'saveNewsSent: ' + e.message); }
+}
+
+loadNewsSent();
 
 // Formata notícia para WhatsApp
 function formatNewsMsg(item, idx) {
@@ -1039,36 +1072,60 @@ function formatNewsMsg(item, idx) {
 }
 
 
-// Gera ID único para notícia (evitar reenvio)
+// Gera ID único para notícia (título + data de publicação)
 function newsId(item) {
-  return (item.title || '').substring(0, 60).replace(/\s+/g, '_').toLowerCase();
+  const titlePart = (item.title || '').substring(0, 50).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const pubPart   = item.pub ? new Date(item.pub).toISOString().substring(0, 10) : 'nodate';
+  return `${titlePart}_${pubPart}`;
 }
 
-// RPA principal: puxa notícias e envia as novas no grupo
+// RPA principal: puxa notícias frescas e envia as novas no grupo
+let _lastRpaSend = 0; // timestamp do último envio
+
 async function rpaNewsLoop() {
   if (!newsRpaEnabled) return;
 
+  // Mínimo 55 minutos entre envios automáticos (evita spam)
+  const minInterval = 55 * 60 * 1000;
+  if (Date.now() - _lastRpaSend < minInterval) {
+    log('📰', `RPA: aguardando intervalo (próximo em ${Math.ceil((minInterval-(Date.now()-_lastRpaSend))/60000)}min)`);
+    return;
+  }
+
   try {
-    // Atualiza cache de notícias
+    // Força refresh do RSS para ter notícias frescas
+    CACHE.news.updatedAt = 0; // invalida cache para forçar novo fetch
     const items = await refreshNews();
     if (!items || !items.length) {
-      log('📰', 'RPA: sem notícias no cache');
+      log('📰', 'RPA: sem notícias disponíveis');
       return;
     }
 
-    // Filtra notícias NÃO enviadas ainda
-    const novas = items.filter(it => !NEWS_SENT.has(newsId(it)));
+    // Filtra: NÃO enviadas + das últimas 48h
+    const cutoff48h = Date.now() - 48 * 60 * 60 * 1000;
+    const novas = items.filter(it => {
+      const id = newsId(it);
+      if (NEWS_SENT.has(id)) return false;
+      // Se tem data de publicação, só envia se for das últimas 48h
+      if (it.pub) {
+        const age = Date.now() - new Date(it.pub).getTime();
+        if (age > cutoff48h) return false;
+      }
+      return true;
+    });
 
     if (!novas.length) {
-      log('📰', `RPA: todas as ${items.length} notícias já foram enviadas`);
+      log('📰', `RPA: ${NEWS_SENT.size} já enviadas, sem notícias novas nas últimas 48h`);
       return;
     }
 
-    // Envia apenas 1 notícia por vez (a mais recente não enviada)
-    const item = novas[0];
-    const id   = newsId(item);
+    // Pega a notícia mais recente não enviada
+    const item = novas.sort((a, b) => {
+      return (new Date(b.pub||0) - new Date(a.pub||0));
+    })[0];
+    const id = newsId(item);
 
-    log('📰', `RPA: enviando notícia — "${(item.title||'').substring(0,50)}"`);
+    log('📰', `RPA: enviando — "${(item.title||'').substring(0,50)}"`);
 
     const msg = formatNewsMsg(item, newsRpaCount);
     const r   = await sendGroup(msg);
@@ -1076,10 +1133,12 @@ async function rpaNewsLoop() {
     if (r.ok) {
       NEWS_SENT.add(id);
       newsRpaCount++;
-      log('✅', `RPA: notícia enviada (#${newsRpaCount})`);
-      if (r.messageId) DB.cronStats.enviados++;
+      _lastRpaSend = Date.now();
+      saveNewsSent(); // persiste em disco
+      log('✅', `RPA: notícia #${newsRpaCount} enviada`);
+      DB.cronStats.enviados++;
     } else {
-      log('❌', `RPA: falha ao enviar — ${JSON.stringify(r).substring(0,100)}`);
+      log('❌', `RPA: falha — ${JSON.stringify(r).substring(0,100)}`);
       DB.cronStats.erros++;
     }
 
@@ -1093,7 +1152,8 @@ async function rpaNewsLoop() {
 cron.schedule('0 */6 * * *', () => {
   const before = NEWS_SENT.size;
   NEWS_SENT.clear();
-  log('♻️', `RPA: cache de notícias enviadas limpo (${before} itens)`);
+  saveNewsSent();
+  log('♻️', `RPA: cache de notícias limpo (${before} itens)`);
 }, { timezone: 'America/Sao_Paulo' });
 
 // Cron: roda a cada 10 minutos
@@ -1112,6 +1172,8 @@ app.get('/api/rpa/status', (req, res) => {
     queued: NEWS_SENT.size,
     lastNews: CACHE.news.updatedAt ? new Date(CACHE.news.updatedAt).toISOString() : null,
     newsCount: CACHE.news.data.length,
+    lastSend: _lastRpaSend ? new Date(_lastRpaSend).toISOString() : null,
+    nextSend: _lastRpaSend ? new Date(_lastRpaSend + 55*60*1000).toISOString() : null,
   });
 });
 
