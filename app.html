@@ -480,14 +480,13 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
         <div class="fg">
           <label>Seu telefone WhatsApp (com DDD)</label>
           <input type="tel" id="rec-phone" placeholder="47999357131" inputmode="numeric"
-            style="font-size:18px;letter-spacing:2px;text-align:center;"
-            oninput="this.value=this.value.replace(/\D/g,'').slice(0,11)">
+            autocomplete="tel" style="font-size:18px;letter-spacing:2px;text-align:center;">
         </div>
         <div id="rec-feedback" style="border-radius:9px;padding:10px 12px;font-size:13px;
           text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;
-          letter-spacing:.5px;display:none;margin-bottom:10px;"></div>
+          letter-spacing:.5px;margin-bottom:10px;min-height:20px;"></div>
         <button class="btn btn-gold" id="rec-btn"
-          onclick="try{doSendRecovery()}catch(e){this.nextElementSibling&&(this.nextElementSibling.textContent='Erro: '+e.message);alert('Erro: '+e.message)}">
+          onclick="doSendRecovery()">
           📱 Enviar código pelo WhatsApp
         </button>
       </div>
@@ -2924,9 +2923,10 @@ window.recBack = function recBack(){
 window.doSendRecovery = async function doSendRecovery(){
   const btn = document.getElementById('rec-btn');
   const raw = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
+  console.log('[Recovery] Phone raw:', raw, 'length:', raw.length);
 
-  if(raw.length < 10){
-    recFb('rec-feedback','⚠️ Digite o telefone com DDD — ex: 47999357131','err');
+  if(raw.length < 8){
+    recFb('rec-feedback','⚠️ Digite o telefone com DDD (ex: 47999357131)','err');
     return;
   }
   recFb('rec-feedback','','');
