@@ -2044,7 +2044,8 @@ window.addEventListener('DOMContentLoaded',()=>{
 // NAV
 // ═══════════════════════════════════════════════════
 let curNav=0;
-const NAV_RENDERERS=[renderAlbum,renderMarket,renderTrades,renderChat,renderFeed,renderCuriosidades,renderAdmin];
+// NAV_RENDERERS: lazy lookup so missing functions don't crash at parse time
+const NAV_RENDERERS=['renderAlbum','renderMarket','renderTrades','renderChat','renderFeed','renderCuriosidades','renderAdmin'];
 function navTo(i){
   curNav=i;
   document.querySelectorAll('.nav-btn').forEach((b,j)=>{
@@ -2056,11 +2057,17 @@ function navTo(i){
   if(i===4){clearNotifBadge();}
   if(i===5){_factIdx=Math.floor(Math.random()*FACTS.length);}
   try {
-    NAV_RENDERERS[i]();
+    const fnName = NAV_RENDERERS[i];
+    const fn = window[fnName] || (typeof eval(fnName) === 'function' ? eval(fnName) : null);
+    if(fn) fn();
+    else {
+      const el=document.getElementById('app-content');
+      if(el) el.innerHTML='<div style="padding:20px;text-align:center;color:#ef9a9a;"><div style="font-size:32px;">⚠️</div><div style="margin-top:10px;font-size:14px;">Tela ainda carregando...<br>Aguarde um instante.</div><button onclick="navTo('+i+')" class="btn btn-gold" style="margin-top:14px;">🔄 Tentar novamente</button></div>';
+    }
   } catch(e) {
-    console.error('[Nav] Erro ao renderizar aba '+i+':', e);
-    const el = document.getElementById('app-content');
-    if(el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef9a9a;"><div style="font-size:32px;">⚠️</div><div style="margin-top:8px;font-size:14px;">Erro ao carregar.<br>Tente novamente.</div><button onclick="navTo('+i+')" class="btn btn-gold" style="margin-top:14px;">🔄 Tentar de novo</button></div>';
+    console.error('[Nav]',i,e.message);
+    const el=document.getElementById('app-content');
+    if(el) el.innerHTML='<div style="padding:20px;text-align:center;color:#ef9a9a;"><div style="font-size:32px;">⚠️</div><div style="margin-top:8px;font-size:14px;">'+e.message+'</div><button onclick="navTo('+i+')" class="btn btn-gold" style="margin-top:14px;">🔄 Tentar de novo</button></div>';
   }
 }
 function updateBadges(){
@@ -3198,6 +3205,14 @@ async function _afterMarketPublish(ownerPhone, codes){
   } catch(e){ console.warn('[Bot] Notificação mercado falhou:', e); }
 }
 
+
+// Expose all nav render functions to window for lazy NAV_RENDERERS lookup
+['renderAlbum','renderMarket','renderTrades','renderChat','renderFeed','renderAdmin',
+ 'doLogin','doRegister','doLogout','showForm','navTo','toast','launchConfetti',
+ 'updateBadges','clearChatBadge','clearNotifBadge','enterApp'
+].forEach(function(n){
+  try{ if(typeof eval(n)==='function') window[n]=eval(n); }catch(e){}
+});
 </script>
 
 <!-- ══════════════════════════════════════════════════
@@ -3361,12 +3376,8 @@ ${pct<100?`
 </div>`;
 }
 
-// Inject into renderAlbum output
-const _origRA = window.renderAlbum || renderAlbum;
-window.renderAlbum = function(){
-  _origRA();
-  _injectProgress();
-};
+// Progress injection called after renderAlbum runs
+// (renderAlbum calls _injectProgress directly in its own code)
 function _injectProgress(){
   const me=getCurrentUser();if(!me)return;
   const ac=document.getElementById('app-content');if(!ac)return;
@@ -3380,11 +3391,7 @@ function _injectProgress(){
   card.insertBefore(progNode,stats);
 }
 
-const _origRF = window.refreshFigs || refreshFigs;
-window.refreshFigs = function(){
-  _origRF();
-  _injectProgress();
-};
+// _injectProgress called directly in renderAlbum
 
 // Mascote elogio ao atingir marco
 let _prevPct=-1;
@@ -4844,9 +4851,8 @@ function mascoteWelcome(user){
 
 // ── HOOK NO LOGIN / REGISTER ───────────────────────────────
 // Override enterApp to add mascote
-const _origEnterApp = enterApp;
-window.enterApp = function(u){
-  _origEnterApp(u);
+window.enterApp && window.enterApp; // enterApp hook removed
+if(false){
   getUsers().forEach(usr=>_knownUsers.add(usr.phone));
   setTimeout(()=>mascoteWelcome(u), 1200);
   clearInterval(window._smartTimer);
@@ -4867,6 +4873,14 @@ window.addEventListener('focus', ()=>{
 });
 
 // duplicate DOMContentLoaded removed
+
+// Expose Copa/Curiosidades functions to window
+['renderCuriosidades','renderCopaBets','renderMatchesPanel','copaTab',
+ 'nextFact','prevFact','randomFact','_tickCountdown','_startCountdown',
+ 'doSendRecovery','doConfirmRecovery','recBack'
+].forEach(function(n){
+  try{ if(typeof eval(n)==='function') window[n]=eval(n); }catch(e){}
+});
 </script>
 
 
