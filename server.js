@@ -627,12 +627,19 @@ function parseRSS(xml) {
 
     let title = get('title');
     let link  = '';
-    // Strip HTML, decode entities, clean whitespace
+    // Limpa descrição: decodifica entidades ANTES de remover tags
+    // (garante que &lt;a href=...&gt; também seja removido)
     const rawDesc = get('description') || '';
     const desc = rawDesc
-      .replace(/<[^>]+>/g, '')          // remove all HTML tags
+      // 1ª passagem: decodifica entidades HTML para tags reais
       .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
       .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
+      .replace(/&#\d+;/g,'')
+      // 2ª passagem: remove TODOS os tags HTML (incluindo os decodificados)
+      .replace(/<[^>]+>/g,'')
+      // 3ª passagem: remove qualquer URL que sobrou (links do Google News etc)
+      .replace(/https?:\/\/\S+/g,'')
+      // Limpa espaços extras
       .replace(/\s+/g,' ').trim()
       .substring(0, 220);
     const pub   = get('pubDate');
@@ -975,8 +982,13 @@ function formatNewsMsg(item, idx) {
 
   const src  = item.src || 'Copa 2026';
 
-  // Desc: já vem limpa do parseRSS (sem HTML)
-  const desc = (item.desc || '').substring(0, 200).trim();
+  // Desc: limpa novamente para garantir (double-check)
+  const desc = (item.desc || '')
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+    .replace(/<[^>]+>/g,'')
+    .replace(/https?:\/\/\S+/g,'')
+    .replace(/\s+/g,' ').trim()
+    .substring(0, 200);
 
   // Link encurtado
   let linkLine = '';
