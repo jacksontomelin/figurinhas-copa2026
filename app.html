@@ -168,42 +168,86 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 .prog-pct{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);min-width:34px;text-align:right;}
 
 /* FIG GRID */
-.fig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:5px;width:100%;}
-@media(max-width:400px){.fig-grid{grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:4px;}}
-@media(min-width:480px){.fig-grid{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:7px;}}
-.fig-team-section{margin-bottom:20px;width:100%;}
-.fig-team-hdr{display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;
-  border-bottom:1px solid rgba(255,255,255,.1);flex-wrap:wrap;}
-.fig-team-hdr .th-flag{font-size:22px;flex-shrink:0;}
-.fig-team-hdr .th-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;
-  font-size:13px;color:#fff;letter-spacing:.5px;flex:1;}
-.fig-team-hdr .th-prog{font-size:10px;color:var(--gray);white-space:nowrap;}
-@media(max-width:360px){.fig-grid{grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:4px;}}
+/* fig-grid replaced by album-grid */
+/* team section CSS now in album-wrap */
 .fig-grid::-webkit-scrollbar{width:3px;}
 .fig-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
-.fig-btn{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  border-radius:9px;cursor:pointer;border:2px solid;
-  user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
-  position:relative;aspect-ratio:3/4;width:100%;min-width:0;
-  padding:4px 2px 3px;gap:0;transition:.12s;
-  box-shadow:0 1px 4px rgba(0,0,0,.4);overflow:hidden;}
-.fig-btn:active{transform:scale(.88);transition:transform .08s;}
-.fig-btn .f-flag{font-size:clamp(18px,4.5vw,26px);line-height:1.1;flex-shrink:0;}
-.fig-btn .f-num{font-family:'Bebas Neue',sans-serif;
-  font-size:clamp(11px,2.8vw,15px);letter-spacing:.5px;line-height:1;flex-shrink:0;}
-.fig-btn .f-name{font-size:clamp(6px,1.5vw,8px);line-height:1;
+/* ── ALBUM STYLE — Thiago das Figurinhas ── */
+.album-wrap{background:#1a3a7a;border-radius:14px;overflow:hidden;min-height:300px;}
+.album-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:14px 16px;background:rgba(0,0,0,.2);}
+.album-nav-team{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;
+  color:#fff;text-align:center;flex:1;}
+.album-nav-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);
+  border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:.15s;}
+.album-nav-btn:active{background:rgba(255,255,255,.3);}
+.album-prog-bar{height:4px;background:rgba(255,255,255,.15);margin:0 16px 12px;}
+.album-prog-fill{height:100%;background:linear-gradient(90deg,#4fc3f7,#fff);
+  border-radius:2px;transition:width .4s ease;}
+.album-stats{display:flex;gap:12px;padding:0 16px 12px;
+  font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.55);}
+.album-stats span strong{color:#fff;}
+.album-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  padding:0 14px 16px;}
+
+/* Figurinha card */
+.fig-card{
+  position:relative;border-radius:12px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+  aspect-ratio:3/4;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  transition:transform .1s;overflow:hidden;}
+.fig-card:active{transform:scale(.9);}
+
+/* Polka dot texture */
+.fig-card::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.08) 1px,transparent 1px);
+  background-size:8px 8px;pointer-events:none;z-index:0;}
+
+/* States */
+.fig-card.fc-miss{background:linear-gradient(135deg,#1e4a9e,#1a3e8a);
+  border:2px solid rgba(255,255,255,.2);}
+.fig-card.fc-have{background:linear-gradient(135deg,#2e6fd4,#2860bc);
+  border:2px solid rgba(255,255,255,.45);
+  box-shadow:0 2px 12px rgba(46,111,212,.5);}
+.fig-card.fc-dup{background:linear-gradient(135deg,#d4a017,#b88c14);
+  border:2px solid rgba(255,220,80,.6);
+  box-shadow:0 2px 12px rgba(212,160,23,.5);}
+.fig-card.fc-sale{background:linear-gradient(135deg,#c0392b,#a93226);
+  border:2px solid rgba(255,100,80,.5);}
+
+/* Card content */
+.fig-card-inner{position:relative;z-index:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;width:100%;padding:6px 4px;}
+.fig-card-code{font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(14px,4.5vw,22px);letter-spacing:2px;
+  color:rgba(255,255,255,.9);line-height:1;}
+.fig-card-num{font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(22px,8vw,38px);letter-spacing:1px;
+  color:#fff;line-height:.95;font-weight:400;}
+.fig-card-name{font-size:clamp(7px,2vw,10px);color:rgba(255,255,255,.55);
   text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;padding:0 2px;flex-shrink:0;opacity:.6;}
-.fig-btn .f-state{position:absolute;top:1px;right:2px;font-size:9px;line-height:1;}
-.fig-btn.s0{background:rgba(20,20,40,.8);border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.2);}
-.fig-btn.s0 .f-flag{opacity:.25;}
-.fig-btn.s0 .f-num{color:rgba(255,255,255,.25);}
-.fig-btn.s1{background:rgba(22,168,75,.2);border-color:rgba(22,168,75,.6);color:#a5d6a7;box-shadow:0 2px 8px rgba(22,168,75,.25);}
-.fig-btn.s1 .f-flag{filter:drop-shadow(0 0 4px rgba(22,168,75,.5));}
-.fig-btn.s2{background:rgba(245,197,24,.2);border-color:rgba(245,197,24,.7);color:var(--gold);box-shadow:0 2px 8px rgba(245,197,24,.25);}
-.fig-btn.s2 .f-flag{filter:drop-shadow(0 0 4px rgba(245,197,24,.5));}
-.fig-btn.s3{background:rgba(245,127,23,.18);border-color:rgba(245,127,23,.55);color:#ffb74d;}
+  white-space:nowrap;padding:0 4px;line-height:1.2;margin-top:2px;}
+
+/* Badge (quantidade) */
+.fig-badge{position:absolute;bottom:6px;right:6px;z-index:2;
+  width:20px;height:20px;border-radius:50%;
+  background:#fff;color:#1a3a7a;
+  font-family:'Bebas Neue',sans-serif;font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;}
+.fig-badge.b-dup{background:var(--gold);color:#fff;}
+
+/* Team section headers (for "all teams" view) */
+.fig-team-section{margin-bottom:0;}
+.fig-team-hdr{display:flex;align-items:center;gap:7px;padding:10px 14px 8px;
+  background:rgba(0,0,0,.15);}
+.fig-team-hdr .th-flag{font-size:20px;flex-shrink:0;}
+.fig-team-hdr .th-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:13px;color:#fff;letter-spacing:.5px;flex:1;}
+.fig-team-hdr .th-prog{font-size:10px;color:rgba(255,255,255,.5);white-space:nowrap;}
 .fig-btn:hover{transform:scale(1.06);}
 .fig-btn.s0{background:rgba(229,57,53,.11);border-color:rgba(229,57,53,.3);color:#ef9a9a;}
 .fig-btn.s1{background:rgba(34,160,74,.11);border-color:rgba(34,160,74,.3);color:#a5d6a7;}
@@ -2215,151 +2259,151 @@ setInterval(updateBadges,15000);
 // ALBUM
 // ═══════════════════════════════════════════════════
 function renderAlbum(){
-  const u=getCurrentUser(); if(!u)return;
-  const st=u.stickers||{};
-  const mktCodes=new Set(getMarket().filter(m=>m.owner===u.phone).map(m=>m.code));
-
-  const _countable=ALL_STICKERS.filter(s=>s.tipo!=='escudo'&&s.tipo!=='equipe'&&s.team!=='FWC'&&!s.special);
-  let total=TOTAL_ALBUM,have=0,need=0,dup=0; // 980 total
-  ALL_STICKERS.forEach(s=>{const v=st[s.id]||0;if(v===1)have++;else if(v===2)dup++;else need++;});
-  const pct=Math.round((have+dup)/total*100);
-
-  // Build album HTML
-  let teamSel='<option value="all">Todos os países</option>';
-  TEAMS.forEach(([c,n,f])=>teamSel+=`<option value="${c}">${f} ${n}</option>`);
-
-  document.getElementById('app-content').innerHTML=`
-    <div class="card a-card">
-      <div class="stats">
-        <div class="stat"><div class="stat-n gold" id="st-t">${total}</div><div class="stat-l">Total</div></div>
-        <div class="stat"><div class="stat-n green" id="st-h">${have}</div><div class="stat-l">Tenho</div></div>
-        <div class="stat"><div class="stat-n red" id="st-n">${need}</div><div class="stat-l">Faltam</div></div>
-        <div class="stat"><div class="stat-n gold" id="st-d">${dup}</div><div class="stat-l">Repetidas</div></div>
-      </div>
-      <div class="prog-row">
-        <div class="prog-lbl">Progresso</div>
-        <div class="prog-track"><div class="prog-fill" id="alb-prog" style="width:${pct}%"></div></div>
-        <div class="prog-pct">${pct}%</div>
-      </div>
-      <div class="legend">
-        <div class="leg"><div class="leg-d" style="background:#ef9a9a;border-radius:2px;"></div>Faltando</div>
-        <div class="leg"><div class="leg-d" style="background:#a5d6a7;border-radius:2px;"></div>Tenho</div>
-        <div class="leg"><div class="leg-d" style="background:var(--gold);border-radius:2px;"></div>Repetida</div>
-        <div class="leg"><div class="leg-d" style="background:#ffb74d;border-radius:2px;"></div>À venda</div>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-        <select id="fig-f" onchange="refreshFigs()" style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 9px;color:#fff;font-size:11px;outline:none;">
-          <option value="all">Todas</option>
-          <option value="need">❌ Faltando</option>
-          <option value="have">✅ Tenho</option>
-          <option value="dup">⭐ Repetidas</option>
-          <option value="sale">🏷️ À venda</option>
-        </select>
-        <select id="team-f" onchange="refreshFigs()" style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 9px;color:#fff;font-size:11px;outline:none;">${teamSel}</select>
-      </div>
-      <input class="search-inp" id="fig-q" placeholder="🔍 Buscar código ex: BRA5..." oninput="refreshFigs()">
-      <div class="fig-grid" id="fig-grid" style="overflow-y:visible;max-height:none;"></div>
-      <div style="margin-top:8px;font-size:10px;color:rgba(255,255,255,.22);text-align:center;">
-        Toque para ciclar: faltando → tenho → repetida
-      </div>
-      <div class="div"></div>
-      <button class="btn btn-outline" onclick="openSellModal()">🏷️ Anunciar figurinha para venda/troca</button>
-    </div>
-  `;
-  refreshFigs();
+  const u=getCurrentUser(); if(!u) return;
+  // Start on first team (index 0), album navigation
+  window._albumTeamIdx = window._albumTeamIdx || 0;
+  _renderAlbumTeam(window._albumTeamIdx);
 }
 
-function refreshFigs(){
+function _renderAlbumTeam(idx){
   const u=getCurrentUser(); if(!u) return;
+  window._albumTeamIdx = idx;
   const st=u.stickers||{};
   const mktCodes=new Set(getMarket().filter(m=>m.owner===u.phone).map(m=>m.code));
+
+  // Filter state (from filter UI if it exists)
   const ff=(document.getElementById('fig-f')||{value:'all'}).value;
-  const tf=(document.getElementById('team-f')||{value:'all'}).value;
-  const q=((document.getElementById('fig-q')||{value:''}).value||'').trim().toUpperCase();
 
-  const grid=document.getElementById('fig-grid'); if(!grid) return;
-  grid.innerHTML='';
+  const teamData = TEAMS[idx];
+  if(!teamData) return;
+  const [code, name, flag, grp] = teamData;
+  const totalTeams = TEAMS.length;
 
-  // Build team list respecting filter
-  const teamsToShow = tf==='all' ? TEAMS.map(t=>t[0]) : [tf];
+  // Get stickers for this team sorted 1→20
+  let stickers = ALL_STICKERS.filter(s=>s.team===code).sort((a,b)=>a.n-b.n);
 
-  let totalShown=0;
-  teamsToShow.forEach(teamCode=>{
-    const teamData=TEAMS.find(t=>t[0]===teamCode); if(!teamData) return;
-    const [code,name,flag,grp]=teamData;
+  // Apply status filter
+  if(ff==='need')  stickers=stickers.filter(s=>(st[s.id]||0)===0);
+  else if(ff==='have') stickers=stickers.filter(s=>(st[s.id]||0)>=1);
+  else if(ff==='dup')  stickers=stickers.filter(s=>(st[s.id]||0)===2);
+  else if(ff==='sale') stickers=stickers.filter(s=>mktCodes.has(s.id));
 
-    // Get stickers for this team in ORDER (1→20)
-    let stickers=ALL_STICKERS.filter(s=>s.team===code).sort((a,b)=>a.n-b.n);
+  // Stats for this team
+  const allTeamStk = ALL_STICKERS.filter(s=>s.team===code);
+  const haveCount  = allTeamStk.filter(s=>(st[s.id]||0)>=1).length;
+  const dupCount   = allTeamStk.filter(s=>(st[s.id]||0)===2).length;
+  const pct        = Math.round(haveCount/allTeamStk.length*100);
 
-    // Apply status filter
-    if(ff==='need')  stickers=stickers.filter(s=>(st[s.id]||0)===0);
-    else if(ff==='have') stickers=stickers.filter(s=>(st[s.id]||0)===1);
-    else if(ff==='dup')  stickers=stickers.filter(s=>(st[s.id]||0)===2);
-    else if(ff==='sale') stickers=stickers.filter(s=>mktCodes.has(s.id));
+  const el = document.getElementById('app-content'); if(!el) return;
+  el.innerHTML = `
+  <div class="card" style="padding:0;overflow:hidden;background:#1a3a7a;border:none;margin:0;">
 
-    // Apply search query
-    if(q) stickers=stickers.filter(s=>
-      s.id.toUpperCase().includes(q)||
-      (s.name||'').toUpperCase().includes(q)||
-      name.toUpperCase().includes(q)
-    );
+    <!-- Filtros rápidos -->
+    <div style="display:flex;gap:5px;padding:10px 12px 0;flex-wrap:wrap;">
+      ${['all','need','have','dup','sale'].map((f,i)=>{
+        const labels=['🎴 Todas','⬛ Faltando','✅ Tenho','⭐ Repetidas','🏷️ Venda'];
+        const active=ff===f;
+        return `<button onclick="document.getElementById('fig-f').value='${f}';_renderAlbumTeam(${idx})"
+          style="padding:5px 10px;border-radius:20px;font-family:'Barlow Condensed',sans-serif;
+          font-weight:700;font-size:10px;letter-spacing:1px;cursor:pointer;border:1.5px solid;
+          background:${active?'rgba(255,255,255,.2)':'transparent'};
+          border-color:${active?'rgba(255,255,255,.5)':'rgba(255,255,255,.2)'};
+          color:${active?'#fff':'rgba(255,255,255,.45)'};">${labels[i]}</button>`;
+      }).join('')}
+    </div>
+    <!-- Hidden filter state -->
+    <input type="hidden" id="fig-f" value="${ff}">
 
-    if(!stickers.length) return;
-    totalShown+=stickers.length;
+    <!-- Nav header -->
+    <div class="album-nav">
+      <button class="album-nav-btn" onclick="_albumPrev()" title="Time anterior">‹</button>
+      <div class="album-nav-team">${flag} ${name.toUpperCase()}</div>
+      <button class="album-nav-btn" onclick="_albumNext()" title="Próximo time">›</button>
+    </div>
 
-    // Count for header
-    const allTeamStickers=ALL_STICKERS.filter(s=>s.team===code);
-    const haveCount=allTeamStickers.filter(s=>(st[s.id]||0)>=1).length;
-    const pct=Math.round(haveCount/allTeamStickers.length*100);
+    <!-- Progress -->
+    <div style="padding:6px 16px 2px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+        letter-spacing:1.5px;color:rgba(255,255,255,.55);text-transform:uppercase;">
+        ${haveCount}/${allTeamStk.length} · Grupo ${grp.replace('Grupo ','')} · ${pct}%
+      </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;
+        color:rgba(255,255,255,.4);">${idx+1}/${totalTeams}</div>
+    </div>
+    <div class="album-prog-bar">
+      <div class="album-prog-fill" style="width:${pct}%"></div>
+    </div>
 
-    // Team section
-    const sec=document.createElement('div');
-    sec.className='fig-team-section';
+    <!-- Cards -->
+    <div class="album-grid" id="fig-grid"></div>
 
-    // Header
-    const hdr=document.createElement('div');
-    hdr.className='fig-team-hdr';
-    hdr.innerHTML='<span class="th-flag">'+flag+'</span>'
-      +'<span class="th-name">'+name+'</span>'
-      +'<span class="th-prog">G'+grp.replace('Grupo ','')+' · '+haveCount+'/'+allTeamStickers.length+'</span>';
-    sec.appendChild(hdr);
+    <!-- Anunciar -->
+    <div style="padding:10px 14px 14px;">
+      <button class="btn btn-outline" style="width:100%;border-color:rgba(255,255,255,.25);
+        color:rgba(255,255,255,.6);" onclick="openSellModal()">
+        🏷️ Anunciar figurinha para venda/troca
+      </button>
+    </div>
+  </div>`;
 
-    // Progress bar
-    const pb=document.createElement('div');
-    pb.style.cssText='height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-bottom:8px;overflow:hidden;';
-    pb.innerHTML='<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--green2),var(--gold));border-radius:2px;"></div>';
-    sec.appendChild(pb);
+  // Build cards
+  const grid = document.getElementById('fig-grid'); if(!grid) return;
+  stickers.forEach(s=>{
+    const v = st[s.id]||0;
+    const inSale = mktCodes.has(s.id);
+    const cls = inSale?'fc-sale':v===2?'fc-dup':v===1?'fc-have':'fc-miss';
+    const num = getStickerNum(s.id)||s.n;
+    const isSpecial = s.tipo==='escudo'||s.tipo==='equipe';
 
-    // Cards grid
-    const g=document.createElement('div');
-    g.className='fig-grid';
-    stickers.forEach(s=>{
-      const v=st[s.id]||0;
-      const inSale=mktCodes.has(s.id);
-      const cls=inSale?'s3':v===1?'s1':v===2?'s2':'s0';
-      const num=getStickerNum&&getStickerNum(s.id)?getStickerNum(s.id):s.n;
-      const ico=inSale?'🏷️':s.tipo==='escudo'?'🛡️':s.tipo==='equipe'?'📸':v===1?'✓':v===2?'★':'';
+    const card = document.createElement('div');
+    card.className = 'fig-card '+cls;
+    card.title = code+'-'+s.n+(s.name?' — '+s.name:'');
 
-      const btn=document.createElement('button');
-      btn.className='fig-btn '+cls;
-      btn.title=s.flag+' '+name+' #'+num+(s.name?' — '+s.name:'');
-      btn.innerHTML=
-        '<span class="f-flag">'+s.flag+'</span>'+
-        '<span class="f-num">'+num+'</span>'+
-        (s.name&&s.tipo!=='escudo'&&s.tipo!=='equipe'
-          ?'<span class="f-name">'+s.name.split(' ').slice(-1)[0]+'</span>':'')+
-        (ico?'<span class="f-state">'+ico+'</span>':'');
-      btn.onclick=()=>cycleFig(s.id);
-      g.appendChild(btn);
-    });
-    sec.appendChild(g);
-    grid.appendChild(sec);
+    let inner = '<div class="fig-card-inner">'
+      +'<div class="fig-card-code">'+code+'</div>'
+      +'<div class="fig-card-num">'+s.n+'</div>';
+
+    // Show special type or player last name
+    if(s.tipo==='escudo') inner+='<div class="fig-card-name">Escudo</div>';
+    else if(s.tipo==='equipe') inner+='<div class="fig-card-name">Equipe</div>';
+    else if(s.name) inner+='<div class="fig-card-name">'+s.name.split(' ').slice(-1)[0]+'</div>';
+    inner += '</div>';
+
+    // Badge for owned cards
+    if(v>=1){
+      inner += '<div class="fig-badge'+(v===2?' b-dup':'')+'">'+v+'</div>';
+    }
+    if(inSale && v===0){
+      inner += '<div class="fig-badge" style="background:#e74c3c;color:#fff;">$</div>';
+    }
+
+    card.innerHTML = inner;
+    card.onclick = ()=>{ cycleFig(s.id); _renderAlbumTeam(idx); };
+    grid.appendChild(card);
   });
 
-  if(!totalShown){
-    grid.innerHTML='<div style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:24px;width:100%;">Nenhuma figurinha encontrada</div>';
+  if(!stickers.length){
+    grid.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:24px;grid-column:1/-1;">Nenhuma figurinha nesta categoria</div>';
   }
 }
+
+function _albumNext(){
+  const next=(window._albumTeamIdx+1)%TEAMS.length;
+  _renderAlbumTeam(next);
+}
+function _albumPrev(){
+  const prev=(window._albumTeamIdx-1+TEAMS.length)%TEAMS.length;
+  _renderAlbumTeam(prev);
+}
+
+
+function refreshFigs(){
+  // Delegate to album renderer
+  if(typeof _renderAlbumTeam==='function'){
+    _renderAlbumTeam(window._albumTeamIdx||0);
+  }
+}
+
 
 
 function cycleFig(id){
@@ -3584,6 +3628,9 @@ window.renderMyMatches   = renderMyMatches;
 
 // Direct global exposure for nav and core functions
 window.renderAlbum       = renderAlbum;
+window._renderAlbumTeam  = _renderAlbumTeam;
+window._albumNext        = _albumNext;
+window._albumPrev        = _albumPrev;
 window.renderMarket      = renderMarket;
 window.renderTrades      = renderTrades;
 window.renderChat        = renderChat;
