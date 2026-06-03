@@ -565,30 +565,59 @@ function parseRSS(xml) {
   const items = [];
   const matches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g);
   for (const m of matches) {
+    const itemStr = m[1];
+
+    // Extract content (handles CDATA and plain)
     const get = (tag) => {
-      const r = m[1].match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`));
+      const r = itemStr.match(new RegExp(
+        '<' + tag + '[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/' + tag + '>|<' + tag + '[^>]*>([\\s\\S]*?)<\\/' + tag + '>'
+      ));
       return r ? (r[1] || r[2] || '').trim() : '';
     };
+
     let title = get('title');
-    let link  = get('link');
-    const desc  = (get('description') || '').replace(/<[^>]+>/g, '').substring(0, 180);
+    let link  = '';
+    const desc  = (get('description') || '').replace(/<[^>]+>/g, '').substring(0, 200);
     const pub   = get('pubDate');
-    const src   = (m[1].match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || 'Copa 2026';
+    const src   = (itemStr.match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || 'Copa 2026';
 
-    // Limpa título: remove " - Fonte" no final (padrão Google RSS)
-    title = title.replace(/\s*[-–]\s*[^-–]{3,40}$/, '').trim() || title;
-
-    // Google News não fornece URL direta do artigo — omite o link
-    if (link && link.includes('news.google.com')) {
-      link = '';
+    // 1) Try <link>URL</link>
+    const plainLink = get('link');
+    if (plainLink && !plainLink.includes('news.google.com')) {
+      link = plainLink;
     }
+
+    // 2) Try <link href="URL"/> self-closing
+    if (!link) {
+      const hrefM = itemStr.match(/<link[^>]+href=["']([^"']+)["']/i);
+      if (hrefM && !hrefM[1].includes('news.google.com')) link = hrefM[1];
+    }
+
+    // 3) Try <guid> — sometimes has the real URL
+    if (!link) {
+      const guid = get('guid');
+      if (guid && guid.startsWith('http') && !guid.includes('news.google.com')) {
+        link = guid;
+      }
+    }
+
+    // 4) Try to extract real URL from Google News redirect link
+    if (!link) {
+      const googleLink = plainLink || get('guid') || '';
+      if (googleLink.includes('news.google.com')) {
+        // Convert /rss/articles/ to /articles/ — creates a valid GNews link
+        link = googleLink.replace('/rss/articles/', '/articles/').replace(/\?.*$/, '') || '';
+      }
+    }
+
+    // Clean title: remove ' - Source' suffix (Google RSS standard)
+    title = title.replace(/\s+[-–]\s+[\w][^-–,]{1,35}$/, '').trim() || title;
 
     if (title) items.push({ title, link, desc, pub, src });
   }
   return items;
 }
 
-// ── Fetch RSS via HTTPS ────────────────────────────────────────
 function fetchHTTPS(url, opts = {}) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);

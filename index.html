@@ -165,7 +165,7 @@ body{font-family:'Barlow',sans-serif;background:var(--ink);color:#e8edf2;overflo
   letter-spacing:2px;color:var(--gold);text-transform:uppercase;
   border-left:3px solid var(--gold);padding-left:9px;margin:14px 0 7px;}
 .modal-src-line{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07);
-  font-size:13px;color:rgba(255,255,255,.5);}
+  font-size:13px;color:rgba(255,255,255,.5);display:flex;align-items:center;flex-wrap:wrap;gap:10px;}
 
 /* CURIOSIDADES */
 .quiz-wrap{background:linear-gradient(135deg,rgba(13,45,88,.8),rgba(5,16,28,.97));
@@ -566,8 +566,20 @@ function openModal(i){
   document.getElementById('modal-src').textContent=item.src||'Copa 2026';
   var clean=(item.title||'').replace(/\s+[-–]\s+[\w][^-–,]{1,28}$/,'').trim()||(item.title||'');
   document.getElementById('modal-ttl').textContent=clean;
+  var linkBtn='';
+  if(item.link&&item.link.length>5){
+    linkBtn='<a href="'+item.link+'" target="_blank" rel="noopener" '
+      +'style="display:inline-flex;align-items:center;gap:7px;margin-top:12px;'
+      +'background:rgba(22,168,75,.15);border:1px solid rgba(22,168,75,.3);color:#a5d6a7;'
+      +'font-family:Barlow Condensed,sans-serif;font-size:12px;font-weight:700;'
+      +'letter-spacing:1.5px;text-transform:uppercase;border-radius:8px;padding:9px 16px;'
+      +'text-decoration:none;">🔗 Ler matéria completa</a>';
+  }
   document.getElementById('modal-body').innerHTML=_narrs[i%_narrs.length](item.title,item.desc)
-    +'<div class="modal-src-line">📰 Fonte: <strong style="color:rgba(255,255,255,.8);">'+(item.src||'Copa 2026')+'</strong></div>';
+    +'<div class="modal-src-line" style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;">'
+    +'<span>📰 <strong style="color:rgba(255,255,255,.8);">'+(item.src||'Copa 2026')+'</strong></span>'
+    +linkBtn
+    +'</div>';
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow='hidden';
 }
