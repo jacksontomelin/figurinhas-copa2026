@@ -5150,7 +5150,7 @@ function renderAdmin(){
 let _admCurTab = 0;
 function admTab(i){
   _admCurTab = i;
-  // Update tab styles
+  // Atualiza estilo dos botões
   ['👥 Membros','🛒 Mercado','💬 Chats','📊 Stats','⚙️ Ações'].forEach((_,j)=>{
     const b=document.getElementById('atb'+j);
     if(!b)return;
@@ -5162,11 +5162,22 @@ function admTab(i){
   });
   const ct=document.getElementById('admin-content');
   if(!ct)return;
-  if(i===0) ct.innerHTML=_admMembers();
-  else if(i===1) ct.innerHTML=_admMarket();
-  else if(i===2) ct.innerHTML=_admChats();
-  else if(i===3) ct.innerHTML=_admStats();
-  else if(i===4) ct.innerHTML=_admActions();
+  ct.innerHTML='';
+  try {
+    if(i===0){
+      // Usa _admMembersNew se disponível (mais completo), senão _admMembers
+      if(typeof _admMembersNew==='function') _admMembersNew(ct);
+      else ct.innerHTML=_admMembers();
+    } else if(i===1) ct.innerHTML=_admMarket();
+    else if(i===2) ct.innerHTML=_admChats();
+    else if(i===3){
+      if(typeof _admData==='function') _admData(ct);
+      else ct.innerHTML=_admStats();
+    }
+    else if(i===4) ct.innerHTML=_admActions();
+  } catch(e) {
+    ct.innerHTML='<div style="color:#ef9a9a;padding:16px;font-size:13px;">⚠️ Erro: '+e.message+'</div>';
+  }
 }
 
 function _admCard(title, content){
@@ -5409,16 +5420,8 @@ function _kpi(ico,lbl,val,color){
   </div>`;
 }
 
-function admTab(i,btn){
-  document.querySelectorAll('[id^="adm-t"]').forEach((b,j)=>b.classList.toggle('on',j===i));
-  const el=document.getElementById('adm-content');if(!el)return;
-  el.innerHTML='';
-  if(i===0)_admMembersNew(el);
-  if(i===1)_admMarket(el);
-  if(i===2)_admChats(el);
-  if(i===3)_admData(el);
-  if(i===4)_admActions(el);
-}
+// admTab duplicate removed
+
 
 function _admMembersNew(el){
   const users=getUsers();
