@@ -470,33 +470,56 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
     <div id="f-recover" style="display:none;">
       <div class="sec-lbl">🔐 Recuperar acesso</div>
       <div class="card-ttl">Redefinir minha senha</div>
+
+      <!-- STEP 1: Telefone -->
       <div id="recover-step-1">
-        <div class="fg"><label>Seu telefone WhatsApp</label>
-          <input type="tel" id="rec-phone" placeholder="(47) 00000-0000">
-          <div class="emsg" id="e-recphone">Telefone não encontrado.</div>
+        <div class="fg">
+          <label>Seu telefone WhatsApp (com DDD)</label>
+          <input type="tel" id="rec-phone" placeholder="47999357131" inputmode="numeric"
+            style="font-size:18px;letter-spacing:2px;text-align:center;"
+            oninput="this.value=this.value.replace(/\D/g,'').slice(0,11)">
         </div>
-        <div id="recover-status" style="display:none;background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.2);border-radius:8px;padding:10px;font-size:13px;color:var(--gold);margin-bottom:8px;text-align:center;"></div>
-        <button class="btn btn-gold" onclick="doSendRecovery(this)">📱 Enviar código pelo WhatsApp</button>
+        <div id="rec-feedback" style="border-radius:9px;padding:10px 12px;font-size:13px;
+          text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+          letter-spacing:.5px;display:none;margin-bottom:10px;"></div>
+        <button class="btn btn-gold" id="rec-btn"
+          onclick="doSendRecovery()">
+          📱 Enviar código pelo WhatsApp
+        </button>
       </div>
+
+      <!-- STEP 2: Código + nova senha -->
       <div id="recover-step-2" style="display:none;">
-        <div style="background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.25);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;color:#a5d6a7;">
-          ✅ Código enviado! Verifique seu WhatsApp.
+        <div style="background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.3);
+          border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:#a5d6a7;
+          text-align:center;">
+          ✅ Código enviado! Confira seu WhatsApp agora.
         </div>
-        <div class="fg"><label>Código recebido (6 dígitos)</label>
-          <input type="text" id="rec-code" placeholder="000000" maxlength="6" style="letter-spacing:8px;font-size:20px;text-align:center;">
-          <div class="emsg" id="e-reccode">Código inválido ou expirado.</div>
+        <div class="fg">
+          <label>Código de 6 dígitos</label>
+          <input type="text" id="rec-code" placeholder="000000" maxlength="6"
+            inputmode="numeric"
+            style="letter-spacing:10px;font-size:26px;text-align:center;font-family:'Bebas Neue',sans-serif;"
+            oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)">
         </div>
-        <div class="fg"><label>Nova senha</label>
+        <div class="fg">
+          <label>Nova senha</label>
           <input type="password" id="rec-newpass" placeholder="Mínimo 4 caracteres">
-          <div class="emsg" id="e-recpass">Senha muito curta.</div>
         </div>
-        <div class="fg"><label>Confirmar nova senha</label>
-          <input type="password" id="rec-newpass2" placeholder="Repita a senha">
-          <div class="emsg" id="e-recpass2">As senhas não coincidem.</div>
+        <div class="fg">
+          <label>Confirmar nova senha</label>
+          <input type="password" id="rec-newpass2" placeholder="Repita a nova senha">
         </div>
-        <button class="btn btn-gold" onclick="doConfirmRecovery()">✅ Redefinir senha</button>
+        <div id="rec-feedback2" style="border-radius:9px;padding:10px;font-size:13px;
+          text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+          display:none;margin-bottom:10px;"></div>
+        <button class="btn btn-gold" onclick="doConfirmRecovery()">✅ Redefinir minha senha</button>
+        <div style="text-align:center;margin-top:10px;">
+          <button class="link-btn" onclick="recBack()">← Não recebi o código</button>
+        </div>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray);">
+
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--gray);">
         <button class="link-btn" onclick="showForm('login')">← Voltar ao login</button>
       </div>
     </div>
@@ -2873,172 +2896,107 @@ async function sendConfirmationWA(name, phone) {
 // ═══════════════════════════════════════════════════
 // 🔐 RECUPERAÇÃO DE SENHA VIA WHATSAPP
 // ═══════════════════════════════════════════════════
-const _recCodes = {}; // { phone: { code, ts, attempts } }
+const _recCodes = {};
+const RAILWAY_BASE = localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app';
 
-function doSendRecovery(btnEl){
-  const phoneRaw = document.getElementById('rec-phone').value.replace(/\D/g,'');
-  if(phoneRaw.length < 10){
-    toast('⚠️ Digite um telefone válido com DDD','var(--red)');
-    document.getElementById('rec-phone').classList.add('err');
+function recFb(id, msg, type){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg;
+  el.style.background = type==='ok' ? 'rgba(37,211,102,.12)' : type==='err' ? 'rgba(229,57,53,.12)' : 'rgba(245,197,24,.1)';
+  el.style.border     = type==='ok' ? '1px solid rgba(37,211,102,.3)' : type==='err' ? '1px solid rgba(229,57,53,.3)' : '1px solid rgba(245,197,24,.25)';
+  el.style.color      = type==='ok' ? '#a5d6a7' : type==='err' ? '#ef9a9a' : 'var(--gold)';
+}
+
+function recBack(){
+  document.getElementById('recover-step-2').style.display='none';
+  document.getElementById('recover-step-1').style.display='block';
+  const btn=document.getElementById('rec-btn');
+  if(btn){btn.disabled=false;btn.innerHTML='📱 Enviar código pelo WhatsApp';}
+  recFb('rec-feedback','','');
+}
+
+async function doSendRecovery(){
+  const btn = document.getElementById('rec-btn');
+  const raw = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
+
+  if(raw.length < 10){
+    recFb('rec-feedback','⚠️ Digite o telefone com DDD — ex: 47999357131','err');
     return;
   }
-  document.getElementById('rec-phone').classList.remove('err');
-  document.getElementById('e-recphone').classList.remove('show');
+  recFb('rec-feedback','','');
 
-  // Formato: sempre sem 55 internamente, com 55 para envio
-  const phoneShort = phoneRaw.startsWith('55') ? phoneRaw.slice(2) : phoneRaw;
+  const phoneShort = raw.startsWith('55') ? raw.slice(2) : raw;
   const phoneWA    = '55' + phoneShort;
 
-  // Tenta encontrar o usuário (pode não estar no localStorage deste dispositivo)
-  const u = getUserByPhone(phoneShort) || getUserByPhone(phoneWA) || getUserByPhone(phoneRaw);
+  const code = String(Math.floor(100000 + Math.random()*900000));
+  _recCodes[phoneShort] = { code, ts: Date.now() };
+
+  const u    = getUserByPhone(phoneShort)||getUserByPhone(phoneWA)||getUserByPhone(raw);
   const nome = u ? u.name.split(' ')[0] : 'usuário';
 
-  // Gera código de 6 dígitos
-  const code = String(Math.floor(100000 + Math.random()*900000));
-  _recCodes[phoneShort] = { code, ts: Date.now(), phone: phoneShort, hasUser: !!u };
+  const msg = '🔐 *Família Tomelin — Recuperação de Senha*\n\nOlá, *'+nome+'*!\n\nSeu código:\n\n*'+code+'*\n\n_Válido por 10 minutos._\n\n_Família Tomelin · Copa 2026_ 🏆';
 
-  const msg = '🔐 *Família Tomelin — Recuperação de Senha*\n\nOlá, *'+ nome +'*!\n\nSeu código de verificação é:\n\n*'+ code +'*\n\nDigite este código no app para redefinir sua senha.\nO código expira em 10 minutos.\n\n_Família Tomelin · Copa 2026_ 🏆';
+  if(btn){btn.disabled=true;btn.innerHTML='⏳ Enviando...';}
+  recFb('rec-feedback','📡 Enviando código para seu WhatsApp...','info');
 
-  // UI feedback
-  if(btn){ btn.disabled=true; btn.innerHTML='⏳ Enviando...'; }
-  
-  // Show status in form
-  const statusDiv = document.getElementById('recover-status');
-  if(statusDiv){ statusDiv.style.display='block'; statusDiv.textContent='📱 Enviando código para '+phoneShort.slice(-4).padStart(phoneShort.length,'*')+'...'; }
-
-  _zapiSendRecovery(phoneWA, msg, phoneShort, btn);
-}
-
-function _zapiSendRecovery(phone, msg, phoneShort, btn){
-  let p = phone.replace(/\D/g,'');
-  if(!p.startsWith('55')) p = '55'+p;
-  const railwayUrl = localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app';
-  function reEnableBtn(){ 
-    if(btn){ btn.disabled=false; btn.innerHTML='📱 Enviar código pelo WhatsApp'; }
-    const sd=document.getElementById('recover-status'); if(sd) sd.style.display='none';
-  }
-  // Try Railway first (avoids CORS issues)
-  fetch(railwayUrl+'/api/send',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone: p, message: msg}),
-    signal:AbortSignal.timeout(10000)
-  }).then(r=>r.json()).then(d=>{
-    reEnableBtn();
-    if(d.ok||d.messageId||d.zaapId){
-      _showRecoveryStep2(phoneShort);
+  try {
+    const resp = await fetch(RAILWAY_BASE+'/api/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone:phoneWA, message:msg}),
+      signal:AbortSignal.timeout(15000)
+    });
+    const data = await resp.json();
+    console.log('[Recovery]',data);
+    if(data.ok||data.messageId||data.zaapId){
+      recFb('rec-feedback','✅ Código enviado! Verifique seu WhatsApp.','ok');
+      if(btn){btn.disabled=false;btn.innerHTML='📱 Reenviar código';}
+      setTimeout(()=>{
+        document.getElementById('recover-step-1').style.display='none';
+        document.getElementById('recover-step-2').style.display='block';
+        const inp=document.getElementById('rec-code');if(inp)inp.focus();
+      },1000);
     } else {
-      // Fallback direct Z-API
-      _zapiDirectSend(p, msg, phoneShort, reEnableBtn);
+      if(btn){btn.disabled=false;btn.innerHTML='📱 Enviar código pelo WhatsApp';}
+      recFb('rec-feedback','❌ Falha: '+(data.error||data.message||JSON.stringify(data)),'err');
     }
-  }).catch(()=>{
-    // Railway offline → direct Z-API
-    _zapiDirectSend(p, msg, phoneShort, reEnableBtn);
-  });
-}
-
-function _zapiDirectSend(p, msg, phoneShort, cb){
-  fetch('https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Client-Token':'Ff0f0920827ca4987818cafa9ba0f97a7S'},
-    body:JSON.stringify({phone:p, message:msg}),
-    signal:AbortSignal.timeout(8000)
-  }).then(r=>r.json()).then(d=>{
-    if(cb) cb();
-    if(d.zaapId||d.messageId) _showRecoveryStep2(phoneShort);
-    else {
-      console.error('[Z-API] Resposta:', d);
-      toast('❌ Falha no envio. Verifique se o WhatsApp está ativo neste número.','var(--red)');
-    }
-  }).catch(e=>{
-    if(cb) cb();
-    toast('❌ Sem conexão. Tente novamente em instantes.','var(--red)');
-  });
-}
-
-function _showRecoveryStep2(phoneShort){
-  document.getElementById('recover-step-1').style.display='none';
-  document.getElementById('recover-step-2').style.display='block';
-  document.getElementById('rec-code').dataset.phone = phoneShort;
-  // Reset btn para quando voltar
-  const btn = document.querySelector('#recover-step-1 button.btn-gold');
-  if(btn){ btn.disabled=false; btn.innerHTML='📱 Enviar código pelo WhatsApp'; }
-  toast('✅ Código enviado! Confira seu WhatsApp agora! 📱','var(--wa)');
+  } catch(e) {
+    if(btn){btn.disabled=false;btn.innerHTML='📱 Enviar código pelo WhatsApp';}
+    recFb('rec-feedback','❌ Erro de conexão: '+e.message,'err');
+    console.error('[Recovery]',e);
+  }
 }
 
 function doConfirmRecovery(){
-  const phoneShort = document.getElementById('rec-code').dataset.phone||'';
-  const code = document.getElementById('rec-code').value.trim();
-  const newPass = document.getElementById('rec-newpass').value;
-  const newPass2 = document.getElementById('rec-newpass2').value;
+  const raw   = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
+  const phoneShort = raw.startsWith('55') ? raw.slice(2) : raw;
+  const code  = (document.getElementById('rec-code').value||'').trim();
+  const np    = document.getElementById('rec-newpass').value;
+  const np2   = document.getElementById('rec-newpass2').value;
 
-  let valid = true;
+  if(code.length!==6){ recFb('rec-feedback2','⚠️ Digite o código de 6 dígitos','err'); return; }
+  const stored=_recCodes[phoneShort];
+  if(!stored||stored.code!==code){ recFb('rec-feedback2','❌ Código incorreto','err'); return; }
+  if(Date.now()-stored.ts>10*60*1000){ recFb('rec-feedback2','⏱️ Código expirado. Clique em "Não recebi".','err'); return; }
+  if(np.length<4){ recFb('rec-feedback2','⚠️ Senha muito curta (mínimo 4)','err'); return; }
+  if(np!==np2){ recFb('rec-feedback2','⚠️ Senhas não coincidem','err'); return; }
 
-  // Validate code
-  const stored = _recCodes[phoneShort];
-  const expired = !stored || (Date.now()-stored.ts > 10*60*1000);
-  if(!stored || stored.code !== code || expired){
-    document.getElementById('rec-code').classList.add('err');
-    document.getElementById('e-reccode').classList.add('show');
-    document.getElementById('e-reccode').textContent = expired ? 'Código expirado. Solicite um novo.' : 'Código inválido.';
-    valid = false;
+  const users=getUsers();
+  const uIdx=users.findIndex(u=>u.phone===phoneShort||u.phone==='55'+phoneShort);
+  if(uIdx>=0){
+    users[uIdx].passHash=hash(np);
+    js(K.USERS,users);
   } else {
-    document.getElementById('rec-code').classList.remove('err');
-    document.getElementById('e-reccode').classList.remove('show');
+    users.push({phone:phoneShort,name:'Usuário',passHash:hash(np),stickers:{},ts:Date.now(),avatar:'⚽'});
+    js(K.USERS,users);
+    js(K.SESSION,{phone:phoneShort});
   }
-
-  if(newPass.length < 4){
-    document.getElementById('rec-newpass').classList.add('err');
-    document.getElementById('e-recpass').classList.add('show');
-    valid = false;
-  } else {
-    document.getElementById('rec-newpass').classList.remove('err');
-    document.getElementById('e-recpass').classList.remove('show');
-  }
-
-  if(newPass !== newPass2){
-    document.getElementById('rec-newpass2').classList.add('err');
-    document.getElementById('e-recpass2').classList.add('show');
-    valid = false;
-  } else {
-    document.getElementById('rec-newpass2').classList.remove('err');
-    document.getElementById('e-recpass2').classList.remove('show');
-  }
-
-  if(!valid) return;
-
-  // Update password
-  const users = getUsers();
-  const uIdx = users.findIndex(u=>u.phone===phoneShort||u.phone===(stored&&stored.phone));
-  if(uIdx >= 0){
-    users[uIdx].passHash = hash(newPass);
-    js(K.USERS, users);
-  } else {
-    // Usuário não está neste dispositivo — código válido, mas não há o que atualizar aqui
-    // Salvar credencial temporária para login imediato
-    const tempUser = { phone: phoneShort, name: 'Usuário', passHash: hash(newPass), stickers: {}, ts: Date.now(), avatar:'⚽' };
-    users.push(tempUser);
-    js(K.USERS, users);
-    js(K.SESSION, { phone: phoneShort });
-    toast('✅ Senha definida! Entre com seu telefone e a nova senha.','var(--wa)');
-  }
-
-  // Clean up code
   delete _recCodes[phoneShort];
-
-  toast('✅ Senha redefinida com sucesso!','var(--wa)');
+  recFb('rec-feedback2','✅ Senha redefinida com sucesso!','ok');
   launchConfetti();
-
-  // Return to login after 2s
-  setTimeout(()=>{
-    document.getElementById('rec-phone').value='';
-    document.getElementById('rec-code').value='';
-    document.getElementById('rec-newpass').value='';
-    document.getElementById('rec-newpass2').value='';
-    document.getElementById('recover-step-1').style.display='block';
-    document.getElementById('recover-step-2').style.display='none';
-    showForm('login');
-  }, 2000);
+  setTimeout(()=>showForm('login'),2000);
 }
 
 // 🟢 ONLINE COUNTER + GRUPO WA TRACKER
