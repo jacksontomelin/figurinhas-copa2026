@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <title>Família Tomelin · Figurinhas Copa 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -100,15 +100,17 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 
 /* BOTTOM NAV */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:200;
-  background:rgba(8,16,28,.97);backdrop-filter:blur(16px);
+  background:rgba(8,16,28,.97);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border-top:1px solid rgba(255,255,255,.08);
-  display:none;align-items:stretch;padding:0;}
+  display:none;align-items:stretch;padding:0;
+  padding-bottom:env(safe-area-inset-bottom,0);}
 .bottom-nav.on{display:flex;}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:10px 4px 14px;background:transparent;border:none;cursor:pointer;
-  font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;
-  letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.35);
-  transition:.25s;position:relative;}
+.nav-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 2px 14px;background:transparent;border:none;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;font-size:8px;font-weight:700;
+  letter-spacing:.3px;text-transform:uppercase;color:rgba(255,255,255,.35);
+  transition:.25s;position:relative;-webkit-tap-highlight-color:transparent;
+  white-space:nowrap;overflow:hidden;}
 .nav-btn.active{color:var(--gold);}
 .nav-btn .nav-ico{font-size:20px;margin-bottom:3px;transition:.25s;}
 .nav-btn.active .nav-ico{filter:drop-shadow(0 0 6px rgba(245,197,24,.8));}
@@ -166,27 +168,33 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 .prog-pct{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);min-width:34px;text-align:right;}
 
 /* FIG GRID */
-.fig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:7px;}
-.fig-team-section{margin-bottom:16px;}
+.fig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;
+  width:100%;}
+.fig-team-section{margin-bottom:20px;width:100%;}
 .fig-team-hdr{display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;
-  border-bottom:1px solid rgba(255,255,255,.1);}
-.fig-team-hdr .th-flag{font-size:22px;}
+  border-bottom:1px solid rgba(255,255,255,.1);flex-wrap:wrap;}
+.fig-team-hdr .th-flag{font-size:22px;flex-shrink:0;}
 .fig-team-hdr .th-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;
-  font-size:13px;color:#fff;letter-spacing:.5px;}
-.fig-team-hdr .th-prog{font-size:11px;color:var(--gray);margin-left:auto;}
+  font-size:13px;color:#fff;letter-spacing:.5px;flex:1;}
+.fig-team-hdr .th-prog{font-size:10px;color:var(--gray);white-space:nowrap;}
+@media(max-width:360px){.fig-grid{grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:4px;}}
 .fig-grid::-webkit-scrollbar{width:3px;}
 .fig-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
 .fig-btn{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  border-radius:10px;cursor:pointer;border:2px solid;transition:.15s;
-  user-select:none;position:relative;aspect-ratio:3/4;width:100%;
-  padding:4px 2px;gap:1px;
-  box-shadow:0 2px 6px rgba(0,0,0,.3);}
-.fig-btn:active{transform:scale(.92);}
-.fig-btn .f-flag{font-size:clamp(18px,4.5vw,26px);line-height:1;}
-.fig-btn .f-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(11px,2.8vw,15px);
-  letter-spacing:.5px;line-height:1;}
-.fig-btn .f-state{position:absolute;top:3px;right:3px;font-size:9px;line-height:1;}
+  border-radius:9px;cursor:pointer;border:2px solid;transition:.15s;
+  user-select:none;-webkit-user-select:none;position:relative;
+  aspect-ratio:3/4;width:100%;min-width:0;
+  padding:3px 2px;gap:1px;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);overflow:hidden;}
+.fig-btn:active{transform:scale(.9);}
+.fig-btn .f-flag{font-size:clamp(16px,4vw,24px);line-height:1;flex-shrink:0;}
+.fig-btn .f-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(10px,2.5vw,14px);
+  letter-spacing:.5px;line-height:1;flex-shrink:0;}
+.fig-btn .f-name{font-size:clamp(7px,1.8vw,9px);color:rgba(255,255,255,.5);
+  line-height:1;text-align:center;width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;flex-shrink:0;}
+.fig-btn .f-state{position:absolute;top:2px;right:2px;font-size:8px;line-height:1;}
 .fig-btn.s0{background:rgba(30,30,50,.7);border-color:rgba(255,255,255,.12);
   color:rgba(255,255,255,.25);}
 .fig-btn.s0 .f-flag{opacity:.3;}
@@ -328,7 +336,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 @keyframes slideDown{from{opacity:0;transform:translateY(-22px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 .a-hdr{animation:slideDown .55s cubic-bezier(.34,1.56,.64,1) both;}
-.a-card{animation:fadeUp .55s .12s cubic-bezier(.34,1.56,.64,1) both;}
+.a-card{animation:fadeUp .55s .12s cubic-bezier(.34,1.56,.64,1) both;width:100%;max-width:520px;margin:0 auto;}
 
 /* CONFETTI */
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:9998;}
@@ -604,7 +612,7 @@ function recBack(){ window._recBack && window._recBack(); }
     </div>
   </div>
   <!-- Content area (changes per nav) -->
-  <div id="app-content" style="width:100%;max-width:520px;"></div>
+  <div id="app-content" style="width:100%;max-width:520px;padding-bottom:80px;"></div>
 </div>
 
 <!-- BOTTOM NAV -->
@@ -2319,7 +2327,7 @@ function refreshFigs(){
       b.className='fig-btn '+cls;
       b.title=s.flag+' '+s.teamName+' #'+s.n+' — '+(v===0?'Faltando':v===1?'Tenho':'Repetida');
       b.innerHTML='<span class="f-flag">'+s.flag+'</span>'
-        +'<span class="f-num">'+(getStickerNum(s.id)||s.n)+'</span>'+'<span style="font-size:8px;color:rgba(255,255,255,.6);line-height:1;text-align:center;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;">'+((s.name||'').split(' ').slice(-1)[0]||'')+'</span>'
+        +'<span class="f-num">'+(getStickerNum(s.id)||s.n)+'</span>'+'<span class="f-name">'+((s.name&&s.tipo!=='escudo'&&s.tipo!=='equipe')?s.name.split(' ').slice(-1)[0]:'')+'</span>'
         +'<span class="f-state">'+(isSale?'🏷️':s.tipo==='escudo'?'🛡️':s.tipo==='equipe'?'📸':stateIco)+'</span>';
       b.onclick=()=>cycleFig(s.id);
       teamGrid.appendChild(b);
