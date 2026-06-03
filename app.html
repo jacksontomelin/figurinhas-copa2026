@@ -323,6 +323,17 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 }
 </style>
 <!-- v1780453002 -->
+
+<script>
+// Early global definitions — available before body loads
+function doSendRecovery(){ 
+  const _fn = window._doSendRecovery;
+  if(!_fn){ alert('Ainda carregando... aguarde e tente novamente'); return; }
+  _fn();
+}
+function doConfirmRecovery(){ window._doConfirmRecovery && window._doConfirmRecovery(); }
+function recBack(){ window._recBack && window._recBack(); }
+</script>
 </head>
 <body>
 
@@ -835,6 +846,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 </div>
 
 <script>
+
 // ═══════════════════════════════════════════════════
 // TIMES (48 seleções Copa 2026)
 // ═══════════════════════════════════════════════════
@@ -1917,7 +1929,7 @@ function maskPhone(el){ let v=el.value.replace(/\D/g,'');
   if(v.length>7) v=`(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
   else if(v.length>2) v=`(${v.slice(0,2)}) ${v.slice(2)}`;
   el.value=v; }
-['a-phone','r-phone'].forEach(id=>{
+['a-phone','r-phone','rec-phone'].forEach(id=>{
   const el=document.getElementById(id);
   if(el) el.addEventListener('input',()=>maskPhone(el));
 });
@@ -2902,7 +2914,7 @@ async function sendConfirmationWA(name, phone) {
 const _recCodes = {};
 const RAILWAY_BASE = localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app';
 
-window.recFb = function recFb(id, msg, type){
+window.recFb = function _recFb(id, msg, type){
   const el = document.getElementById(id);
   if(!el) return;
   el.style.display = msg ? 'block' : 'none';
@@ -2912,7 +2924,7 @@ window.recFb = function recFb(id, msg, type){
   el.style.color      = type==='ok' ? '#a5d6a7' : type==='err' ? '#ef9a9a' : 'var(--gold)';
 }
 
-window.recBack = function recBack(){
+window._recBack = function _recBack(){
   document.getElementById('recover-step-2').style.display='none';
   document.getElementById('recover-step-1').style.display='block';
   const btn=document.getElementById('rec-btn');
@@ -2920,7 +2932,7 @@ window.recBack = function recBack(){
   recFb('rec-feedback','','');
 }
 
-window.doSendRecovery = async function doSendRecovery(){
+window._doSendRecovery = async function _doSendRecovery(){
   const btn = document.getElementById('rec-btn');
   const raw = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
   console.log('[Recovery] Phone raw:', raw, 'length:', raw.length);
@@ -2973,7 +2985,7 @@ window.doSendRecovery = async function doSendRecovery(){
   }
 }
 
-window.doConfirmRecovery = function doConfirmRecovery(){
+window._doConfirmRecovery = function _doConfirmRecovery(){
   const raw   = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
   const phoneShort = raw.startsWith('55') ? raw.slice(2) : raw;
   const code  = (document.getElementById('rec-code').value||'').trim();
