@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Enviando mensagem...</title>
+<style>
+body{font-family:monospace;background:#081220;color:#fff;padding:30px;text-align:center;}
+.msg{font-size:16px;margin:14px 0;padding:12px;border-radius:8px;background:rgba(255,255,255,.07);}
+.ok{border:1px solid #4caf50;color:#69f0ae;}
+.err{border:1px solid #ef5350;color:#ef9a9a;}
+.info{border:1px solid #42a5f5;color:#90caf9;}
+pre{background:rgba(0,0,0,.4);border-radius:8px;padding:14px;font-size:12px;text-align:left;overflow-x:auto;white-space:pre-wrap;}
+</style>
+</head>
+<body>
+<h2 style="color:#f5c518;">🤖 Enviando para o grupo Família Tomelin...</h2>
+<div id="log"></div>
+<script>
+const ZAPI = {
+  instance: '3F155B355FA8410212E52295B0810B48',
+  token: '9B855EED9711E32684160EE5',
+  clientToken: 'Ff0f0920827ca4987818cafa9ba0f97a7S'
+};
+const GROUP = '120363409442378564-group';
+
+const MSG = `🏆 *FAMÍLIA TOMELIN — COPA 2026* ⚽🎴
+
+Olá pessoal! O robô da Família Tomelin está no ar! 🤖✅
+
+📅 *A Copa do Mundo começa em 11 de junho de 2026!*
+🇧🇷 Brasil estreia em *13 de junho às 16h* contra o Marrocos 🇲🇦
+
+🎴 *SABIA QUE...*
+A Copa 2026 terá 48 seleções pela primeira vez na história! São 104 jogos em 16 estádios nos EUA, Canadá e México.
+
+💡 *Use nosso sistema para:*
+✅ Marcar suas figurinhas e ver o que falta
+🔄 Trocar com outros membros do grupo
+🎲 Apostar nos resultados dos jogos
+💰 Ganhar Tomelin Coins!
+
+👉 *Acesse agora:*
+https://jacksontomelin.github.io/figurinhas-copa2026
+
+_Bora completar o álbum e torcer pelo hexa!_ 🇧🇷🏆
+#FamíliaTomelin #Copa2026 #BoraBrasil`;
+
+function log(txt, cls='info'){
+  const d=document.createElement('div');
+  d.className=`msg ${cls}`;
+  d.innerHTML=txt;
+  document.getElementById('log').appendChild(d);
+}
+
+async function send(){
+  log('📤 Conectando com Z-API...');
+  try {
+    const url=`https://api.z-api.io/instances/${ZAPI.instance}/token/${ZAPI.token}/send-text`;
+    const r=await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Client-Token':ZAPI.clientToken},
+      body:JSON.stringify({phone:GROUP,message:MSG})
+    });
+    const data=await r.json();
+    if(r.ok && (data.zaapId||data.messageId)){
+      log(`✅ <strong>MENSAGEM ENVIADA COM SUCESSO!</strong><br>Message ID: ${data.messageId||data.zaapId}`, 'ok');
+      log(`<pre>${JSON.stringify(data,null,2)}</pre>`,'info');
+    } else {
+      log(`❌ Erro na resposta: <pre>${JSON.stringify(data,null,2)}</pre>`,'err');
+    }
+  } catch(e){
+    log(`❌ Erro de rede: ${e.message}<br><br>Se estiver no GitHub Pages, pode haver bloqueio CORS. Tente abrir o bot.html localmente.`,'err');
+  }
+}
+
+send();
+</script>
+</body>
+</html>
