@@ -1928,6 +1928,170 @@ setInterval(()=>{
 
 
 // ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+// 🌟 CURIOSIDADES + QUIZ — Copa 2026
+// ═══════════════════════════════════════════════════
+const FACTS = [
+  ['⚽','A Copa 2026 é a primeira com 48 seleções, expandida de 32!'],
+  ['🌎','Será realizada em 3 países: EUA, Canadá e México — primeira Copa tri-sede!'],
+  ['🏟️','16 estádios vão receber jogos: 11 nos EUA, 3 no México e 2 no Canadá.'],
+  ['🏆','A Copa 2026 terá 104 jogos, contra 64 na edição de 2022.'],
+  ['⭐','O Brasil busca o hexacampeonato — título inédito no futebol mundial.'],
+  ['🇺🇸','O MetLife Stadium em Nova Jersey receberá a grande final da Copa 2026.'],
+  ['🏅','Os dois primeiros de cada grupo avançam + os 8 melhores terceiros colocados.'],
+  ['🏟️','O Estadio Azteca é o único estádio a sediar Copas em 1970, 1986 e 2026!'],
+  ['🇦🇷','A Argentina é a atual campeã mundial, conquistando o título em 2022 no Catar.'],
+  ['🏆','O Brasil tem 5 títulos mundiais (1958, 1962, 1970, 1994, 2002).'],
+  ['⚡','Mbappé já marcou 12 gols em Copas antes dos 25 anos — fenômeno!'],
+  ['🐐','Messi completou seu legado em 2022 ao ganhar a Copa que faltava.'],
+  ['🌍','A Panini produz figurinhas da Copa do Mundo desde 1970, no México.'],
+  ['🎴','O álbum Panini 2026 tem 960 figurinhas para colar no total!'],
+  ['💰','Estima-se que completar o álbum com sorte média custe mais de R$2.500.'],
+  ['📦','Cada pacotinho Panini tem 5 figurinhas — são ~196 pacotes para completar.'],
+  ['🔥','Após 300 figurinhas diferentes a probabilidade de repetir aumenta 50%.'],
+  ['🇧🇷','Pelé é o único jogador a vencer 3 Copas do Mundo (1958, 1962, 1970).'],
+  ['🥅','Miroslav Klose é o maior artilheiro da história das Copas com 16 gols.'],
+  ['🎯','O maior placar da Copa foi Hungria 10x1 El Salvador em 1982.'],
+  ['🏆','A Copa 2026 vai distribuir US$ 1 bilhão em premiação — recorde!'],
+  ['🇲🇽','O México nunca passou das quartas de final — o famoso Quinto Partido!'],
+  ['⚡','Vinicius Jr. foi eleito melhor jogador do mundo pelo FIFA The Best 2024.'],
+  ['🎴','As figurinhas brilhantes (foil) valem até 10x mais em trocas!'],
+  ['🔵','A Itália ficou de fora da Copa 2022 e não se classificou para 2026!'],
+  ['🏟️','O SoFi Stadium na Califórnia tem telão de 360 graus — o maior do mundo!'],
+  ['🇧🇷','O Brasil é o único país que participou de todas as edições da Copa!'],
+  ['🔥','A Copa 2026 terá tecnologia VAR 3D em todos os jogos pela primeira vez.'],
+  ['📱','A Panini lançou app para trocar figurinhas digitais na Copa 2022.'],
+  ['🌟','A Copa 2026 terá semi-automático de impedimento com câmeras de IA.'],
+  ['🏅','Mais de 5 bilhões de pessoas assistiram a pelo menos 1 jogo da Copa 2022.'],
+  ['🎯','A Espanha criou o tiki-taka que dominou o futebol de 2008 a 2012.'],
+  ['🏅','A Coreia do Sul chegou às semifinais em casa em 2002 — maior surpresa!'],
+  ['📦','A Panini já produziu mais de 10 bilhões de figurinhas na história.'],
+  ['💡','Colecionadores experientes organizam listas digitais para trocas mais rápidas.'],
+  ['⭐','Vender suas repetidas pode render até R$50 por semana durante a Copa!'],
+  ['⚡','Grupos de WhatsApp de troca existem em mais de 80 países atualmente.'],
+  ['🏟️','O AT&T Stadium em Dallas tem capacidade para 105.000 pessoas!'],
+  ['🥅','O gol mais rápido da Copa foi em 11 segundos por Hakan Sukur em 2002!'],
+  ['🌎','A Copa 2026 terá jogos em altitudes de até 2.200m na Cidade do México!'],
+  ['🔥','A figurinha de Pelé da Copa 1970 vale mais de R$50.000 em leilão hoje!'],
+  ['⚽','O Brasil marcou 237 gols em Copas — recorde absoluto de todos os tempos.'],
+  ['🌟','A Copa 2026 terá sistema anti-racismo monitorado por IA em tempo real.'],
+  ['🇦🇷','Messi é o único a ganhar Copa, Champions, Bola de Ouro e Copa América.'],
+  ['🇧🇷','O Brasil estreia na Copa 2026 em 13 de junho contra Marrocos!'],
+  ['🏆','A Copa 2026 terá transmissão em 8K pela primeira vez na história!'],
+  ['🎴','Trocar figurinhas é tradição em mais de 140 países ao redor do mundo.'],
+  ['🌟','O futebol tem 270 milhões de jogadores — maior esporte do mundo.'],
+  ['⭐','A Copa 2026 terá apostas ao vivo com tecnologia de ponta nos estádios.'],
+  ['💎','Há figurinhas com erro de impressão que valem fortunas para colecionadores.'],
+];
+
+const QUIZZES = [
+  {q:'Quantas seleções jogarão a Copa 2026?',opts:['32','36','48','64'],a:2},
+  {q:'Quem é o maior artilheiro da história das Copas?',opts:['Pelé','Ronaldo','Klose','Müller'],a:2},
+  {q:'Em quantos países será realizada a Copa 2026?',opts:['1','2','3','4'],a:2},
+  {q:'Qual estádio receberá a final da Copa 2026?',opts:['Rose Bowl','MetLife Stadium','AT&T Stadium','SoFi Stadium'],a:1},
+  {q:'Quantas Copas o Brasil tem?',opts:['4','5','6','3'],a:1},
+  {q:'Qual país nunca passou das quartas de final?',opts:['México','Argentina','França','Espanha'],a:0},
+  {q:'Quem marcou o gol mais rápido da história das Copas?',opts:['Pelé','Mbappé','Hakan Sukur','Ronaldo'],a:2},
+  {q:'Quantas figurinhas tem o álbum Panini 2026?',opts:['720','840','960','980'],a:2},
+  {q:'Qual o recorde de gols numa partida de Copa?',opts:['Hungria 10x1','Alemanha 8x0','França 7x0','Brasil 6x0'],a:0},
+  {q:'Em qual Copa o VAR foi usado pela primeira vez?',opts:['2014','2018','2022','2010'],a:1},
+];
+
+let _factIdx = Math.floor(Math.random()*FACTS.length);
+let _curQuiz = 0;
+let _quizAnswered = false;
+let _quizScore = 0;
+let _quizTotal = 0;
+
+function nextFact(){ _factIdx=(_factIdx+1)%FACTS.length; renderCuriosidades(); }
+function prevFact(){ _factIdx=(_factIdx-1+FACTS.length)%FACTS.length; renderCuriosidades(); }
+function randomFact(){ _factIdx=Math.floor(Math.random()*FACTS.length); renderCuriosidades(); }
+function _nextQuiz(){ _curQuiz=(_curQuiz+1)%QUIZZES.length; _buildQuiz(); }
+
+function renderCuriosidades(){
+  const el=document.getElementById('app-content'); if(!el) return;
+  const [ico,fact]=FACTS[_factIdx];
+  el.innerHTML=`
+<div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:520px;">
+  <div class="tabs" style="margin-bottom:0;">
+    <button class="tab on" id="copa-t0" onclick="copaTab(0,this)">🌟 Curiosidades</button>
+    <button class="tab" id="copa-t1" onclick="copaTab(1,this)">⚽ Jogos</button>
+    <button class="tab" id="copa-t2" onclick="copaTab(2,this)">🎲 Apostas</button>
+  </div>
+  <div id="copa-tab-content">
+  <div style="background:linear-gradient(135deg,rgba(10,30,55,.95),rgba(8,18,32,.98));border:1.5px solid rgba(245,197,24,.3);border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5);">
+    <div style="background:linear-gradient(135deg,rgba(26,122,58,.35),rgba(10,30,55,.6));padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,.05);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:32px;">${ico}</div>
+        <div style="flex:1;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:19px;color:var(--gold);letter-spacing:1px;">Sabia disso?</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green2);text-transform:uppercase;">Copa 2026 · Curiosidades</div>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.3);">${_factIdx+1}/${FACTS.length}</div>
+      </div>
+    </div>
+    <div style="padding:16px;">
+      <div style="font-size:14px;color:#eceff1;line-height:1.6;font-weight:500;">${fact}</div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 16px 16px;">
+      <button onclick="prevFact()" style="flex:1;padding:9px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">← Anterior</button>
+      <button onclick="randomFact()" style="flex:1;padding:9px;border-radius:9px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">🎲 Aleatória</button>
+      <button onclick="nextFact()" style="flex:1;padding:9px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">Próxima →</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+    ${_icard('📅','Início','11 Jun 2026')}
+    ${_icard('🏆','Final','19 Jul 2026')}
+    ${_icard('🌎','Países','EUA · CAN · MEX')}
+    ${_icard('⚽','Equipes','48 seleções')}
+    ${_icard('🏟️','Estádios','16 arenas')}
+    ${_icard('🎴','Figurinhas','960 no álbum')}
+  </div>
+  <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(66,165,245,.22);border-radius:14px;padding:14px 16px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:#90caf9;text-transform:uppercase;margin-bottom:9px;">🧠 Quiz rápido</div>
+    <div id="quiz-area"></div>
+  </div>
+  </div>
+</div>`;
+  _buildQuiz();
+  if(typeof updateTicker==='function') updateTicker();
+}
+
+function _icard(ico2,lbl,val){
+  return '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:9px 10px;text-align:center;"><div style="font-size:17px;">'+ico2+'</div><div style="font-family:Barlow Condensed,sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;margin:2px 0;">'+lbl+'</div><div style="font-family:Barlow Condensed,sans-serif;font-size:12px;font-weight:700;color:#fff;">'+val+'</div></div>';
+}
+
+function _buildQuiz(){
+  const qz=QUIZZES[_curQuiz];
+  const qa=document.getElementById('quiz-area'); if(!qa) return;
+  _quizAnswered=false;
+  let optsHtml='';
+  qz.opts.forEach((o,i)=>{
+    optsHtml+=`<button onclick="_answerQuiz(${i})" id="qopt-${i}" style="padding:8px 9px;border-radius:8px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);color:#fff;font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:12px;cursor:pointer;text-align:left;">${o}</button>`;
+  });
+  qa.innerHTML='<div style="font-size:13px;color:#fff;font-weight:600;margin-bottom:8px;line-height:1.4;">'+qz.q+'<span style="float:right;font-family:Bebas Neue,sans-serif;color:var(--gold);font-size:14px;">'+_quizScore+'/'+_quizTotal+'</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;" id="quiz-opts">'+optsHtml+'</div>';
+}
+
+function _answerQuiz(i){
+  if(_quizAnswered) return;
+  _quizAnswered=true; _quizTotal++;
+  const qz=QUIZZES[_curQuiz];
+  const isRight=(i===qz.a);
+  if(isRight) _quizScore++;
+  document.querySelectorAll('[id^="qopt-"]').forEach(function(b,j){
+    if(j===qz.a){b.style.background='rgba(34,160,74,.3)';b.style.borderColor='rgba(34,160,74,.6)';b.style.color='#a5d6a7';b.textContent='OK '+b.textContent;}
+    else if(j===i&&!isRight){b.style.background='rgba(229,57,53,.25)';b.style.borderColor='rgba(229,57,53,.5)';b.style.color='#ef9a9a';b.textContent='X '+b.textContent;}
+  });
+  const qa=document.getElementById('quiz-area'); if(!qa) return;
+  const nb=document.createElement('div');
+  nb.style.marginTop='8px';
+  nb.innerHTML=(isRight?'<div style="padding:7px 10px;border-radius:8px;background:rgba(34,160,74,.15);border:1px solid rgba(34,160,74,.3);font-size:11px;color:#a5d6a7;font-family:Barlow Condensed,sans-serif;font-weight:700;">Correto!</div>':'<div style="padding:7px 10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.2);font-size:11px;color:#ef9a9a;font-family:Barlow Condensed,sans-serif;font-weight:700;">Resp: '+qz.opts[qz.a]+'</div>')+'<button onclick="_nextQuiz()" style="margin-top:5px;width:100%;padding:7px;border-radius:8px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:11px;cursor:pointer;">Próxima →</button>';
+  qa.appendChild(nb);
+  if(isRight) toast('Correto!','#22a04a'); else toast('Resp: '+qz.opts[qz.a],'var(--orange)');
+}
+
+
 // ⚽ COPA 2026 — JOGOS AO VIVO + APOSTAS + DESAFIOS
 // ═══════════════════════════════════════════════════
 
