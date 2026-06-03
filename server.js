@@ -281,6 +281,14 @@ async function checkStickerMatches(changedPhone) {
 // ── MIDDLEWARES ───────────────────────────────────────────────
 app.use(require('express').json());
 app.use(require('express').static(pathMod.join(__dirname)));
+// CORS global
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 // ── ROTAS ─────────────────────────────────────────────────────
 
@@ -355,7 +363,7 @@ app.post('/api/send', async (req, res) => {
   if (!phone || !message) return res.status(400).json({ ok: false, error: 'phone e message obrigatórios' });
   try {
     const r = await sendPrivate(phone, message);
-    res.json({ ok: r.status === 200, messageId: r.body?.messageId, zaapId: r.body?.zaapId, ...r.body });
+    res.json(r);
   } catch(e) {
     res.status(500).json({ ok: false, error: e.message });
   }
