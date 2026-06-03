@@ -977,10 +977,14 @@ function formatNewsMsg(item, idx) {
   const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡','🔴','📺'];
   const ico = emojis[idx % emojis.length];
 
-  // Título limpo (remove " - Fonte" no final)
-  const title = (item.title || '')
+  // Título limpo (remove " - Fonte" + limita 90 chars para caber no WA)
+  let title = (item.title || '')
     .replace(/\s+[-–]\s+[\w][^-–,]{1,40}$/, '').trim()
     || (item.title || '');
+  if (title.length > 90) {
+    // Corta na última palavra antes de 90 chars + reticências
+    title = title.substring(0, 88).replace(/\s+\S*$/, '') + '…';
+  }
 
   const src  = item.src || 'Copa 2026';
 
