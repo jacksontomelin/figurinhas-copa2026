@@ -261,7 +261,7 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:20px 16px;text-align:c
       <div class="tb-badge">Copa 2026</div>
     </div>
   </a>
-  <a href="app.html" class="btn-app">🎴 Entrar</a>
+  <a href="https://copa2026.familiatomelin.com.br/app.html" class="btn-app">🎴 Entrar</a>
 </header>
 
 <!-- HERO -->
@@ -279,7 +279,7 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:20px 16px;text-align:c
   </div>
 
   <div class="ctas">
-    <a href="app.html" class="btn-main btn-green">🎴 Acessar o sistema</a>
+    <a href="https://copa2026.familiatomelin.com.br/app.html" class="btn-main btn-green">🎴 Acessar o sistema</a>
     <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW" target="_blank" rel="noopener" class="btn-main btn-wa">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
       Grupo WA
@@ -295,7 +295,7 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:20px 16px;text-align:c
     <div class="cb-ico">🎉</div>
     <div class="cb-h">Bem-vindo(a)!</div>
     <div class="cb-p">Olá, <span class="cb-name" id="cb-name">amigo(a)</span>! Seu cadastro foi confirmado.<br>Agora é só entrar e começar a trocar!</div>
-    <a href="app.html" class="btn-main btn-green" style="display:inline-flex;margin:0 auto;">🚀 Entrar agora</a>
+    <a href="https://copa2026.familiatomelin.com.br/app.html" class="btn-main btn-green" style="display:inline-flex;margin:0 auto;">🚀 Entrar agora</a>
   </div>
 </div>
 
@@ -381,7 +381,7 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:20px 16px;text-align:c
   <h2>Pronto para completar o <em>álbum?</em></h2>
   <p>980 figurinhas, 48 seleções, toda a família trocando juntos!</p>
   <div class="ctas">
-    <a href="app.html" class="btn-main btn-green">🎴 Entrar no sistema</a>
+    <a href="https://copa2026.familiatomelin.com.br/app.html" class="btn-main btn-green">🎴 Entrar no sistema</a>
     <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW" target="_blank" rel="noopener" class="btn-main btn-wa">💬 Grupo</a>
   </div>
 </div>
@@ -397,9 +397,9 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:20px 16px;text-align:c
     </span>
   </div>
   <div class="ft-links">
-    <a href="app.html">📱 App</a>
-    <a href="dashboard.html">📺 Dashboard</a>
-    <a href="bot.html">🤖 Bot</a>
+    <a href="https://copa2026.familiatomelin.com.br/app.html">📱 App</a>
+    <a href="https://copa2026.familiatomelin.com.br/dashboard.html">📺 Dashboard</a>
+    <a href="https://copa2026.familiatomelin.com.br/bot.html">🤖 Bot</a>
     <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW" target="_blank">💬 Grupo</a>
   </div>
 </footer>
@@ -568,7 +568,7 @@ function openModal(i){
   document.getElementById('modal-ttl').textContent=clean;
   var linkBtn='';
   if(item.link&&item.link.length>5){
-    linkBtn='<a href="'+item.link+'" target="_blank" rel="noopener" '
+    var _lu=item.link;try{var _x=new XMLHttpRequest();_x.open('GET',RAILWAY+'/api/shorten?url='+encodeURIComponent(item.link),false);_x.send();if(_x.status===200){var _d=JSON.parse(_x.responseText);if(_d.ok&&_d.short)_lu=_d.short;}}catch(_e){}linkBtn='<a href="'+_lu+'" target="_blank" rel="noopener" '
       +'style="display:inline-flex;align-items:center;gap:7px;margin-top:12px;'
       +'background:rgba(22,168,75,.15);border:1px solid rgba(22,168,75,.3);color:#a5d6a7;'
       +'font-family:Barlow Condensed,sans-serif;font-size:12px;font-weight:700;'
@@ -589,6 +589,7 @@ function closeModal(){
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 
+async function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
 async function loadNews(){
   var grid=document.getElementById('news-grid');
   var items=[];
@@ -610,7 +611,7 @@ async function loadNews(){
     {title:'MetLife Stadium receberá a final em 19 de julho',src:'FIFA',desc:'O estádio de Nova Jersey será palco da decisão com mais de 82 mil torcedores.'},
     {title:'Trocas de figurinhas: use o sistema da Família Tomelin',src:'Família Tomelin',desc:'O sistema cruza automaticamente quem tem as figurinhas que faltam no seu álbum.'},
   ];}
-  _news=items;
+  _news=items.map(function(it){return{title:stripHtml(it.title||''),desc:stripHtml(it.desc||''),src:it.src||'Copa 2026',link:it.link||'',pub:it.pub||''};});
   try{sessionStorage.setItem('t26_news_cache',JSON.stringify({items:items,ts:Date.now()}));}catch(e){}
   var ts=document.getElementById('news-ts');
   if(ts)ts.textContent='🕐 '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -619,7 +620,7 @@ async function loadNews(){
     return '<div class="n-card" onclick="openModal('+i+')">'
       +'<div class="n-src">'+(it.src||'Copa 2026')+'</div>'
       +'<div class="n-title">'+(it.title||'')+'</div>'
-      +(it.desc?'<div class="n-desc">'+(it.desc||'')+'...</div>':'')
+      +(it.desc?'<div class="n-desc">'+stripHtml(it.desc||'').substring(0,120)+'...</div>':'')
       +(d?'<div class="n-time">🕐 '+d+' · Toque para ler</div>':'<div class="n-time">📖 Toque para ler</div>')
       +'<div class="n-ball">'+rb()+'</div>'
       +'</div>';
