@@ -2899,7 +2899,15 @@ function formatTime(ts){
   if(diff<86400000) return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
   return d.getDate()+'/'+(d.getMonth()+1);
 }
-function closeModal(id){document.getElementById(id).classList.remove('on');}
+function openModal(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.classList.add('on');
+}
+function closeModal(id){
+  const el=document.getElementById(id);
+  if(el)el.classList.remove('on');
+}
 document.querySelectorAll('.overlay').forEach(o=>{
   o.addEventListener('click',function(e){if(e.target===this)this.classList.remove('on');});
 });
@@ -3599,43 +3607,34 @@ async function _afterMarketPublish(ownerPhone, codes){
 }
 
 
-// Direct global exposure for admin functions
-window.admTab            = admTab;
-window.admDeleteUser     = admDeleteUser;
-window.admResetStickers  = admResetStickers;
-window.admSendGroupMsg   = admSendGroupMsg;
-window.admSaveRailway    = admSaveRailway;
-window.admClearMarket    = admClearMarket;
-window.admClearChats     = admClearChats;
+// admin functions exposed in script 2 below
 
 
-// Direct global exposure - no eval needed
-window.openSellModal     = openSellModal;
-window.setSellFilter     = setSellFilter;
-window.sellGoStep2       = sellGoStep2;
-window.selectSellType    = selectSellType;
-window.doSellNew         = doSellNew;
-window._toggleSellSticker= _toggleSellSticker;
+// Script 1 functions — direct exposure
+window.openModal          = openModal;
+window.closeModal         = closeModal;
+window.openSellModal      = openSellModal;
+window.doSellNew          = doSellNew;
+window.setSellFilter      = setSellFilter;
+window.sellGoStep2        = sellGoStep2;
+window.selectSellType     = selectSellType;
+window._toggleSellSticker = _toggleSellSticker;
+window._renderAlbumTeam   = _renderAlbumTeam;
+window._albumNext         = _albumNext;
+window._albumPrev         = _albumPrev;
+window.renderTrades       = renderTrades;
+window.renderChat         = renderChat;
 
-// Direct global exposure for match functions
-window.createMatch       = createMatch;
-window.acceptMatch       = acceptMatch;
-window.cancelMatch       = cancelMatch;
-window.completeMatch     = completeMatch;
-window.sendMatchProposal = sendMatchProposal;
-window._proposeMatch     = _proposeMatch;
-window.renderMyMatches   = renderMyMatches;
+// match functions exposed in script 2
 
 // Direct global exposure for nav and core functions
 window.renderAlbum       = renderAlbum;
-window._renderAlbumTeam  = _renderAlbumTeam;
-window._albumNext        = _albumNext;
-window._albumPrev        = _albumPrev;
+// album nav exposed in script 2
 window.renderMarket      = renderMarket;
 window.renderTrades      = renderTrades;
 window.renderChat        = renderChat;
 window.renderFeed        = renderFeed;
-window.renderAdmin       = renderAdmin;
+// renderAdmin exposed in script 2
 window.doLogin           = doLogin;
 window.doRegister        = doRegister;
 window.doLogout          = doLogout;
@@ -5539,6 +5538,44 @@ window.addEventListener('focus', ()=>{
 });
 
 // duplicate DOMContentLoaded removed
+
+
+// Expose admin functions globally (defined in this script)
+if(typeof admTab==='function'){
+  window.renderAdmin      = renderAdmin;
+  window.admTab           = admTab;
+  window.admDeleteUser    = admDeleteUser;
+  window.admResetStickers = admResetStickers;
+  window.admSendGroupMsg  = admSendGroupMsg;
+  window.admSaveRailway   = admSaveRailway;
+  window.admClearMarket   = admClearMarket;
+  window.admClearChats    = admClearChats;
+  window.renderAdmin      = renderAdmin;
+  window._admMembers      = _admMembers;
+  window._admMarket       = _admMarket;
+  window._admChats        = _admChats;
+  window._admStats        = _admStats;
+  window._admActions      = _admActions;
+}
+
+
+// Expose functions defined in Script 2
+if(typeof createMatch==='function'){
+  window.createMatch        = createMatch;
+  window.acceptMatch        = acceptMatch;
+  window.cancelMatch        = cancelMatch;
+  window.completeMatch      = completeMatch;
+  window.sendMatchProposal  = sendMatchProposal;
+  window._proposeMatch      = _proposeMatch;
+  window.renderMyMatches    = renderMyMatches;
+  window.renderAdmin        = renderAdmin;
+  window.renderCuriosidades = renderCuriosidades;
+  window.renderCopaBets     = typeof renderCopaBets==='function' ? renderCopaBets : function(){};
+  window.nextFact           = typeof nextFact==='function' ? nextFact : function(){};
+  window._doSendRecovery    = typeof _doSendRecovery==='function' ? _doSendRecovery : function(){};
+  window._doConfirmRecovery = typeof _doConfirmRecovery==='function' ? _doConfirmRecovery : function(){};
+  window._recBack           = typeof _recBack==='function' ? _recBack : function(){};
+}
 
 // Direct global exposure for Copa/Curiosidades
 if(typeof renderCuriosidades==='function') window.renderCuriosidades=renderCuriosidades;
