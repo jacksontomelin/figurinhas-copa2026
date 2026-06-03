@@ -981,10 +981,7 @@ function formatNewsMsg(item, idx) {
   let title = (item.title || '')
     .replace(/\s+[-–]\s+[\w][^-–,]{1,40}$/, '').trim()
     || (item.title || '');
-  if (title.length > 90) {
-    // Corta na última palavra antes de 90 chars + reticências
-    title = title.substring(0, 88).replace(/\s+\S*$/, '') + '…';
-  }
+  // título completo sem corte
 
   const src  = item.src || 'Copa 2026';
 
@@ -1014,8 +1011,13 @@ function formatNewsMsg(item, idx) {
   let linkLine = '';
   if (item.link && item.link.length > 10) {
     const short = shortenUrl(item.link);
-    linkLine = `\n🔗 ${short}`;
+    linkLine = `🔗 ${short}`;
   }
+
+  // Linha fonte+link compacta numa linha só
+  const srcLine = linkLine
+    ? `📰 _${src}_ ${linkLine.trim()}`   // "📰 _ge_ 🔗 https://..."
+    : `📰 _${src}_`;
 
   const msg = [
     `${ico} *COPA 2026 — NOTÍCIA*`,
@@ -1023,7 +1025,7 @@ function formatNewsMsg(item, idx) {
     `*${title}*`,
     desc ? desc : null,
     ``,
-    `📰 _${src}_${linkLine}`,
+    srcLine,
     `_Família Tomelin · Copa 2026_ 🏆`,
   ].filter(l => l !== null).join('\n');
 
