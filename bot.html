@@ -146,7 +146,39 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);color:#fff;min-heigh
 
   <!-- TAB 0: GRUPO (mensagens animadas) -->
   <div id="panel-0">
-    <div class="card">
+    
+<!-- RPA NOTÍCIAS -->
+<div style="background:linear-gradient(135deg,rgba(13,45,88,.8),rgba(5,16,28,.95));border:1.5px solid rgba(66,165,245,.3);border-radius:14px;padding:16px;margin-bottom:12px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#fff;letter-spacing:1px;">📰 RPA de Notícias</div>
+      <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:2px;color:#90caf9;text-transform:uppercase;">Puxa e envia ao vivo a cada 10 min</div>
+    </div>
+    <div style="display:flex;gap:7px;align-items:center;">
+      <span id="rpa-status-badge" style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;background:rgba(22,168,75,.2);border:1px solid rgba(22,168,75,.3);color:#a5d6a7;">— Aguardando</span>
+    </div>
+  </div>
+  <div id="rpa-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;">
+    <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:9px;padding:10px 6px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:#42a5f5;" id="rpa-sent">—</div>
+      <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">Enviadas</div>
+    </div>
+    <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:9px;padding:10px 6px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);" id="rpa-queued">—</div>
+      <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">No cache</div>
+    </div>
+    <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:9px;padding:10px 6px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--green2);" id="rpa-count">—</div>
+      <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">Notícias</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap;">
+    <button onclick="rpaToggle()" id="btn-rpa-toggle" style="flex:1;padding:10px;border-radius:9px;background:rgba(22,168,75,.2);border:1.5px solid rgba(22,168,75,.35);color:#a5d6a7;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;">⏸ Toggle RPA</button>
+    <button onclick="rpaRunNow()" style="flex:1;padding:10px;border-radius:9px;background:rgba(245,197,24,.15);border:1.5px solid rgba(245,197,24,.3);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;">▶ Rodar agora</button>
+  </div>
+  <div id="rpa-last" style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.3);font-family:'Barlow Condensed',sans-serif;text-align:center;"></div>
+</div>
+<div class="card">
       <div class="card-title">📱 Número do grupo / destinatário</div>
       <div class="alert warn">
         <div>⚠️</div>
@@ -738,6 +770,58 @@ function log(msg, type='info'){
 buildPhrases();
 checkStatus();
 updateLiveMsgPreview();
+
+// ── RPA NOTÍCIAS ──────────────────────────────────────
+async function loadRpaStatus() {
+  try {
+    const r = await fetch(RAILWAY_URL + '/api/rpa/status', { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return;
+    const d = await r.json();
+    const badge = document.getElementById('rpa-status-badge');
+    if (badge) {
+      badge.textContent = d.enabled ? '🟢 Ativo' : '🔴 Pausado';
+      badge.style.background = d.enabled ? 'rgba(22,168,75,.2)' : 'rgba(229,57,53,.15)';
+      badge.style.borderColor = d.enabled ? 'rgba(22,168,75,.3)' : 'rgba(229,57,53,.3)';
+      badge.style.color = d.enabled ? '#a5d6a7' : '#ef9a9a';
+    }
+    const el = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+    el('rpa-sent',   d.sent    ?? '—');
+    el('rpa-queued', d.queued  ?? '—');
+    el('rpa-count',  d.newsCount ?? '—');
+    if (d.lastNews) {
+      const last = document.getElementById('rpa-last');
+      if (last) last.textContent = '🕐 Última atualização: ' + new Date(d.lastNews).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    }
+  } catch(e) { console.warn('[RPA]', e.message); }
+}
+
+async function rpaToggle() {
+  try {
+    const r = await fetch(RAILWAY_URL + '/api/rpa/toggle', { method: 'POST', signal: AbortSignal.timeout(6000) });
+    const d = await r.json();
+    showToast(d.enabled ? '📰 RPA ativado!' : '⏸ RPA pausado', d.enabled ? '#a5d6a7' : '#ef9a9a');
+    loadRpaStatus();
+  } catch(e) { showToast('❌ ' + e.message, '#ef9a9a'); }
+}
+
+async function rpaRunNow() {
+  try {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = '⏳ Executando...';
+    const r = await fetch(RAILWAY_URL + '/api/rpa/run-now', { method: 'POST', signal: AbortSignal.timeout(15000) });
+    const d = await r.json();
+    showToast('▶ RPA executado!', 'var(--gold)');
+    setTimeout(() => { btn.disabled = false; btn.textContent = '▶ Rodar agora'; loadRpaStatus(); }, 3000);
+  } catch(e) { 
+    event.target.disabled = false; event.target.textContent = '▶ Rodar agora';
+    showToast('❌ ' + e.message, '#ef9a9a'); 
+  }
+}
+
+// Load RPA status on page load and every 30s
+loadRpaStatus();
+setInterval(loadRpaStatus, 30000);
+
 </script>
 </body>
 </html>

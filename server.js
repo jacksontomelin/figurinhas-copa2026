@@ -175,6 +175,29 @@ const MSGS_HYPE = [
   `🏆 *FAMÍLIA TOMELIN — COPA 2026!* ⚽\n\nFaltam poucos dias para o maior evento esportivo do planeta!\n\n📅 Abertura: 11 de junho — México × África do Sul\n🇧🇷 Brasil estreia: 13 de junho contra o Marrocos\n\nCorre completar o álbum! 🎴\n\n_#FamíliaTomelin #Copa2026_`,
 ];
 
+
+// ── MENSAGENS ESPECIAIS — HORÁRIOS ESPECÍFICOS ──────────
+const MSGS_MANHA = [
+  `☀️ *BOM DIA, FAMÍLIA TOMELIN!* ⚽\n\nHoje é mais um dia de completar o álbum da Copa 2026! 🎴\nVeja quem tem as figurinhas que você precisa no sistema!\n\n_Família Tomelin · Copa 2026_ 🏆`,
+  `🌅 *BOM DIA!* ⚽\n\nA Copa 2026 está chegando! Ainda tem figurinhas pra trocar?\nAcesse o sistema e veja as trocas disponíveis! 🎴🔄\n\n_Família Tomelin · Copa 2026_`,
+];
+
+const MSGS_TARDE = [
+  `🌞 *BOA TARDE, FAMÍLIA TOMELIN!* ⚽\n\nComo está seu álbum? Já marcou todas as figurinhas de hoje? 🎴\nO sistema está esperando por você!\n\n_Família Tomelin · Copa 2026_ 🏆`,
+  `⚽ *BOA TARDE!*\n\nAproveitou para trocar figurinhas hoje? 🎴\nO sistema da Família Tomelin cruzou novos matches pra você!\n\n_Família Tomelin · Copa 2026_`,
+];
+
+const MSGS_NOITE = [
+  `🌙 *BOA NOITE, FAMÍLIA TOMELIN!* ⚽\n\nFim de dia — como foi a caçada às figurinhas? 🎴\nAmanhã tem mais! Copa 2026 chegando! 🏆\n\n_Família Tomelin · Copa 2026_`,
+  `⭐ *BOA NOITE!*\n\nAntes de dormir... dá uma olhada no álbum? 😄🎴\nTem matches novos esperando por você no sistema!\n\n_Família Tomelin · Copa 2026_ 🏆`,
+];
+
+const MSGS_CONTAGEM = [
+  `⏳ *FALTAM POUCOS DIAS PARA A COPA 2026!* 🏆\n\n⚽ 48 seleções\n🌎 3 países\n🏟️ 16 estádios\n🎴 980 figurinhas\n\nSeu álbum está pronto? 💪\n\n_Família Tomelin · Copa 2026_`,
+  `🔥 *A COPA 2026 TÁ AÍ!* ⚽\n\nEUA · Canadá · México vão receber o maior espetáculo do futebol!\n🇧🇷 E o Brasil vai em busca do HEXA! 🏆\n\n_Família Tomelin · Copa 2026_`,
+  `🎴 *FIQUE LIGADO — COPA 2026!* 📅\n\nO álbum Panini tem *980 figurinhas* de 48 seleções!\nVocê já tem quantas? Veja no sistema e troque com a galera! 🔄\n\n_Família Tomelin · Copa 2026_ 🏆`,
+];
+
 function getRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // ── MONITOR DE JOGOS AO VIVO ──────────────────────────────────
@@ -527,6 +550,32 @@ cron.schedule('*/2 * * * *', async () => {
   await monitorJogos();
 }, { timezone: 'America/Sao_Paulo' });
 
+
+// ── CRONS POR HORÁRIO ────────────────────────────────
+// Bom dia: 8h seg-sex
+cron.schedule('0 8 * * 1-5', async () => {
+  log('☀️', 'Cron: bom dia');
+  await sendGroup(getRandom(MSGS_MANHA));
+}, { timezone: 'America/Sao_Paulo' });
+
+// Boa tarde: 14h qui-sex
+cron.schedule('0 14 * * 4,5', async () => {
+  log('🌞', 'Cron: boa tarde');
+  await sendGroup(getRandom(MSGS_TARDE));
+}, { timezone: 'America/Sao_Paulo' });
+
+// Boa noite: 21h dom
+cron.schedule('0 21 * * 0', async () => {
+  log('🌙', 'Cron: boa noite');
+  await sendGroup(getRandom(MSGS_NOITE));
+}, { timezone: 'America/Sao_Paulo' });
+
+// Contagem regressiva: 17h ter-sex
+cron.schedule('0 17 * * 2-5', async () => {
+  log('⏳', 'Cron: contagem Copa');
+  await sendGroup(getRandom(MSGS_CONTAGEM));
+}, { timezone: 'America/Sao_Paulo' });
+
 // ♻️ Limpa pares notificados a cada 6 horas (evita acúmulo de memória)
 cron.schedule('0 */6 * * *', () => {
   const before = DB.notified.size;
@@ -791,3 +840,122 @@ cron.schedule('*/10 * * * *', async () => {
   await refreshWeather();
 })();
 
+
+// ═══════════════════════════════════════════════════════════════
+// 📰 RPA DE NOTÍCIAS — Puxa e envia notícias ao vivo a cada 10min
+// ═══════════════════════════════════════════════════════════════
+
+const NEWS_SENT = new Set(); // IDs de notícias já enviadas (evita repetição)
+let newsRpaEnabled = true;
+let newsRpaCount = 0;
+
+// Formata notícia para WhatsApp
+function formatNewsMsg(item, idx) {
+  const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡'];
+  const ico = emojis[idx % emojis.length];
+
+  // Limpa o título (remove sufixo " - Fonte")
+  const title = (item.title || '').replace(/\s+[-–]\s+[\w][^-–,]{1,35}$/, '').trim();
+  const src   = item.src || 'Copa 2026';
+  const desc  = (item.desc || '').substring(0, 200);
+
+  let msg = `${ico} *COPA 2026 — NOTÍCIA AO VIVO*\n\n`;
+  msg += `*${title}*\n\n`;
+  if (desc) msg += `${desc}\n\n`;
+  msg += `📰 Fonte: _${src}_\n`;
+  msg += `_Família Tomelin · Copa 2026_ 🏆`;
+
+  return msg;
+}
+
+// Gera ID único para notícia (evitar reenvio)
+function newsId(item) {
+  return (item.title || '').substring(0, 60).replace(/\s+/g, '_').toLowerCase();
+}
+
+// RPA principal: puxa notícias e envia as novas no grupo
+async function rpaNewsLoop() {
+  if (!newsRpaEnabled) return;
+
+  try {
+    // Atualiza cache de notícias
+    const items = await refreshNews();
+    if (!items || !items.length) {
+      log('📰', 'RPA: sem notícias no cache');
+      return;
+    }
+
+    // Filtra notícias NÃO enviadas ainda
+    const novas = items.filter(it => !NEWS_SENT.has(newsId(it)));
+
+    if (!novas.length) {
+      log('📰', `RPA: todas as ${items.length} notícias já foram enviadas`);
+      return;
+    }
+
+    // Envia apenas 1 notícia por vez (a mais recente não enviada)
+    const item = novas[0];
+    const id   = newsId(item);
+
+    log('📰', `RPA: enviando notícia — "${(item.title||'').substring(0,50)}"`);
+
+    const msg = formatNewsMsg(item, newsRpaCount);
+    const r   = await sendGroup(msg);
+
+    if (r.ok) {
+      NEWS_SENT.add(id);
+      newsRpaCount++;
+      log('✅', `RPA: notícia enviada (#${newsRpaCount})`);
+      if (r.messageId) DB.cronStats.sent++;
+    } else {
+      log('❌', `RPA: falha ao enviar — ${JSON.stringify(r).substring(0,100)}`);
+      DB.cronStats.errors++;
+    }
+
+  } catch (e) {
+    log('❌', `RPA news erro: ${e.message}`);
+    DB.cronStats.errors++;
+  }
+}
+
+// Limpa histórico de enviados a cada 6h (recicla notícias antigas)
+cron.schedule('0 */6 * * *', () => {
+  const before = NEWS_SENT.size;
+  NEWS_SENT.clear();
+  log('♻️', `RPA: cache de notícias enviadas limpo (${before} itens)`);
+}, { timezone: 'America/Sao_Paulo' });
+
+// Cron: roda a cada 10 minutos
+cron.schedule('*/10 * * * *', async () => {
+  log('⏰', 'RPA cron: verificando notícias ao vivo...');
+  await rpaNewsLoop();
+}, { timezone: 'America/Sao_Paulo' });
+
+// ── Rotas de controle do RPA ──────────────────────────────────
+app.get('/api/rpa/status', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({
+    ok: true,
+    enabled: newsRpaEnabled,
+    sent: newsRpaCount,
+    queued: NEWS_SENT.size,
+    lastNews: CACHE.news.updatedAt ? new Date(CACHE.news.updatedAt).toISOString() : null,
+    newsCount: CACHE.news.data.length,
+  });
+});
+
+app.post('/api/rpa/toggle', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  newsRpaEnabled = !newsRpaEnabled;
+  log('⚙️', `RPA notícias ${newsRpaEnabled ? 'ATIVADO' : 'DESATIVADO'}`);
+  res.json({ ok: true, enabled: newsRpaEnabled });
+});
+
+app.post('/api/rpa/run-now', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  log('▶️', 'RPA: execução manual');
+  rpaNewsLoop().catch(e => log('❌', e.message));
+  res.json({ ok: true, message: 'RPA executando...' });
+});
+
+log('📰', 'RPA de notícias iniciado — envia a cada 10 minutos');
