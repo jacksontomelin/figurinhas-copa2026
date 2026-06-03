@@ -349,10 +349,24 @@ app.post('/api/send-group', async (req, res) => {
 
 // Enviar mensagem privada
 app.post('/api/send', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   const { phone, message } = req.body;
-  if (!phone || !message) return res.status(400).json({ error: 'phone e message obrigatórios' });
-  const r = await sendPrivate(phone, message);
-  res.json(r);
+  if (!phone || !message) return res.status(400).json({ ok: false, error: 'phone e message obrigatórios' });
+  try {
+    const r = await sendPrivate(phone, message);
+    res.json({ ok: r.status === 200, messageId: r.body?.messageId, zaapId: r.body?.zaapId, ...r.body });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Handle OPTIONS preflight for CORS
+app.options('/api/send', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
 });
 
 // Notificação de figurinha (chamado pelo app principal via fetch)
