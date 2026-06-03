@@ -2,6 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Família Tomelin · Figurinhas Copa 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -319,6 +322,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
   .online-grid{grid-template-columns:repeat(auto-fill,minmax(70px,1fr));}
 }
 </style>
+<!-- v1780453002 -->
 </head>
 <body>
 
@@ -483,7 +487,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
           text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;
           letter-spacing:.5px;display:none;margin-bottom:10px;"></div>
         <button class="btn btn-gold" id="rec-btn"
-          onclick="doSendRecovery()">
+          onclick="try{doSendRecovery()}catch(e){this.nextElementSibling&&(this.nextElementSibling.textContent='Erro: '+e.message);alert('Erro: '+e.message)}">
           📱 Enviar código pelo WhatsApp
         </button>
       </div>
@@ -2899,7 +2903,7 @@ async function sendConfirmationWA(name, phone) {
 const _recCodes = {};
 const RAILWAY_BASE = localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app';
 
-function recFb(id, msg, type){
+window.recFb = function recFb(id, msg, type){
   const el = document.getElementById(id);
   if(!el) return;
   el.style.display = msg ? 'block' : 'none';
@@ -2909,7 +2913,7 @@ function recFb(id, msg, type){
   el.style.color      = type==='ok' ? '#a5d6a7' : type==='err' ? '#ef9a9a' : 'var(--gold)';
 }
 
-function recBack(){
+window.recBack = function recBack(){
   document.getElementById('recover-step-2').style.display='none';
   document.getElementById('recover-step-1').style.display='block';
   const btn=document.getElementById('rec-btn');
@@ -2917,7 +2921,7 @@ function recBack(){
   recFb('rec-feedback','','');
 }
 
-async function doSendRecovery(){
+window.doSendRecovery = async function doSendRecovery(){
   const btn = document.getElementById('rec-btn');
   const raw = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
 
@@ -2969,7 +2973,7 @@ async function doSendRecovery(){
   }
 }
 
-function doConfirmRecovery(){
+window.doConfirmRecovery = function doConfirmRecovery(){
   const raw   = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
   const phoneShort = raw.startsWith('55') ? raw.slice(2) : raw;
   const code  = (document.getElementById('rec-code').value||'').trim();
