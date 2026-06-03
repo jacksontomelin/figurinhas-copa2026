@@ -21,7 +21,7 @@ const ZAPI = {
   groupId:     process.env.ZAPI_GROUP_ID   || '120363409442378564-group',
 };
 const WC_API  = 'https://api.wc2026api.com';
-const APP_URL = 'https://jacksontomelin.github.io/figurinhas-copa2026';
+const APP_URL = 'https://copa2026.familiatomelin.com.br';
 
 // ── HELPERS ───────────────────────────────────────────────────
 function log(emoji, msg) {
@@ -626,7 +626,14 @@ function parseRSS(xml) {
 
     let title = get('title');
     let link  = '';
-    const desc  = (get('description') || '').replace(/<[^>]+>/g, '').substring(0, 200);
+    // Strip HTML, decode entities, clean whitespace
+    const rawDesc = get('description') || '';
+    const desc = rawDesc
+      .replace(/<[^>]+>/g, '')          // remove all HTML tags
+      .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+      .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
+      .replace(/\s+/g,' ').trim()
+      .substring(0, 220);
     const pub   = get('pubDate');
     const src   = (itemStr.match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || 'Copa 2026';
 
@@ -841,6 +848,40 @@ cron.schedule('*/10 * * * *', async () => {
 })();
 
 
+
+// ── URL Shortener (TinyURL API, gratuito, sem chave) ─────────
+const urlShortCache = new Map();
+
+async function shortenUrl(url) {
+  if (!url || url.length < 30) return url;
+  if (urlShortCache.has(url)) return urlShortCache.get(url);
+  try {
+    const res = await fetch(
+      'https://tinyurl.com/api-create.php?url=' + encodeURIComponent(url),
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (res.ok) {
+      const short = (await res.text()).trim();
+      if (short.startsWith('http')) {
+        urlShortCache.set(url, short);
+        return short;
+      }
+    }
+  } catch (e) {
+    log('⚠️', 'shortenUrl failed: ' + e.message);
+  }
+  return url; // fallback: URL original
+}
+
+// Rota pública de encurtamento
+app.get('/api/shorten', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const { url } = req.query;
+  if (!url) return res.json({ ok: false, error: 'url param required' });
+  const short = await shortenUrl(url);
+  res.json({ ok: true, original: url, short });
+});
+
 // ═══════════════════════════════════════════════════════════════
 // 📰 RPA DE NOTÍCIAS — Puxa e envia notícias ao vivo a cada 10min
 // ═══════════════════════════════════════════════════════════════
@@ -850,20 +891,36 @@ let newsRpaEnabled = true;
 let newsRpaCount = 0;
 
 // Formata notícia para WhatsApp
-function formatNewsMsg(item, idx) {
-  const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡'];
+async function formatNewsMsg(item, idx) {
+  const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡','🔴','📺'];
   const ico = emojis[idx % emojis.length];
 
-  // Limpa o título (remove sufixo " - Fonte")
-  const title = (item.title || '').replace(/\s+[-–]\s+[\w][^-–,]{1,35}$/, '').trim();
-  const src   = item.src || 'Copa 2026';
-  const desc  = (item.desc || '').substring(0, 200);
+  // Título limpo (remove " - Fonte" no final)
+  const title = (item.title || '')
+    .replace(/\s+[-–]\s+[\w][^-–,]{1,40}$/, '').trim()
+    || (item.title || '');
 
-  let msg = `${ico} *COPA 2026 — NOTÍCIA AO VIVO*\n\n`;
-  msg += `*${title}*\n\n`;
-  if (desc) msg += `${desc}\n\n`;
-  msg += `📰 Fonte: _${src}_\n`;
-  msg += `_Família Tomelin · Copa 2026_ 🏆`;
+  const src  = item.src || 'Copa 2026';
+
+  // Desc: já vem limpa do parseRSS (sem HTML)
+  const desc = (item.desc || '').substring(0, 200).trim();
+
+  // Link encurtado
+  let linkLine = '';
+  if (item.link && item.link.length > 10) {
+    const short = await shortenUrl(item.link);
+    linkLine = `\n🔗 ${short}`;
+  }
+
+  const msg = [
+    `${ico} *COPA 2026 — NOTÍCIA*`,
+    ``,
+    `*${title}*`,
+    desc ? desc : null,
+    ``,
+    `📰 _${src}_${linkLine}`,
+    `_Família Tomelin · Copa 2026_ 🏆`,
+  ].filter(l => l !== null).join('\n');
 
   return msg;
 }
@@ -899,7 +956,7 @@ async function rpaNewsLoop() {
 
     log('📰', `RPA: enviando notícia — "${(item.title||'').substring(0,50)}"`);
 
-    const msg = formatNewsMsg(item, newsRpaCount);
+    const msg = await formatNewsMsg(item, newsRpaCount);
     const r   = await sendGroup(msg);
 
     if (r.ok) {
