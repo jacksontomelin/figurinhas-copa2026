@@ -2684,48 +2684,47 @@ if(document.readyState === 'loading'){
 const WELCOME_GROUP_MSGS = [
   `🎉 *NOVO MEMBRO NA FAMÍLIA TOMELIN!* 🎉
 
-👋 Bem-vindo(a), *{NOME}*! Que bom ter você aqui!
+👋 Bem-vindo(a), *{NOME_COMPLETO}*! Que bom ter você aqui!
 
-Agora é só marcar suas figurinhas, ver quem tem as que faltam e trocar com a galera! 🎴🔄
+Agora é só marcar suas figurinhas e trocar com a galera! 🎴🔄
 
-👉 https://jacksontomelin.github.io/figurinhas-copa2026
+👉 https://jacksontomelin.github.io/figurinhas-copa2026/app.html
 
 _Família Tomelin · Copa 2026_ 🏆⚽`,
-  `🎴 *{NOME} ENTROU NO SISTEMA!* 🎉
+  `🎴 *{NOME_COMPLETO} ENTROU NO SISTEMA!* 🎉
 
-Boa notícia! *{NOME}* acaba de se cadastrar no sistema de trocas da Família Tomelin! 👏
+Boa notícia! *{NOME_COMPLETO}* acabou de se cadastrar no sistema de trocas da Família Tomelin! 👏
 
-Já vai marcar as figurinhas e entrar na dança! 🕺💃
-Bem-vindo(a)! 🇧🇷🏆
+Bem-vindo(a)! Acessa lá e marca suas figurinhas! 🇧🇷🏆
 
-👉 https://jacksontomelin.github.io/figurinhas-copa2026`,
+👉 https://jacksontomelin.github.io/figurinhas-copa2026/app.html`,
   `⚽ *CHEGOU MAIS UM NA FAMÍLIA TOMELIN!* ⚽
 
-🙌 *{NOME}* acabou de entrar no sistema de figurinhas!
+🙌 *{NOME_COMPLETO}* acabou de entrar no sistema de figurinhas!
 
-Quanto mais gente, mais trocas! Esse pessoal chega com gás pra completar o álbum! 🔥🎴
+Quanto mais gente, mais trocas e mais fácil completar o álbum! 🔥🎴
 
-👉 https://jacksontomelin.github.io/figurinhas-copa2026
+👉 https://jacksontomelin.github.io/figurinhas-copa2026/app.html
 
 _Copa 2026 · Família Tomelin_ 🏆`,
   `🌟 *FAMÍLIA TOMELIN CRESCENDO!* 🌟
 
-*{NOME}* acabou de se juntar ao nosso sistema de trocas da Copa 2026! 🎉
+*{NOME_COMPLETO}* acabou de se juntar ao nosso sistema de trocas da Copa 2026! 🎉
 
-Seja bem-vindo(a)! Marque suas figurinhas e veja quem tem as que faltam!
+Bem-vindo(a)! Marque suas figurinhas e veja quem tem as que faltam!
 
-🎴 https://jacksontomelin.github.io/figurinhas-copa2026
+🎴 https://jacksontomelin.github.io/figurinhas-copa2026/app.html
 
 #FamíliaTomelin #Copa2026`,
   `🏆 *NOVO COLECIONADOR NA ÁREA!* 🏆
 
-👋 *{NOME}* entrou no sistema da Família Tomelin!
+👋 *{NOME_COMPLETO}* entrou na Família Tomelin!
 
-Bora completar o álbum juntos! Quanto mais membros, mais trocas e mais fácil completar! 💪🎴
+Bora completar o álbum juntos! Quanto mais membros, mais trocas! 💪🎴
 
-👉 https://jacksontomelin.github.io/figurinhas-copa2026
+👉 https://jacksontomelin.github.io/figurinhas-copa2026/app.html
 
-_Família Tomelin · Copa 2026_ ⚽`
+_Família Tomelin · Copa 2026_ ⚽`,
 ];
 
 async function notifyGroupNewUser(userName, userPhone) {
@@ -2751,7 +2750,7 @@ async function notifyGroupNewUser(userName, userPhone) {
 
   // Fallback: monta mensagem localmente e envia direto Z-API
   const template = WELCOME_GROUP_MSGS[Math.floor(Math.random() * WELCOME_GROUP_MSGS.length)];
-  const msg = template.replace(/\{NOME\}/g, firstName);
+  const msg = template.replace(/\{NOME_COMPLETO\}/g, userName).replace(/\{NOME\}/g, firstName);
   const GROUP_ID = '120363409442378564-group';
   try {
     await fetch(
@@ -2777,7 +2776,7 @@ async function notifyGroupNewUser(userName, userPhone) {
 // 📱 MENSAGEM PRIVADA DE CONFIRMAÇÃO DE CADASTRO
 // ═══════════════════════════════════════════════════
 function buildLandingUrl(name, phone, token) {
-  const base = 'https://jacksontomelin.github.io/figurinhas-copa2026/';
+  const base = 'https://jacksontomelin.github.io/figurinhas-copa2026/landing.html';
   const p = new URLSearchParams({ name, phone, token });
   return base + '?' + p.toString();
 }
