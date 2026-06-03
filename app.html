@@ -405,6 +405,49 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
   .fig-grid{grid-template-columns:repeat(auto-fill,minmax(56px,1fr));}
   .online-grid{grid-template-columns:repeat(auto-fill,minmax(70px,1fr));}
 }
+
+/* ── JOGOS / GAMES SCREEN ── */
+.jogos-tabs{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;}
+.jt{flex:1;padding:8px 6px;border-radius:9px;text-align:center;cursor:pointer;border:1.5px solid;
+  font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;transition:.18s;-webkit-tap-highlight-color:transparent;}
+.jt.on{background:rgba(245,197,24,.15);border-color:rgba(245,197,24,.4);color:var(--gold);}
+.jt.off{background:transparent;border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.35);}
+.match-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  border-radius:13px;padding:13px 14px;margin-bottom:8px;position:relative;overflow:hidden;}
+.match-card.live{border-color:rgba(255,80,80,.4);background:rgba(255,50,50,.07);}
+.match-card.done{border-color:rgba(255,255,255,.06);}
+.match-card.next{border-color:rgba(66,165,245,.3);background:rgba(66,165,245,.05);}
+.match-phase{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;display:flex;
+  align-items:center;justify-content:space-between;}
+.phase-live{color:#ff5252;display:flex;align-items:center;gap:4px;}
+.phase-live::before{content:'';width:6px;height:6px;border-radius:50%;background:#ff5252;
+  animation:livepulse 1s infinite;}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.phase-done{color:var(--gray);}
+.phase-next{color:#42a5f5;}
+.match-teams{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.match-team{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;}
+.match-flag{font-size:28px;line-height:1;}
+.match-name{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.7);
+  text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.match-score{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.score-n{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#fff;line-height:1;
+  min-width:28px;text-align:center;}
+.score-sep{font-family:'Bebas Neue',sans-serif;font-size:28px;color:rgba(255,255,255,.25);
+  line-height:1;}
+.match-info{font-size:10px;color:rgba(255,255,255,.35);text-align:center;
+  margin-top:8px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;}
+.match-time-badge{position:absolute;top:10px;right:10px;
+  background:rgba(66,165,245,.2);border:1px solid rgba(66,165,245,.35);
+  border-radius:20px;padding:2px 8px;
+  font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;color:#90caf9;}
+.empty-games{text-align:center;padding:32px 16px;color:rgba(255,255,255,.3);}
+.empty-games-ico{font-size:40px;margin-bottom:10px;}
+.empty-games-txt{font-size:13px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;}
 </style>
 <!-- v1780453002 -->
 
@@ -694,7 +737,7 @@ function recBack(){ window._recBack && window._recBack(); }
     Feed
   </button>
   <button class="nav-btn" id="nb-5" onclick="navTo(5)">
-    <svg class="nav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    <svg class="nav-ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
     Copa
   </button>
   <button class="nav-btn" id="nb-admin" onclick="navTo(6)" style="display:none;">
@@ -4012,53 +4055,248 @@ function randomFact(){ _factIdx=Math.floor(Math.random()*FACTS.length); renderCu
 function _nextQuiz(){ _curQuiz=(_curQuiz+1)%QUIZZES.length; _buildQuiz(); }
 
 function renderCuriosidades(){
-  const el=document.getElementById('app-content'); if(!el) return;
-  const [ico,fact]=FACTS[_factIdx];
+  const el=document.getElementById('app-content'); if(!el)return;
+  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+
   el.innerHTML=`
-<div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:520px;">
-  <div class="tabs" style="margin-bottom:0;">
-    <button class="tab on" id="copa-t0" onclick="copaTab(0,this)">🌟 Curiosidades</button>
-    <button class="tab" id="copa-t1" onclick="copaTab(1,this)">⚽ Jogos</button>
-    <button class="tab" id="copa-t2" onclick="copaTab(2,this)">🎲 Apostas</button>
-  </div>
-  <div id="copa-tab-content">
-  <div style="background:linear-gradient(135deg,rgba(10,30,55,.95),rgba(8,18,32,.98));border:1.5px solid rgba(245,197,24,.3);border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5);">
-    <div style="background:linear-gradient(135deg,rgba(26,122,58,.35),rgba(10,30,55,.6));padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,.05);">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:32px;">${ico}</div>
-        <div style="flex:1;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:19px;color:var(--gold);letter-spacing:1px;">Sabia disso?</div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green2);text-transform:uppercase;">Copa 2026 · Curiosidades</div>
-        </div>
-        <div style="font-size:11px;color:rgba(255,255,255,.3);">${_factIdx+1}/${FACTS.length}</div>
-      </div>
+  <div class="card a-card" style="padding:0;overflow:visible;">
+
+    <!-- Sub-tabs -->
+    <div class="jogos-tabs" style="padding:12px 12px 0;">
+      <button class="jt on"  id="jt-jogos"  onclick="jogoTab('jogos')">⚽ Jogos</button>
+      <button class="jt off" id="jt-grupos" onclick="jogoTab('grupos')">🏆 Grupos</button>
+      <button class="jt off" id="jt-copa"   onclick="jogoTab('copa')">📋 Copa 2026</button>
     </div>
-    <div style="padding:16px;">
-      <div style="font-size:14px;color:#eceff1;line-height:1.6;font-weight:500;">${fact}</div>
-    </div>
-    <div style="display:flex;gap:8px;padding:0 16px 16px;">
-      <button onclick="prevFact()" style="flex:1;padding:9px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">← Anterior</button>
-      <button onclick="randomFact()" style="flex:1;padding:9px;border-radius:9px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">🎲 Aleatória</button>
-      <button onclick="nextFact()" style="flex:1;padding:9px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">Próxima →</button>
-    </div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-    ${_icard('📅','Início','11 Jun 2026')}
-    ${_icard('🏆','Final','19 Jul 2026')}
-    ${_icard('🌎','Países','EUA · CAN · MEX')}
-    ${_icard('⚽','Equipes','48 seleções')}
-    ${_icard('🏟️','Estádios','16 arenas')}
-    ${_icard('🎴','Figurinhas','980 no álbum')}
-  </div>
-  <div style="background:rgba(255,255,255,.04);border:1.5px solid rgba(66,165,245,.22);border-radius:14px;padding:14px 16px;">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:#90caf9;text-transform:uppercase;margin-bottom:9px;">🧠 Quiz rápido</div>
-    <div id="quiz-area"></div>
-  </div>
-  </div>
-</div>`;
-  _buildQuiz();
-  if(typeof updateTicker==='function') updateTicker();
+
+    <!-- Content area -->
+    <div id="jogo-content" style="padding:0 12px 14px;"></div>
+  </div>`;
+
+  jogoTab('jogos');
 }
+
+let _jogosCacheLocal = null;
+
+function jogoTab(tab){
+  ['jogos','grupos','copa'].forEach(t=>{
+    const b=document.getElementById('jt-'+t);
+    if(b){b.className='jt '+(t===tab?'on':'off');}
+  });
+  const ct=document.getElementById('jogo-content');
+  if(!ct)return;
+
+  if(tab==='jogos')    _renderJogos(ct);
+  else if(tab==='grupos') _renderGrupos(ct);
+  else if(tab==='copa')   _renderCopaInfo(ct);
+}
+
+async function _renderJogos(ct){
+  ct.innerHTML='<div class="empty-games"><div class="empty-games-ico">⏳</div><div class="empty-games-txt">Carregando jogos...</div></div>';
+  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+
+  try {
+    const r=await fetch(railwayUrl+'/api/jogos',{signal:AbortSignal.timeout(8000)});
+    const d=await r.json();
+    const matches=d.matches||d||[];
+
+    if(!matches.length){
+      ct.innerHTML=`<div class="empty-games">
+        <div class="empty-games-ico">⚽</div>
+        <div class="empty-games-txt">Jogos disponíveis em breve</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:6px;">Copa 2026 começa em 11/06/2026</div>
+      </div>`;
+      return;
+    }
+
+    _jogosCacheLocal = matches;
+    _buildMatchCards(ct, matches);
+
+  } catch(e) {
+    // Fallback: use cached
+    if(_jogosCacheLocal){
+      _buildMatchCards(ct, _jogosCacheLocal);
+      ct.insertAdjacentHTML('afterbegin','<div style="font-size:10px;color:var(--gray);text-align:center;padding:6px;font-family:\'Barlow Condensed\',sans-serif;">📦 Dados do cache local</div>');
+    } else {
+      ct.innerHTML=`<div class="empty-games">
+        <div class="empty-games-ico">📡</div>
+        <div class="empty-games-txt">Sem conexão</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:6px;">${e.message}</div>
+        <button onclick="_renderJogos(document.getElementById('jogo-content'))" class="btn btn-gold" style="margin-top:14px;width:auto;padding:8px 20px;">🔄 Tentar novamente</button>
+      </div>`;
+    }
+  }
+}
+
+function _buildMatchCards(ct, matches){
+  // Separate: live, today, upcoming, done
+  const now = Date.now();
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+
+  const TEAM_FLAGS = {};
+  TEAMS.forEach(([code,,flag])=>{ TEAM_FLAGS[code]=flag; });
+  const getFlag = name => {
+    const t = TEAMS.find(([c,n])=>n.toLowerCase()===name.toLowerCase()||c.toLowerCase()===name.toLowerCase());
+    return t ? t[2] : '🏳️';
+  };
+
+  const live    = matches.filter(m=>['1H','HT','2H','ET','PEN'].includes(m.phase));
+  const done    = matches.filter(m=>['FT','FT_PEN','AET'].includes(m.phase));
+  const upcoming= matches.filter(m=>!['1H','HT','2H','ET','PEN','FT','FT_PEN','AET'].includes(m.phase));
+
+  const phaseLabel = p => ({
+    '1H':'1º Tempo','HT':'Intervalo','2H':'2º Tempo',
+    'ET':'Prorrogação','PEN':'Pênaltis',
+    'FT':'Encerrado','FT_PEN':'Encerrado (Pen.)','AET':'Encerrado (Pror.)',
+    'PRE':'Em breve','SCH':'Agendado'
+  }[p]||p||'Agendado');
+
+  const card = (m, type) => {
+    const fl_h = getFlag(m.home);
+    const fl_a = getFlag(m.away);
+    const hasScore = m.hs !== null && m.as_ !== null;
+    const kickoff = m.kickoff ? new Date(m.kickoff).toLocaleString('pt-BR',{
+      day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'
+    }) : '';
+
+    return `<div class="match-card ${type}">
+      <div class="match-phase">
+        <span class="${type==='live'?'phase-live':type==='done'?'phase-done':'phase-next'}">
+          ${type==='live'?'🔴 AO VIVO':phaseLabel(m.phase)}
+        </span>
+        ${m.group?`<span style="font-size:9px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;">${m.group}</span>`:''}
+      </div>
+      <div class="match-teams">
+        <div class="match-team">
+          <div class="match-flag">${fl_h}</div>
+          <div class="match-name">${esc(m.home)}</div>
+        </div>
+        <div class="match-score">
+          <div class="score-n">${hasScore?m.hs:'—'}</div>
+          <div class="score-sep">×</div>
+          <div class="score-n">${hasScore?m.as_:'—'}</div>
+        </div>
+        <div class="match-team">
+          <div class="match-flag">${fl_a}</div>
+          <div class="match-name">${esc(m.away)}</div>
+        </div>
+      </div>
+      ${(m.stadium||kickoff)?`<div class="match-info">${m.stadium?'🏟️ '+esc(m.stadium):''}${m.stadium&&kickoff?' · ':''}${kickoff?'🕐 '+kickoff+' (BRT)':''}</div>`:''}
+    </div>`;
+  };
+
+  let html = '';
+
+  if(live.length){
+    html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;color:#ff5252;text-transform:uppercase;margin:10px 0 7px;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:#ff5252;animation:livepulse 1s infinite;display:inline-block;"></span>Ao Vivo</div>`;
+    html += live.map(m=>card(m,'live')).join('');
+  }
+
+  if(upcoming.length){
+    html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;color:#42a5f5;text-transform:uppercase;margin:10px 0 7px;">Próximos jogos</div>`;
+    html += upcoming.slice(0,8).map(m=>card(m,'next')).join('');
+  }
+
+  if(done.length){
+    html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--gray);text-transform:uppercase;margin:10px 0 7px;">Resultados</div>`;
+    html += done.slice(0,10).map(m=>card(m,'done')).join('');
+  }
+
+  ct.innerHTML = html || `<div class="empty-games"><div class="empty-games-ico">⚽</div><div class="empty-games-txt">Nenhum jogo encontrado</div></div>`;
+
+  // Refresh button
+  ct.insertAdjacentHTML('beforeend',`
+    <button onclick="_renderJogos(document.getElementById('jogo-content'))"
+      class="btn btn-ghost" style="margin-top:10px;font-size:11px;letter-spacing:1px;">
+      🔄 Atualizar jogos
+    </button>`);
+}
+
+function _renderGrupos(ct){
+  // Build group standings from TEAMS data (visual only)
+  const groups = {};
+  TEAMS.forEach(([code,name,flag,grp])=>{
+    if(!groups[grp]) groups[grp]=[];
+    groups[grp].push({code,name,flag});
+  });
+
+  let html = '';
+  Object.entries(groups).sort().forEach(([grp,teams])=>{
+    html += `<div style="margin-bottom:14px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+        letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:8px;
+        padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.08);">${grp}</div>
+      ${teams.map(t=>`
+        <div style="display:flex;align-items:center;gap:9px;padding:7px 0;
+          border-bottom:1px solid rgba(255,255,255,.04);">
+          <span style="font-size:20px;flex-shrink:0;">${t.flag}</span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;
+            font-size:13px;color:#fff;flex:1;">${t.name}</span>
+          <span style="font-size:10px;color:var(--gray);font-family:'Barlow Condensed',sans-serif;">${t.code}</span>
+        </div>`).join('')}
+    </div>`;
+  });
+
+  ct.innerHTML = html;
+}
+
+function _renderCopaInfo(ct){
+  const FASE_GRUPOS = [
+    {d:'11/06','j':'México × [Grupo A]','e':'Estadio Azteca'},
+    {d:'13/06','j':'🇧🇷 Brasil × Marrocos','e':'MetLife Stadium · 16h BRT'},
+    {d:'11/06','j':'EUA × Paraguai','e':'MetLife Stadium'},
+    {d:'19/07','j':'🏆 FINAL','e':'MetLife Stadium'},
+  ];
+
+  ct.innerHTML=`
+  <div style="background:linear-gradient(135deg,rgba(13,45,88,.8),rgba(5,16,28,.97));
+    border:1.5px solid rgba(245,197,24,.2);border-radius:13px;padding:14px;margin-bottom:10px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+      letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;">
+      🏆 Copa do Mundo FIFA 2026
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+      ${[['48','Seleções'],['104','Jogos'],['16','Estádios'],['3','Países'],['864','Jogadores'],['980','Figurinhas']].map(([n,l])=>`
+        <div style="background:rgba(255,255,255,.05);border-radius:9px;padding:10px;text-align:center;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);line-height:1;">${n}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;">${l}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px;margin-bottom:10px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;">📅 Datas importantes</div>
+    ${[
+      ['11 Jun 2026','Abertura · Estadio Azteca · México','🏟️'],
+      ['13 Jun 2026','🇧🇷 Brasil estreia vs Marrocos · 16h BRT','⚽'],
+      ['19 Jul 2026','Grande Final · MetLife Stadium','🏆'],
+    ].map(([d,e,i])=>`
+      <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <div style="font-size:18px;flex-shrink:0;">${i}</div>
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">${d}</div>
+          <div style="font-size:11px;color:var(--gray);">${e}</div>
+        </div>
+      </div>`).join('')}
+  </div>
+
+  <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;">🌎 Sedes</div>
+    ${[
+      ['🇺🇸','EUA — 11 estádios','MetLife, SoFi, AT&T, Rose Bowl...'],
+      ['🇲🇽','México — 3 estádios','Azteca, BBVA, Akron'],
+      ['🇨🇦','Canadá — 2 estádios','BC Place, BMO Field'],
+    ].map(([f,n,e])=>`
+      <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <div style="font-size:22px;">${f}</div>
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">${n}</div>
+          <div style="font-size:11px;color:var(--gray);">${e}</div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
 
 function _icard(ico2,lbl,val){
   return '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:9px 10px;text-align:center;"><div style="font-size:17px;">'+ico2+'</div><div style="font-family:Barlow Condensed,sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--gray);text-transform:uppercase;margin:2px 0;">'+lbl+'</div><div style="font-family:Barlow Condensed,sans-serif;font-size:12px;font-weight:700;color:#fff;">'+val+'</div></div>';
@@ -5654,7 +5892,14 @@ if(typeof createMatch==='function'){
 }
 
 // Direct global exposure for Copa/Curiosidades
-if(typeof renderCuriosidades==='function') window.renderCuriosidades=renderCuriosidades;
+if(typeof renderCuriosidades==='function'){
+  window.renderCuriosidades=renderCuriosidades;
+  window.jogoTab=jogoTab;
+  window._renderJogos=_renderJogos;
+  window._buildMatchCards=_buildMatchCards;
+  window._renderGrupos=_renderGrupos;
+  window._renderCopaInfo=_renderCopaInfo;
+}
 if(typeof renderCopaBets==='function')     window.renderCopaBets=renderCopaBets;
 if(typeof nextFact==='function')           window.nextFact=nextFact;
 if(typeof doSendRecovery==='function')     window.doSendRecovery=doSendRecovery;

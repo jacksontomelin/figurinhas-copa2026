@@ -207,6 +207,7 @@ let monitorActive = true;
 async function monitorJogos() {
   if (!monitorActive) return;
   const matches = await fetchMatchesAPI();
+    if (matches.length) _jogosCache = { data: matches, ts: Date.now() };
   if (!matches.length) return;
 
   for (const m of matches) {
@@ -486,9 +487,24 @@ app.post('/api/sync-market', async (req, res) => {
 });
 
 // Jogos ao vivo
-app.get('/api/jogos', async (_, res) => {
-  const matches = await fetchMatchesAPI();
-  res.json(matches);
+// Cache de jogos (atualizado pelo monitor a cada 2min)
+let _jogosCache = { data: [], ts: 0 };
+
+app.get('/api/jogos', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Retorna do cache se < 90s
+  if (_jogosCache.data.length && Date.now() - _jogosCache.ts < 90000) {
+    return res.json({ ok: true, matches: _jogosCache.data, cached: true, ts: _jogosCache.ts });
+  }
+  try {
+    const matches = await fetchMatchesAPI();
+    if (matches.length) {
+      _jogosCache = { data: matches, ts: Date.now() };
+    }
+    res.json({ ok: true, matches: _jogosCache.data, cached: false, ts: _jogosCache.ts });
+  } catch(e) {
+    res.json({ ok: true, matches: _jogosCache.data, cached: true, ts: _jogosCache.ts, error: e.message });
+  }
 });
 
 // Monitor on/off
