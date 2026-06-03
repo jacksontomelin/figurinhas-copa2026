@@ -1924,6 +1924,16 @@ const COUNTABLE_STICKERS = ALL_STICKERS.filter(s =>
 const TOTAL_ALBUM = ALL_STICKERS.length; // 980 total
 const TOTAL_PLAYERS = 864; // 864 jogadores nomeados
 
+// ── Panini album number (sequential 1-980) ────────────────────
+const _stickerNumCache = {};
+(function buildStickerNums(){
+  ALL_STICKERS.forEach((s, idx) => {
+    _stickerNumCache[s.id] = idx + 1;
+  });
+})();
+function getStickerNum(id){ return _stickerNumCache[id] || 0; }
+
+
 
 
 // Stickers already defined in ALL_STICKERS constant above
@@ -2309,7 +2319,7 @@ function refreshFigs(){
       b.className='fig-btn '+cls;
       b.title=s.flag+' '+s.teamName+' #'+s.n+' — '+(v===0?'Faltando':v===1?'Tenho':'Repetida');
       b.innerHTML='<span class="f-flag">'+s.flag+'</span>'
-        +'<span class="f-num">'+s.n+'</span>'+'<span style="font-size:8px;color:rgba(255,255,255,.6);line-height:1;text-align:center;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;">'+((s.name||'').split(' ').slice(-1)[0]||'')+'</span>'
+        +'<span class="f-num">'+(getStickerNum(s.id)||s.n)+'</span>'+'<span style="font-size:8px;color:rgba(255,255,255,.6);line-height:1;text-align:center;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;">'+((s.name||'').split(' ').slice(-1)[0]||'')+'</span>'
         +'<span class="f-state">'+(isSale?'🏷️':s.tipo==='escudo'?'🛡️':s.tipo==='equipe'?'📸':stateIco)+'</span>';
       b.onclick=()=>cycleFig(s.id);
       teamGrid.appendChild(b);
@@ -2442,7 +2452,7 @@ function renderTrades(){
       <div class="div"></div>
       <!-- Matches ativos -->
       <div class="sec-lbl">🤝 Meus matches de troca</div>
-      <div id="my-matches-section">${(()=>{try{return renderMyMatches();}catch(e){return "";}})()}</div>
+      <div id="my-matches-section"></div>
       <div class="div"></div>
       <!-- Sugestões de match -->
       <div class="sec-lbl">🎯 Melhores parceiros para trocar</div>
@@ -2528,11 +2538,12 @@ function renderTrades(){
         ${theyGiveMe.length?`<div class="li-desc"><span style="color:#a5d6a7;">✅ Ele(a) dá:</span> ${esc(theyGiveMe.slice(0,5).join(', '))}${theyGiveMe.length>5?` <span style="color:var(--gold);">+${theyGiveMe.length-5}</span>`:''}</div>`:''}
         ${iGiveThem.length?`<div class="li-desc"><span style="color:var(--gold);">🎴 Você dá:</span> ${esc(iGiveThem.slice(0,5).join(', '))}${iGiveThem.length>5?` <span style="color:var(--gold);">+${iGiveThem.length-5}</span>`:''}</div>`:''}
         <div class="li-actions" style="margin-top:7px;">
-          <button class="btn btn-gold btn-xs" onclick="sendMatchProposal('${u.phone}',[...myDup].filter(c=>iGiveThem.includes(c)).slice(0,3),theyGiveMe.slice(0,3))">🤝 Propor match</button>
+          <button class="btn btn-gold btn-xs" onclick="_proposeMatch('${u.phone}')">🤝 Propor match</button>
           <button class="btn btn-blue btn-xs" onclick="openChatWith('${u.phone}')">💬 Chat</button>
           <a href="${waUrl}" target="_blank" rel="noopener"><button class="btn btn-wa btn-xs">📱 WA</button></a>
         </div>
       `;
+      _matchStore[u.phone]={myGives:[...myDup].filter(c=>iGiveThem.includes(c)).slice(0,5),theyGive:theyGiveMe.slice(0,5)};
       matchSec.appendChild(d);
     });
   }
@@ -3342,6 +3353,14 @@ async function _afterMarketPublish(ownerPhone, codes){
 
 // Expose admin functions
 ['admTab','admDeleteUser','admResetStickers','admSendGroupMsg','admSaveRailway','admClearMarket','admClearChats'].forEach(function(n){try{if(typeof eval(n)==='function')window[n]=eval(n);}catch(e){}});
+
+// Expose match functions globally
+['createMatch','acceptMatch','cancelMatch','completeMatch','sendMatchProposal','_proposeMatch',
+ 'renderMyMatches','renderTrades'
+].forEach(function(n){
+  try{ if(typeof eval(n)==='function') window[n]=eval(n); }catch(e){}
+});
+
 // Expose all nav render functions to window for lazy NAV_RENDERERS lookup
 ['renderAlbum','renderMarket','renderTrades','renderChat','renderFeed','renderAdmin',
  'doLogin','doRegister','doLogout','showForm','navTo','toast','launchConfetti',
@@ -3729,6 +3748,15 @@ function _answerQuiz(i){
 const K_MATCHES = 't26_matches'; // trocas em andamento
 
 function getMatches(){ try{return JSON.parse(localStorage.getItem(K_MATCHES)||'[]');}catch{return[];} }
+
+// ── Match proposal helper (uses stored data to avoid onclick array issues) ──
+const _matchStore = {}; // phone → {myGives, theyGive}
+function _proposeMatch(phone){
+  const d = _matchStore[phone];
+  if(!d){ toast('⚠️ Dados de match não encontrados','var(--red)'); return; }
+  sendMatchProposal(phone, d.myGives, d.theyGive);
+}
+
 function saveMatches(arr){ localStorage.setItem(K_MATCHES, JSON.stringify(arr)); }
 
 // Criar um match entre dois usuários para um conjunto de figurinhas
