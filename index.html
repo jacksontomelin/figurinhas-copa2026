@@ -716,15 +716,27 @@ setInterval(loadWeather, 10*60*1000);
 let _news=[];
 
 const NARRATIVAS=[
-  (t,d)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div><p>Gente, essa notícia chamou muito minha atenção! ${t.split(':')[0]}. Vale muito a pena acompanhar de perto, porque isso impacta diretamente a Copa 2026.</p><p>${d||'Clica na fonte abaixo para ler a matéria completa e se manter informado!'}</p>`,
-  (t,d)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div><p>Novidade importante pra quem está acompanhando a Copa 2026! ${t}.</p><p>${d||'Fica ligado — as informações chegam rápido e a Copa está logo aí!'}</p><p>Acesse o sistema da Família Tomelin para apostas e análises dos jogos! 🎲</p>`,
-  (t,d)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div><p>Isso aqui é relevante para quem torce pelo Brasil! "${t}".</p><p>${d||'Se você ainda não marcou suas figurinhas no sistema, corre lá — a Copa começa em junho!'}</p>`,
-  (t,d)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div><p>Mais uma atualização da Copa 2026 que não pode passar batida! ${t}.</p><p>${d||'Cada notícia assim nos aproxima mais do maior evento esportivo do planeta. Bora completar o álbum! 🎴'}</p>`,
+  (t,d,src)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div>
+    <p>Essa notícia me chamou muita atenção e achei que vale compartilhar com a galera!</p>
+    <p>${d||'Não tem como não acompanhar isso de perto. Cada detalhe importa antes do início do torneio.'}</p>
+    <p>Fiquem ligados — a Copa 2026 está chegando e as novidades não param! 🏆⚽</p>`,
+  (t,d,src)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div>
+    <p>Chegou mais uma atualização importante que todo torcedor precisa saber!</p>
+    <p>${d||'Fica de olho porque o torneio está logo aí e a cada dia sai informação nova.'}</p>
+    <p>E não esquece — enquanto a Copa não começa, corre lá no sistema e marca suas figurinhas! 🎴</p>`,
+  (t,d,src)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div>
+    <p>Esse assunto aqui é importante para quem está acompanhando tudo que envolve o mundial!</p>
+    <p>${d||'Recomendo fortemente a leitura completa na fonte original para não perder nenhum detalhe.'}</p>
+    <p>A Copa 2026 promete ser histórica — 48 seleções, 3 países e o Brasil em busca do hexa! 🇧🇷🏆</p>`,
+  (t,d,src)=>`<div class="narrator">🎙️ Jackson Tomelin comenta:</div>
+    <p>Notícia fresquinha que acabei de ver e já quis trazer pra vocês!</p>
+    <p>${d||'Cada novidade dessas nos aproxima mais do maior evento esportivo do planeta.'}</p>
+    <p>Bora completar o álbum e deixar tudo pronto para torcer juntos! 🎴⚽🔥</p>`,
 ];
 
-function buildNarrativa(title,desc,idx){
+function buildNarrativa(title,desc,src,idx){
   const fn=NARRATIVAS[idx%NARRATIVAS.length];
-  return fn(title,desc);
+  return fn(title,desc,src);
 }
 
 const BALLS='⚽🏆🎴🥅🎯';
@@ -733,10 +745,20 @@ function rBall(){return BALLS[Math.floor(Math.random()*BALLS.length)];}
 function openModal(idx){
   const item=_news[idx]; if(!item)return;
   document.getElementById('modal-src').textContent=item.src||'Copa 2026';
-  document.getElementById('modal-ttl').textContent=item.title;
+  // Remove " - Fonte" suffix do title (padrão Google RSS)
+  const cleanTitle = item.title.replace(/\s*[-–]\s*[^-–]{3,40}$/, '').trim() || item.title;
+  document.getElementById('modal-ttl').textContent=cleanTitle;
   document.getElementById('modal-body').innerHTML=
-    buildNarrativa(item.title,item.desc,idx)
-    +`<a href="${item.link||'#'}" target="_blank" rel="noopener" class="modal-cta">🔗 Ler matéria completa — ${item.src||'Fonte'}</a>`;
+    buildNarrativa(item.title,item.desc,item.src,idx)
+    +`<div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07);">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gray);text-transform:uppercase;margin-bottom:8px;">Fonte da notícia</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:rgba(255,255,255,.7);">📰 ${item.src||'Copa 2026'}</span>
+          ${item.link&&!item.link.includes('news.google.com')&&item.link!=='#'
+            ? '<a href="'+item.link+'" target="_blank" rel="noopener" class="modal-cta">🔗 Ler na fonte original</a>'
+            : '<span style="font-size:12px;color:var(--gray);">Link disponível no Google News</span>'}
+        </div>
+      </div>`;
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow='hidden';
 }

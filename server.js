@@ -547,11 +547,20 @@ function parseRSS(xml) {
       const r = m[1].match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`));
       return r ? (r[1] || r[2] || '').trim() : '';
     };
-    const title = get('title');
-    const link  = get('link');
+    let title = get('title');
+    let link  = get('link');
     const desc  = (get('description') || '').replace(/<[^>]+>/g, '').substring(0, 180);
     const pub   = get('pubDate');
     const src   = (m[1].match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || 'Copa 2026';
+
+    // Limpa título: remove " - Fonte" no final (padrão Google RSS)
+    title = title.replace(/\s*[-–]\s*[^-–]{3,40}$/, '').trim() || title;
+
+    // Google News links são redirects — marca para o frontend não mostrar
+    if (link && link.includes('news.google.com')) {
+      link = ''; // frontend vai omitir o botão de link externo
+    }
+
     if (title) items.push({ title, link, desc, pub, src });
   }
   return items;
