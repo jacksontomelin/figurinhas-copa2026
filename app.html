@@ -2016,7 +2016,13 @@ function navTo(i){
   if(i===3){clearChatBadge();}
   if(i===4){clearNotifBadge();}
   if(i===5){_factIdx=Math.floor(Math.random()*FACTS.length);}
-  NAV_RENDERERS[i]();
+  try {
+    NAV_RENDERERS[i]();
+  } catch(e) {
+    console.error('[Nav] Erro ao renderizar aba '+i+':', e);
+    const el = document.getElementById('app-content');
+    if(el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef9a9a;"><div style="font-size:32px;">⚠️</div><div style="margin-top:8px;font-size:14px;">Erro ao carregar.<br>Tente novamente.</div><button onclick="navTo('+i+')" class="btn btn-gold" style="margin-top:14px;">🔄 Tentar de novo</button></div>';
+  }
 }
 function updateBadges(){
   const u=getCurrentUser(); if(!u)return;
@@ -2870,57 +2876,75 @@ const _recCodes = {}; // { phone: { code, ts, attempts } }
 
 function doSendRecovery(){
   const phoneRaw = document.getElementById('rec-phone').value.replace(/\D/g,'');
-  const phone = phoneRaw.startsWith('55') ? phoneRaw : '55'+phoneRaw;
-  const phoneShort = phoneRaw.replace(/^55/,'');
-  const errEl = document.getElementById('e-recphone');
-
-  // Validate user exists
-  const u = getUserByPhone(phoneShort) || getUserByPhone(phone) || getUserByPhone(phoneRaw);
-  if(!u){
+  if(phoneRaw.length < 10){
+    toast('⚠️ Digite um telefone válido com DDD','var(--red)');
     document.getElementById('rec-phone').classList.add('err');
-    errEl.classList.add('show');
     return;
   }
   document.getElementById('rec-phone').classList.remove('err');
-  errEl.classList.remove('show');
+  document.getElementById('e-recphone').classList.remove('show');
 
-  // Generate 6-digit code
+  // Formato: sempre sem 55 internamente, com 55 para envio
+  const phoneShort = phoneRaw.startsWith('55') ? phoneRaw.slice(2) : phoneRaw;
+  const phoneWA    = '55' + phoneShort;
+
+  // Tenta encontrar o usuário (pode não estar no localStorage deste dispositivo)
+  const u = getUserByPhone(phoneShort) || getUserByPhone(phoneWA) || getUserByPhone(phoneRaw);
+  const nome = u ? u.name.split(' ')[0] : 'usuário';
+
+  // Gera código de 6 dígitos
   const code = String(Math.floor(100000 + Math.random()*900000));
-  _recCodes[phoneShort] = { code, ts: Date.now(), phone: u.phone };
+  _recCodes[phoneShort] = { code, ts: Date.now(), phone: phoneShort, hasUser: !!u };
 
-  const msg = `🔐 *Família Tomelin — Recuperação de Senha*\n\nOlá, *${u.name.split(' ')[0]}*!\n\nSeu código de verificação é:\n\n*${code}*\n\nDigite este código no sistema para redefinir sua senha.\nO código expira em 10 minutos.\n\n_Família Tomelin · Copa 2026_ 🏆`;
+  const msg = '🔐 *Família Tomelin — Recuperação de Senha*\n\nOlá, *'+ nome +'*!\n\nSeu código de verificação é:\n\n*'+ code +'*\n\nDigite este código no app para redefinir sua senha.\nO código expira em 10 minutos.\n\n_Família Tomelin · Copa 2026_ 🏆';
 
-  // Send via Z-API
-  const railwayUrl = localStorage.getItem('t26_railway_url')||'';
-  if(railwayUrl){
-    fetch(railwayUrl+'/api/send',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({phone: u.phone, message: msg}),
-      signal:AbortSignal.timeout(8000)
-    }).then(r=>r.json()).then(d=>{
-      if(d.ok) _showRecoveryStep2(phoneShort);
-      else _zapiSendRecovery(u.phone, msg, phoneShort);
-    }).catch(()=>_zapiSendRecovery(u.phone, msg, phoneShort));
-  } else {
-    _zapiSendRecovery(u.phone, msg, phoneShort);
-  }
+  // Desabilita botão durante envio
+  const btn = event.target || document.querySelector('#f-recover button.btn-gold');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Enviando...'; }
 
-  toast('📱 Enviando código...','var(--gold)');
+  toast('📱 Enviando código no WhatsApp...','var(--gold)');
+  _zapiSendRecovery(phoneWA, msg, phoneShort, btn);
 }
 
-function _zapiSendRecovery(phone, msg, phoneShort){
+function _zapiSendRecovery(phone, msg, phoneShort, btn){
   let p = phone.replace(/\D/g,'');
   if(!p.startsWith('55')) p = '55'+p;
+  const railwayUrl = localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app';
+  function reEnableBtn(){ if(btn){ btn.disabled=false; btn.innerHTML='📱 Enviar código pelo WhatsApp'; } }
+  // Try Railway first (avoids CORS issues)
+  fetch(railwayUrl+'/api/send',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone: p, message: msg}),
+    signal:AbortSignal.timeout(10000)
+  }).then(r=>r.json()).then(d=>{
+    reEnableBtn();
+    if(d.ok||d.messageId||d.zaapId){
+      _showRecoveryStep2(phoneShort);
+    } else {
+      // Fallback direct Z-API
+      _zapiDirectSend(p, msg, phoneShort, reEnableBtn);
+    }
+  }).catch(()=>{
+    // Railway offline → direct Z-API
+    _zapiDirectSend(p, msg, phoneShort, reEnableBtn);
+  });
+}
+
+function _zapiDirectSend(p, msg, phoneShort, cb){
   fetch('https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',{
     method:'POST',
     headers:{'Content-Type':'application/json','Client-Token':'Ff0f0920827ca4987818cafa9ba0f97a7S'},
     body:JSON.stringify({phone:p, message:msg}),
     signal:AbortSignal.timeout(8000)
   }).then(r=>r.json()).then(d=>{
+    if(cb) cb();
     if(d.zaapId||d.messageId) _showRecoveryStep2(phoneShort);
-    else toast('❌ Erro ao enviar. Verifique seu número.','var(--red)');
-  }).catch(()=>toast('❌ Sem conexão. Tente novamente.','var(--red)'));
+    else toast('❌ Número não encontrado na Z-API. Verifique o DDD.','var(--red)');
+  }).catch(e=>{
+    if(cb) cb();
+    toast('❌ Sem conexão. Tente novamente em instantes.','var(--red)');
+  });
 }
 
 function _showRecoveryStep2(phoneShort){
@@ -2975,9 +2999,18 @@ function doConfirmRecovery(){
   // Update password
   const users = getUsers();
   const uIdx = users.findIndex(u=>u.phone===phoneShort||u.phone===(stored&&stored.phone));
-  if(uIdx < 0){ toast('❌ Usuário não encontrado.','var(--red)'); return; }
-  users[uIdx].passHash = hash(newPass);
-  js(K.USERS, users);
+  if(uIdx >= 0){
+    users[uIdx].passHash = hash(newPass);
+    js(K.USERS, users);
+  } else {
+    // Usuário não está neste dispositivo — código válido, mas não há o que atualizar aqui
+    // Salvar credencial temporária para login imediato
+    const tempUser = { phone: phoneShort, name: 'Usuário', passHash: hash(newPass), stickers: {}, ts: Date.now(), avatar:'⚽' };
+    users.push(tempUser);
+    js(K.USERS, users);
+    js(K.SESSION, { phone: phoneShort });
+    toast('✅ Senha definida! Entre com seu telefone e a nova senha.','var(--wa)');
+  }
 
   // Clean up code
   delete _recCodes[phoneShort];
