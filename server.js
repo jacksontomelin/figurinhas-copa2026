@@ -556,9 +556,9 @@ function parseRSS(xml) {
     // Limpa título: remove " - Fonte" no final (padrão Google RSS)
     title = title.replace(/\s*[-–]\s*[^-–]{3,40}$/, '').trim() || title;
 
-    // Google News links são redirects — marca para o frontend não mostrar
-    if (link && link.includes('news.google.com')) {
-      link = ''; // frontend vai omitir o botão de link externo
+    // Google News: converte /rss/articles/ → /articles/ (link limpo que redireciona para o artigo)
+    if (link && link.includes('news.google.com/rss/articles/')) {
+      link = link.replace('/rss/articles/', '/articles/');
     }
 
     if (title) items.push({ title, link, desc, pub, src });

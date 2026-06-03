@@ -746,7 +746,8 @@ function openModal(idx){
   const item=_news[idx]; if(!item)return;
   document.getElementById('modal-src').textContent=item.src||'Copa 2026';
   // Remove " - Fonte" suffix do title (padrão Google RSS)
-  const cleanTitle = item.title.replace(/\s*[-–]\s*[^-–]{3,40}$/, '').trim() || item.title;
+  // Remove sufixo " - Fonte" do título (ex: "Título - G1", "Título - ESPN Brasil")
+  const cleanTitle = (item.title||'').replace(/\s+[-–]\s+[\w][^-–]{1,35}$/, '').trim() || item.title;
   document.getElementById('modal-ttl').textContent=cleanTitle;
   document.getElementById('modal-body').innerHTML=
     buildNarrativa(item.title,item.desc,item.src,idx)
@@ -754,9 +755,9 @@ function openModal(idx){
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gray);text-transform:uppercase;margin-bottom:8px;">Fonte da notícia</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span style="font-size:13px;color:rgba(255,255,255,.7);">📰 ${item.src||'Copa 2026'}</span>
-          ${item.link&&!item.link.includes('news.google.com')&&item.link!=='#'
-            ? '<a href="'+item.link+'" target="_blank" rel="noopener" class="modal-cta">🔗 Ler na fonte original</a>'
-            : '<span style="font-size:12px;color:var(--gray);">Link disponível no Google News</span>'}
+          ${item.link && item.link.length > 5
+            ? '<a href="'+item.link+'" target="_blank" rel="noopener" class="modal-cta">🔗 Ler no Google News →</a>'
+            : ''}
         </div>
       </div>`;
   document.getElementById('modal').classList.add('open');
