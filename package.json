@@ -1,0 +1,19 @@
+{
+  "name": "familia-tomelin-copa2026",
+  "version": "1.0.0",
+  "description": "Sistema de figurinhas + Bot WhatsApp Z-API — Família Tomelin · Copa 2026",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "bot": "node bot-runner.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0"
+  }
+}
