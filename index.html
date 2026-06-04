@@ -317,7 +317,7 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:20px 16px;text-align:c
     <div class="stat"><div class="stat-n" id="st-members">—</div><div class="stat-l">Membros</div></div>
     <div class="stat"><div class="stat-n" style="color:var(--green2)" id="st-online">—</div><div class="stat-l">Online</div></div>
     <div class="stat"><div class="stat-n" id="st-ads">—</div><div class="stat-l">Figurinhas</div></div>
-    <div class="stat"><div class="stat-n" style="color:#ba68c8" id="st-matches">—</div><div class="stat-l">Matches</div></div>
+    <div class="stat"><div class="stat-n" style="color:#f5c518" id="st-matches">—</div><div class="stat-l">Trocas</div></div>
   </div>
 
   <div class="ctas">
@@ -630,10 +630,13 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()
 // ── Dados do Railway para a landing ──────────────────────────
 var _landUsers=[], _landMkt=[], _landOnline={}, _landMatches=[];
 
+var _dataLoaded=false; // flag: dados do Railway já chegaram ao menos 1x
+
 function _updateLandStats(){
+  if(!_dataLoaded) return; // ainda não carregou — mantém "—"
   var now=Date.now();
   var onN=_landUsers.filter(function(u){
-    return _landOnline[u.phone]&&now-_landOnline[u.phone]<90000;
+    return _landOnline[u.phone]&&now-_landOnline[u.phone]<120000;
   }).length;
   var totalFigs=_landUsers.reduce(function(acc,u){
     var st=u.stickers||{};
@@ -641,10 +644,11 @@ function _updateLandStats(){
   },0);
   var ativos=_landMatches.filter(function(m){return m.status!=='cancelled';}).length;
   var el;
-  el=document.getElementById('st-members'); if(el) el.textContent=_landUsers.length>0?_landUsers.length:'—';
-  el=document.getElementById('st-online');  if(el) el.textContent=_landUsers.length>0?(onN||'0'):'—';
-  el=document.getElementById('st-ads');     if(el) el.textContent=totalFigs>0?totalFigs.toLocaleString('pt-BR'):'—';
-  el=document.getElementById('st-matches'); if(el) el.textContent=_landUsers.length>0?(ativos||'0'):'—';
+  // Quando dados carregaram: mostra número real (0 é válido, não é "—")
+  el=document.getElementById('st-members'); if(el) el.textContent=_landUsers.length;
+  el=document.getElementById('st-online');  if(el) el.textContent=onN;
+  el=document.getElementById('st-ads');     if(el) el.textContent=totalFigs>0?totalFigs.toLocaleString('pt-BR'):0;
+  el=document.getElementById('st-matches'); if(el) el.textContent=ativos;
 }
 
 // ── Cache stale-while-revalidate ─────────────────────────────
@@ -669,6 +673,7 @@ function _applyData(d){
   _landMkt    =d.market ||[];
   _landOnline =d.online ||{};
   _landMatches=d.matches||[];
+  _dataLoaded=true;
   _updateLandStats();
 }
 
@@ -696,7 +701,7 @@ function _fetchLandStats(tries){
 (function(){
   var cached=_loadCache();
   if(cached){
-    _applyData(cached.d);  // mostra cache instantaneamente
+    _applyData(cached.d);  // mostra cache instantaneamente (inclui _dataLoaded=true)
     // Se cache ainda válido, aguarda antes de refazer fetch
     var age=Date.now()-cached.ts;
     if(age<CACHE_TTL){
@@ -709,6 +714,8 @@ function _fetchLandStats(tries){
   }
   // Atualiza em background a cada 4 min
   setInterval(function(){_fetchLandStats(0);}, CACHE_TTL);
+  // Atualiza contagem de online a cada 30s sem buscar tudo (só recalcula do cache)
+  setInterval(function(){if(_dataLoaded)_updateLandStats();}, 30000);
 })();
 function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
 // Renderiza os itens de notícia no grid
