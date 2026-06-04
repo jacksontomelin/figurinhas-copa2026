@@ -2239,7 +2239,7 @@ function doRegister(){
   launchConfetti();
   toast('🎉 Conta criada! Bem-vindo(a) à Família Tomelin! 🎉','#22a04a');
   // 🤖 Envia confirmação privada no WhatsApp do usuário
-  setTimeout(()=>{ sendConfirmationWA(name, phone).catch(e=>console.warn('[Bot]',e)); }, 800);
+  setTimeout(()=>{ sendConfirmationWA(name, phone, pass).catch(e=>console.warn('[Bot]',e)); }, 800);
   // 🤖 Notifica o grupo no WhatsApp que novo membro entrou
   setTimeout(()=>{ notifyGroupNewUser(name, phone).catch(e=>console.warn('[Bot]',e)); }, 2200);
   // Abre o grupo WA após 4s
@@ -3355,7 +3355,7 @@ function buildLandingUrl(name, phone, token) {
   return base + '?' + p.toString();
 }
 
-async function sendConfirmationWA(name, phone) {
+async function sendConfirmationWA(name, phone, pass) {
   const token = Math.random().toString(36).substring(2, 10).toUpperCase();
   // Save token
   const tokens = JSON.parse(localStorage.getItem('t26_tokens') || '{}');
@@ -3366,11 +3366,19 @@ async function sendConfirmationWA(name, phone) {
   const landingUrl = buildLandingUrl(name, phone, token);
   const GROUP_LINK = 'https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW';
 
+  // Máscara parcial da senha para privacidade no WA
+  const maskedPass = pass
+    ? pass.substring(0, 2) + '*'.repeat(Math.max(2, pass.length - 2))
+    : '(sua senha cadastrada)';
+
   const msg = `🏆 *Olá, ${firstName}! Bem-vindo(a) à Família Tomelin!* 🎉\n\n`
-    + `Seu cadastro no sistema de trocas de figurinhas da Copa 2026 foi realizado com sucesso!\n\n`
-    + `✅ *Confirme seu acesso clicando aqui:*\n${landingUrl}\n\n`
-    + `📱 *Entre também no nosso grupo do WhatsApp:*\n${GROUP_LINK}\n\n`
-    + `_Família Tomelin · Copa do Mundo FIFA 2026_ 🏆🇧🇷`;
+    + `Seu cadastro no sistema de figurinhas da Copa 2026 foi confirmado!\n\n`
+    + `🔑 *Seus dados de acesso:*\n`
+    + `📱 Login: *${phone}*\n`
+    + `🔒 Senha: *${maskedPass}*\n\n`
+    + `👉 *Acesse o sistema:*\ncopa2026.familiatomelin.com.br\n\n`
+    + `📱 *Grupo WhatsApp:*\n${GROUP_LINK}\n\n`
+    + `_Guarde esses dados! Família Tomelin · Copa 2026_ 🏆`;
 
   const railwayUrl = localStorage.getItem('t26_railway_url') || '';
   if (railwayUrl) {
