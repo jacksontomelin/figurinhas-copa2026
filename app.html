@@ -3216,6 +3216,172 @@ function _tradeFilteredUsers(){
   return all;
 }
 
+
+// ── Espiar outras cidades ─────────────────────────────────────
+function _espiarCidade(cidade){
+  const el = document.getElementById('espiar-result');
+  if(!el) return;
+  el.innerHTML = '';
+  if(!cidade) return;
+
+  const me = getCurrentUser(); if(!me) return;
+  const mySt = me.stickers || {};
+
+  // Figurinhas que me faltam (não tenho nenhuma)
+  const myNeed = new Set(
+    ALL_STICKERS
+      .filter(s => !s.tipo || s.tipo !== 'intro')
+      .filter(s => (mySt[s.id]||0) === 0)
+      .map(s => s.id)
+  );
+
+  if(!myNeed.size){
+    el.innerHTML = '<div class="alert ok" style="margin-top:8px;"><div class="alert-ico">🎉</div><div>Você tem todas as figurinhas!</div></div>';
+    return;
+  }
+
+  // Usuários da cidade espionada (excluindo o próprio)
+  const cityUsers = getUsers().filter(u =>
+    u.phone !== me.phone &&
+    (u.cidade === cidade || (u.cidadesTraca && u.cidadesTraca.includes(cidade)))
+  );
+
+  if(!cityUsers.length){
+    el.innerHTML = '<div class="empty"><div class="empty-ico">👤</div>Nenhum membro cadastrado em ' + esc(cidade) + ' ainda.</div>';
+    return;
+  }
+
+  // Cruza figurinhas: eles têm o que eu preciso?
+  const matches = [];
+  cityUsers.forEach(u => {
+    const ust = u.stickers || {};
+    const they = ALL_STICKERS
+      .filter(s => myNeed.has(s.id) && (ust[s.id]||0) >= 1)
+      .map(s => s.id);
+    matches.push({ u, stickers: they });
+  });
+
+  // Ordena: quem tem mais figurinhas que eu preciso primeiro
+  matches.sort((a,b) => b.stickers.length - a.stickers.length);
+
+  const withMatch = matches.filter(m => m.stickers.length > 0);
+  const noMatch   = matches.filter(m => m.stickers.length === 0);
+
+  // Cabeçalho
+  if(withMatch.length){
+    const hdr = document.createElement('div');
+    hdr.className = 'sec-lbl';
+    hdr.style.marginBottom = '6px';
+    hdr.textContent = '💡 ' + withMatch.length + ' membro(s) de ' + cidade + ' têm o que você precisa!';
+    el.appendChild(hdr);
+  } else {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;padding:12px;color:var(--gray);font-size:12px;';
+    empty.textContent = 'Nenhum membro de ' + cidade + ' tem suas figurinhas faltando.';
+    el.appendChild(empty);
+  }
+
+  // Cards de match (com figurinhas)
+  withMatch.forEach(({u, stickers}) => {
+    el.appendChild(_buildEspiarCard(u, stickers, cidade));
+  });
+
+  // Outros membros sem match (só pra ver)
+  if(noMatch.length){
+    const sep = document.createElement('div');
+    sep.style.cssText = 'font-size:10px;color:var(--gray);margin:10px 0 6px;letter-spacing:1px;font-weight:700;';
+    sep.textContent = 'OUTROS MEMBROS DE ' + cidade.toUpperCase() + ':';
+    el.appendChild(sep);
+    noMatch.forEach(({u}) => {
+      el.appendChild(_buildEspiarCard(u, [], cidade));
+    });
+  }
+}
+
+function _buildEspiarCard(u, stickers, cidade){
+  const online = isOnline(u.phone);
+  const nome = esc(u.name || u.phone);
+  const avatar = u.avatar || '⚽';
+  const preview = stickers.slice(0,5).join(', ') + (stickers.length>5?' +' + (stickers.length-5) + ' mais':'');
+  const waMsg = stickers.length
+    ? 'Oi ' + (u.name||'').split(' ')[0] + '! Vi no sistema Família Tomelin que você tem ' + stickers.slice(0,3).join(', ') + ' que eu preciso. Podemos trocar? 🎴'
+    : 'Oi ' + (u.name||'').split(' ')[0] + '! Vi no sistema Família Tomelin que você é de ' + cidade + '. Topas trocar figurinhas? 🎴';
+  const waUrl = 'https://wa.me/55' + u.phone + '?text=' + encodeURIComponent(waMsg);
+
+  const d = document.createElement('div');
+  d.className = 'list-item';
+  d.style.marginTop = '6px';
+
+  const head = document.createElement('div');
+  head.className = 'li-head';
+
+  const info = document.createElement('div');
+  info.style.cssText = 'display:flex;align-items:center;gap:8px;';
+
+  const av = document.createElement('div');
+  av.style.cssText = 'font-size:22px;position:relative;';
+  av.textContent = avatar;
+  if(online){
+    const dot = document.createElement('span');
+    dot.style.cssText = 'position:absolute;bottom:0;right:-2px;width:8px;height:8px;border-radius:50%;background:#4caf50;border:1.5px solid var(--navy);';
+    av.appendChild(dot);
+  }
+
+  const txt = document.createElement('div');
+  const nm = document.createElement('div');
+  nm.style.cssText = 'font-weight:700;font-size:14px;color:#fff;';
+  nm.textContent = u.name || u.phone;
+  const cid = document.createElement('div');
+  cid.style.cssText = 'font-size:11px;color:var(--gold);';
+  cid.textContent = '📍 ' + (u.cidade || cidade) + (online ? ' · 🟢 Online' : '');
+  txt.appendChild(nm); txt.appendChild(cid);
+  info.appendChild(av); info.appendChild(txt);
+  head.appendChild(info);
+
+  if(stickers.length){
+    const badge = document.createElement('div');
+    badge.style.cssText = 'background:rgba(245,197,24,.15);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap;';
+    badge.textContent = stickers.length + ' fig.';
+    head.appendChild(badge);
+  }
+
+  d.appendChild(head);
+
+  if(stickers.length){
+    const desc = document.createElement('div');
+    desc.className = 'li-desc';
+    desc.style.marginTop = '4px';
+    desc.textContent = '✅ Tem: ' + preview;
+    d.appendChild(desc);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'li-actions';
+  actions.style.marginTop = '6px';
+
+  const wa = document.createElement('a');
+  wa.href = waUrl; wa.target = '_blank'; wa.rel = 'noopener';
+  const wabtn = document.createElement('button');
+  wabtn.className = 'btn btn-wa btn-xs'; wabtn.textContent = '💬 WhatsApp';
+  wa.appendChild(wabtn); actions.appendChild(wa);
+
+  const chatbtn = document.createElement('button');
+  chatbtn.className = 'btn btn-blue btn-xs'; chatbtn.textContent = '📨 Chat';
+  chatbtn.setAttribute('onclick', "openChatWith('" + u.phone + "')");
+  actions.appendChild(chatbtn);
+
+  if(stickers.length){
+    const prop = document.createElement('button');
+    prop.className = 'btn btn-gold btn-xs'; prop.textContent = '🤝 Propor troca';
+    prop.setAttribute('onclick', "_proposeMatch('" + u.phone + "')");
+    actions.appendChild(prop);
+  }
+
+  d.appendChild(actions);
+  return d;
+}
+
+
 async function renderTrades(){
   const me=getCurrentUser(); if(!me)return;
   // Recarrega dados do Railway se _USERS estiver vazio ou desatualizado
@@ -3268,6 +3434,26 @@ async function renderTrades(){
       <!-- Sugestões de match -->
       <div class="sec-lbl">🎯 Melhores parceiros para trocar</div>
       <div id="match-section"></div>
+
+      <div class="div"></div>
+
+      <!-- Explorar outras cidades -->
+      <div class="sec-lbl">🔭 Espiar outras cidades</div>
+      <div style="font-size:12px;color:var(--gray);margin-bottom:10px;line-height:1.5;">
+        Veja se tem alguém de outra cidade com as figurinhas que você precisa.
+        Sem compromisso — só pra ver!
+      </div>
+      <div style="display:flex;gap:7px;align-items:center;margin-bottom:8px;">
+        <select id="espiar-cidade-sel" onchange="_espiarCidade(this.value)"
+          style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);
+            border-radius:8px;padding:9px 12px;color:#fff;font-size:14px;outline:none;">
+          <option value="">Escolha uma cidade...</option>
+          ${Object.values(CIDADES_SC).flat().sort().map(c=>
+            `<option value="${esc(c)}">${esc(c)}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div id="espiar-result"></div>
     </div>
   `;
 
