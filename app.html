@@ -731,9 +731,30 @@ function recBack(){ window._recBack && window._recBack(); }
 
       <!-- Cidades p/ trocas -->
       <div class="fg" id="r-cidades-troca-wrap" style="display:none;">
-        <label>🔄 Cidades onde quer trocar <span style="font-size:10px;color:var(--gray);">(opcional)</span></label>
-        <div id="r-cidades-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
-        <div style="font-size:10px;color:var(--gray);margin-top:5px;">Aparece nas sugestões de troca dessas cidades</div>
+        <label>🔄 Onde quer trocar? <span style="font-size:10px;color:var(--gray);">(opcional)</span></label>
+        <div style="font-size:11px;color:var(--gray);margin-bottom:8px;line-height:1.4;">
+          Cidades próximas — selecione as que te interessam:
+        </div>
+        <div id="r-cidades-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+        <!-- Adicionar manualmente -->
+        <div style="display:flex;gap:7px;align-items:center;">
+          <input id="r-cidades-add" placeholder="Adicionar outra cidade..."
+            autocomplete="off" oninput="_filterCidadesAdd(this.value)"
+            style="flex:1;font-size:14px;">
+          <button type="button" class="btn btn-outline btn-sm"
+            onclick="_addCidadeManual()" style="white-space:nowrap;padding:8px 12px;">
+            + Adicionar
+          </button>
+        </div>
+        <div id="cidades-add-dropdown" style="display:none;position:relative;margin-top:3px;
+          background:#1a2744;border:1.5px solid rgba(245,197,24,.3);border-radius:10px;
+          max-height:150px;overflow-y:auto;z-index:998;
+          box-shadow:0 8px 24px rgba(0,0,0,.5);"></div>
+        <!-- Chips selecionadas -->
+        <div id="r-cidades-selecionadas" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;"></div>
+        <div style="font-size:10px;color:var(--gray);margin-top:4px;">
+          Você aparecerá nas sugestões de troca dessas cidades
+        </div>
       </div>
       <button id="btn-register" class="btn btn-green btn-mt" onclick="doRegister()">✅ Criar conta e entrar no grupo</button>
       <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray);">
@@ -2442,27 +2463,41 @@ function _selectCidade(city, region){
   const dd = document.getElementById('cidade-dropdown');
   if(inp) inp.value = city;
   if(dd) dd.style.display = 'none';
-  // Mostra cidades vizinhas para participar nas trocas
-  _showCidadesTraco(city, region);
+  // Mostra cidades vizinhas por raio geográfico
+  _showCidadesTraco(city);
 }
 
-function _showCidadesTraco(city, region){
+function _getDistKm(c1, c2){
+  const a = CIDADE_COORDS[c1], b = CIDADE_COORDS[c2];
+  if(!a||!b) return 999;
+  const R=6371, d1=(b[0]-a[0])*Math.PI/180, d2=(b[1]-a[1])*Math.PI/180;
+  const x=Math.sin(d1/2)**2+Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(d2/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+function _showCidadesTraco(city){
   const wrap = document.getElementById('r-cidades-troca-wrap');
   const chips = document.getElementById('r-cidades-chips');
-  if(!wrap || !chips) return;
-  // Pega cidades da mesma região (exceto a selecionada)
-  const regionCities = (CIDADES_SC[region]||[]).filter(c=>c!==city);
-  if(!regionCities.length){ wrap.style.display='none'; return; }
-  wrap.style.display = 'block';
-  chips.innerHTML = regionCities.slice(0,8).map(c=>`
-    <button type="button" onclick="_toggleTradeCity('${c}',this)"
-      style="padding:6px 14px;border-radius:20px;background:rgba(255,255,255,.07);
-        border:1.5px solid rgba(255,255,255,.12);color:rgba(255,255,255,.7);
-        font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
-        cursor:pointer;touch-action:manipulation;">
-      📍 ${c}
+  const addInp = document.getElementById('r-cidades-add');
+  if(!wrap||!chips) return;
+  _cidadesTraca = new Set([city]);
+
+  // Cidades vizinhas por raio: ≤10km, depois ≤25km, depois ≤50km
+  const vizinhos = (CIDADE_VIZINHAS[city]||[]).slice(0,10);
+  // Classifica por raio
+  const tagged = vizinhos.map(c=>({c, km:Math.round(_getDistKm(city,c))}));
+
+  wrap.style.display='block';
+  chips.innerHTML = tagged.map(({c,km})=>`
+    <button type="button" data-city="${c}" onclick="_toggleTradeCity('${c}',this)"
+      style="display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:20px;
+        background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);
+        color:rgba(255,255,255,.75);font-family:'Barlow Condensed',sans-serif;
+        font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;
+        margin-bottom:3px;">
+      <span>📍 ${c}</span>
+      <span style="font-size:10px;color:var(--gray);font-weight:400;">${km}km</span>
     </button>`).join('');
-  _cidadesTraca = new Set([city]); // começa com a cidade própria
 }
 
 let _cidadesTraca = new Set();
@@ -2470,10 +2505,56 @@ let _cidadesTraca = new Set();
 function _toggleTradeCity(city, btn){
   if(_cidadesTraca.has(city)){
     _cidadesTraca.delete(city);
-    if(btn){ btn.style.background='rgba(255,255,255,.07)'; btn.style.borderColor='rgba(255,255,255,.12)'; btn.style.color='rgba(255,255,255,.7)'; }
+    if(btn){ btn.style.background='rgba(255,255,255,.07)'; btn.style.borderColor='rgba(255,255,255,.12)'; btn.style.color='rgba(255,255,255,.75)'; }
   } else {
     _cidadesTraca.add(city);
     if(btn){ btn.style.background='rgba(245,197,24,.15)'; btn.style.borderColor='rgba(245,197,24,.4)'; btn.style.color='var(--gold)'; }
+  }
+  _updateCidadesSelecionadas();
+}
+
+
+
+function _removeCidadeTraca(city){
+  _cidadesTraca.delete(city);
+  // Reset chip se existir
+  const btn = document.querySelector('#r-cidades-chips [data-city="'+city+'"]');
+  if(btn){ btn.style.background='rgba(255,255,255,.07)'; btn.style.borderColor='rgba(255,255,255,.12)'; btn.style.color='rgba(255,255,255,.75)'; }
+  _updateCidadesSelecionadas();
+}
+
+function _filterCidadesAdd(q){
+  const dd = document.getElementById('cidades-add-dropdown'); if(!dd) return;
+  if(!q||q.length<2){ dd.style.display='none'; return; }
+  const matches = TODAS_CIDADES.filter(c=>c.city.toLowerCase().includes(q.toLowerCase())&&!_cidadesTraca.has(c.city)).slice(0,6);
+  if(!matches.length){ dd.style.display='none'; return; }
+  dd.innerHTML = matches.map(c=>'<div onclick="_addCidadeFromDD(\'' + c.city + '\')" style="padding:10px 14px;cursor:pointer;font-family:Barlow Condensed,sans-serif;font-weight:700;font-size:14px;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;" onmouseover="this.style.background=\'rgba(245,197,24,.12)\'" onmouseout="this.style.background=\'transparent\'"><span>📍 ' + c.city + '</span><span style="font-size:11px;color:var(--gray);">' + c.region + '</span></div>').join('');
+  dd.style.display='block';
+}
+
+function _addCidadeFromDD(city){
+  _cidadesTraca.add(city);
+  const inp = document.getElementById('r-cidades-add');
+  const dd = document.getElementById('cidades-add-dropdown');
+  if(inp) inp.value='';
+  if(dd) dd.style.display='none';
+  _updateCidadesSelecionadas();
+}
+
+function _addCidadeManual(){
+  const inp = document.getElementById('r-cidades-add'); if(!inp) return;
+  const val = inp.value.trim();
+  if(!val) return;
+  // Check if it's a valid city
+  const match = TODAS_CIDADES.find(c=>c.city.toLowerCase()===val.toLowerCase());
+  if(match){
+    _cidadesTraca.add(match.city);
+    inp.value='';
+    _updateCidadesSelecionadas();
+    document.getElementById('cidades-add-dropdown').style.display='none';
+  } else {
+    inp.style.borderColor='rgba(239,154,154,.5)';
+    setTimeout(()=>{ if(inp) inp.style.borderColor=''; },1500);
   }
 }
 
@@ -5764,6 +5845,12 @@ const CIDADES_SC = {
 };
 // Flat list para busca
 const TODAS_CIDADES = Object.entries(CIDADES_SC).flatMap(([r,cs]) => cs.map(c => ({city:c,region:r})));
+
+// Coordenadas e vizinhos geográficos (raio ~50km, ordenados por distância)
+const CIDADE_COORDS = {"Blumenau": [-26.9194, -49.0661], "Indaial": [-26.8986, -49.2328], "Pomerode": [-26.7444, -49.1756], "Gaspar": [-26.9308, -49.1197], "Timbó": [-26.8228, -49.2736], "Apiúna": [-27.0356, -49.3892], "Ascurra": [-26.8994, -49.3578], "Benedito Novo": [-26.7897, -49.3681], "Doutor Pedrinho": [-26.7261, -49.4828], "Ibirama": [-27.0561, -49.5194], "José Boiteux": [-27.0, -49.6083], "Lontras": [-27.1642, -49.5411], "Presidente Getúlio": [-27.0503, -49.6236], "Rio dos Cedros": [-26.7564, -49.2756], "Rodeio": [-26.9231, -49.3639], "Witmarsum": [-26.9122, -49.5733], "Itajaí": [-26.9075, -48.6616], "Balneário Camboriú": [-26.9906, -48.635], "Camboriú": [-27.0244, -48.6519], "Brusque": [-27.0978, -48.9169], "Navegantes": [-26.8994, -48.6556], "Penha": [-26.7731, -48.6486], "Piçarras": [-26.7483, -48.6708], "Porto Belo": [-27.1586, -48.545], "Tijucas": [-27.2406, -48.6356], "Bombinhas": [-27.1403, -48.4969], "Ilhota": [-26.9014, -48.8261], "Joinville": [-26.3045, -48.8487], "Jaraguá do Sul": [-26.4856, -49.0706], "São Bento do Sul": [-26.2497, -49.3786], "Campo Alegre": [-26.2, -49.2667], "Corupá": [-26.4258, -49.2411], "Guaramirim": [-26.4725, -49.0022], "Itapoá": [-26.1139, -48.6153], "São Francisco do Sul": [-26.2442, -48.6353], "Schroeder": [-26.4194, -49.0756], "Florianópolis": [-27.5954, -48.548], "São José": [-27.5961, -48.6356], "Palhoça": [-27.6444, -48.6689], "Biguaçu": [-27.4967, -48.6556], "Santo Amaro da Imperatriz": [-27.695, -48.7803], "Governador Celso Ramos": [-27.3167, -48.55], "Antônio Carlos": [-27.5214, -48.7528], "Rancho Queimado": [-27.6733, -49.0097], "Angelina": [-27.5572, -49.0039], "Criciúma": [-28.6775, -49.3697], "Tubarão": [-28.4697, -49.0039], "Araranguá": [-28.9342, -49.4878], "Içara": [-28.7175, -49.3053], "Laguna": [-28.4853, -48.7814], "Imbituba": [-28.2397, -48.6639], "Orleans": [-28.3614, -49.2933], "Braço do Norte": [-28.2764, -49.1708], "São Luís": [-28.3928, -49.0597], "Urussanga": [-28.5211, -49.3222], "Sombrio": [-29.1014, -49.6269], "Lages": [-27.8161, -50.3261], "Curitibanos": [-27.2811, -50.5878], "Canoinhas": [-26.1797, -50.3897], "Mafra": [-26.1136, -49.8067], "Porto União": [-26.2344, -51.0789], "São Joaquim": [-28.2939, -49.9333], "Campos Novos": [-27.4036, -51.2258], "Rio Negrinho": [-26.2561, -49.5228], "Correia Pinto": [-27.5867, -50.3594], "Chapecó": [-27.1005, -52.6152], "Cascavel": [-26.9947, -53.5028], "Concórdia": [-27.2339, -52.0272], "Xanxerê": [-26.8758, -52.4044], "Joaçaba": [-27.1733, -51.5094], "Videira": [-27.0086, -51.1486], "Caçador": [-26.7742, -51.015], "Maravilha": [-26.7758, -53.1889], "Pinhalzinho": [-26.8503, -52.9917], "São Miguel do Oeste": [-26.7272, -53.5186], "Rio do Sul": [-27.2153, -49.6436], "Ituporanga": [-27.4122, -49.5997], "Taió": [-27.1125, -49.9928], "Agrolândia": [-27.3942, -49.8336], "Palmitos": [-27.0769, -53.1556], "Trombudo Central": [-27.2961, -49.7719], "Laurentino": [-27.2108, -49.7397], "Pouso Redondo": [-27.2558, -49.9344]};
+
+const CIDADE_VIZINHAS = {"Blumenau": ["Gaspar", "Indaial", "Pomerode", "Timbó", "Ilhota", "Brusque", "Rio dos Cedros", "Ascurra"], "Indaial": ["Timbó", "Gaspar", "Ascurra", "Rodeio", "Rio dos Cedros", "Blumenau", "Pomerode", "Benedito Novo"], "Pomerode": ["Rio dos Cedros", "Timbó", "Indaial", "Benedito Novo", "Gaspar", "Blumenau", "Ascurra", "Rodeio"], "Gaspar": ["Blumenau", "Indaial", "Timbó", "Pomerode", "Ascurra", "Rodeio", "Rio dos Cedros", "Brusque"], "Timbó": ["Rio dos Cedros", "Indaial", "Benedito Novo", "Ascurra", "Pomerode", "Rodeio", "Gaspar", "Blumenau"], "Apiúna": ["Rodeio", "Ibirama", "Ascurra", "Lontras", "Indaial", "José Boiteux", "Witmarsum", "Presidente Getúlio"], "Ascurra": ["Rodeio", "Timbó", "Benedito Novo", "Indaial", "Apiúna", "Rio dos Cedros", "Witmarsum", "Doutor Pedrinho"], "Benedito Novo": ["Rio dos Cedros", "Timbó", "Ascurra", "Doutor Pedrinho", "Rodeio", "Indaial", "Pomerode", "Witmarsum"], "Doutor Pedrinho": ["Benedito Novo", "Rio dos Cedros", "Witmarsum", "Ascurra", "Timbó", "Rodeio", "Pomerode", "Indaial"], "Ibirama": ["Presidente Getúlio", "José Boiteux", "Lontras", "Apiúna", "Witmarsum", "Rodeio", "Rio do Sul", "Ascurra"], "José Boiteux": ["Presidente Getúlio", "Witmarsum", "Ibirama", "Lontras", "Apiúna", "Rio do Sul", "Rodeio", "Laurentino"], "Lontras": ["Rio do Sul", "Ibirama", "Presidente Getúlio", "José Boiteux", "Laurentino", "Apiúna", "Trombudo Central", "Ituporanga"], "Presidente Getúlio": ["José Boiteux", "Ibirama", "Lontras", "Witmarsum", "Rio do Sul", "Laurentino", "Apiúna", "Rodeio"], "Rio dos Cedros": ["Timbó", "Benedito Novo", "Pomerode", "Indaial", "Ascurra", "Rodeio", "Doutor Pedrinho", "Gaspar"], "Rodeio": ["Ascurra", "Apiúna", "Indaial", "Timbó", "Benedito Novo", "Rio dos Cedros", "Witmarsum", "Ibirama"], "Witmarsum": ["José Boiteux", "Presidente Getúlio", "Ibirama", "Rodeio", "Ascurra", "Doutor Pedrinho", "Apiúna", "Benedito Novo"], "Itajaí": ["Navegantes", "Balneário Camboriú", "Camboriú", "Penha", "Ilhota", "Piçarras", "Porto Belo", "Bombinhas"], "Balneário Camboriú": ["Camboriú", "Itajaí", "Navegantes", "Porto Belo", "Ilhota", "Bombinhas", "Penha", "Piçarras"], "Camboriú": ["Balneário Camboriú", "Itajaí", "Navegantes", "Porto Belo", "Bombinhas", "Ilhota", "Tijucas", "Brusque"], "Brusque": ["Ilhota", "Blumenau", "Gaspar", "Camboriú", "Balneário Camboriú", "Tijucas", "Itajaí", "Navegantes"], "Navegantes": ["Itajaí", "Balneário Camboriú", "Camboriú", "Penha", "Piçarras", "Ilhota", "Porto Belo", "Bombinhas"], "Penha": ["Piçarras", "Navegantes", "Itajaí", "Ilhota", "Balneário Camboriú", "Camboriú", "Bombinhas", "Porto Belo"], "Piçarras": ["Penha", "Navegantes", "Itajaí", "Ilhota", "Balneário Camboriú", "Camboriú", "Blumenau", "Guaramirim"], "Porto Belo": ["Bombinhas", "Tijucas", "Governador Celso Ramos", "Camboriú", "Balneário Camboriú", "Itajaí", "Navegantes", "Brusque"], "Tijucas": ["Governador Celso Ramos", "Porto Belo", "Bombinhas", "Camboriú", "Balneário Camboriú", "Biguaçu", "Brusque", "Antônio Carlos"], "Bombinhas": ["Porto Belo", "Tijucas", "Camboriú", "Governador Celso Ramos", "Balneário Camboriú", "Itajaí", "Navegantes", "Brusque"], "Ilhota": ["Itajaí", "Navegantes", "Balneário Camboriú", "Camboriú", "Penha", "Piçarras", "Brusque", "Blumenau"], "Joinville": ["São Francisco do Sul", "Guaramirim", "Schroeder", "Jaraguá do Sul", "Itapoá", "Corupá", "Campo Alegre"], "Jaraguá do Sul": ["Guaramirim", "Schroeder", "Corupá", "Joinville", "Pomerode", "Rio dos Cedros", "Campo Alegre", "São Bento do Sul"], "São Bento do Sul": ["Campo Alegre", "Rio Negrinho", "Corupá", "Schroeder", "Jaraguá do Sul", "Guaramirim", "Mafra"], "Campo Alegre": ["São Bento do Sul", "Corupá", "Rio Negrinho", "Schroeder", "Jaraguá do Sul", "Guaramirim", "Joinville"], "Corupá": ["Schroeder", "Jaraguá do Sul", "São Bento do Sul", "Guaramirim", "Campo Alegre", "Rio Negrinho", "Pomerode", "Rio dos Cedros"], "Guaramirim": ["Jaraguá do Sul", "Schroeder", "Joinville", "Corupá", "Pomerode", "Campo Alegre", "Rio dos Cedros", "São Francisco do Sul"], "Itapoá": ["São Francisco do Sul", "Joinville"], "São Francisco do Sul": ["Itapoá", "Joinville", "Guaramirim", "Schroeder"], "Schroeder": ["Jaraguá do Sul", "Guaramirim", "Corupá", "Joinville", "Campo Alegre", "São Bento do Sul", "Pomerode", "Rio dos Cedros"], "Florianópolis": ["São José", "Palhoça", "Biguaçu", "Antônio Carlos", "Santo Amaro da Imperatriz", "Governador Celso Ramos", "Tijucas", "Angelina"], "São José": ["Palhoça", "Florianópolis", "Biguaçu", "Antônio Carlos", "Santo Amaro da Imperatriz", "Governador Celso Ramos", "Angelina", "Rancho Queimado"], "Palhoça": ["São José", "Santo Amaro da Imperatriz", "Florianópolis", "Antônio Carlos", "Biguaçu", "Rancho Queimado", "Angelina", "Governador Celso Ramos"], "Biguaçu": ["Antônio Carlos", "São José", "Florianópolis", "Palhoça", "Governador Celso Ramos", "Santo Amaro da Imperatriz", "Tijucas", "Angelina"], "Santo Amaro da Imperatriz": ["Palhoça", "São José", "Antônio Carlos", "Rancho Queimado", "Biguaçu", "Florianópolis", "Angelina", "Governador Celso Ramos"], "Governador Celso Ramos": ["Tijucas", "Porto Belo", "Bombinhas", "Biguaçu", "Antônio Carlos", "Florianópolis", "São José", "Camboriú"], "Antônio Carlos": ["Biguaçu", "São José", "Palhoça", "Santo Amaro da Imperatriz", "Florianópolis", "Angelina", "Governador Celso Ramos", "Rancho Queimado"], "Rancho Queimado": ["Angelina", "Santo Amaro da Imperatriz", "Antônio Carlos", "Palhoça", "São José", "Biguaçu", "Florianópolis"], "Angelina": ["Rancho Queimado", "Antônio Carlos", "Santo Amaro da Imperatriz", "Palhoça", "Biguaçu", "São José", "Florianópolis"], "Criciúma": ["Içara", "Urussanga", "Araranguá", "Orleans", "Tubarão", "São Luís", "Braço do Norte"], "Tubarão": ["São Luís", "Laguna", "Braço do Norte", "Orleans", "Urussanga", "Içara", "Imbituba", "Criciúma"], "Araranguá": ["Sombrio", "Içara", "Criciúma", "Urussanga"], "Içara": ["Criciúma", "Urussanga", "Araranguá", "Orleans", "Tubarão", "São Luís"], "Laguna": ["Tubarão", "São Luís", "Imbituba", "Braço do Norte"], "Imbituba": ["Laguna", "Tubarão", "São Luís", "Braço do Norte"], "Orleans": ["Braço do Norte", "Urussanga", "São Luís", "Tubarão", "Criciúma", "Içara"], "Braço do Norte": ["Orleans", "São Luís", "Tubarão", "Urussanga", "Laguna", "Criciúma", "Imbituba"], "São Luís": ["Tubarão", "Braço do Norte", "Orleans", "Laguna", "Urussanga", "Imbituba", "Içara", "Criciúma"], "Urussanga": ["Orleans", "Criciúma", "Içara", "São Luís", "Braço do Norte", "Tubarão", "Araranguá"], "Sombrio": ["Araranguá"], "Lages": ["Correia Pinto"], "Curitibanos": ["Correia Pinto"], "Canoinhas": [], "Mafra": ["Rio Negrinho", "São Bento do Sul"], "Porto União": [], "São Joaquim": [], "Campos Novos": ["Joaçaba", "Videira"], "Rio Negrinho": ["São Bento do Sul", "Campo Alegre", "Mafra", "Corupá", "Schroeder"], "Correia Pinto": ["Lages", "Curitibanos"], "Chapecó": ["Xanxerê", "Pinhalzinho"], "Cascavel": ["São Miguel do Oeste", "Palmitos", "Maravilha"], "Concórdia": [], "Xanxerê": ["Chapecó"], "Joaçaba": ["Campos Novos", "Videira"], "Videira": ["Caçador", "Joaçaba", "Campos Novos"], "Caçador": ["Videira"], "Maravilha": ["Pinhalzinho", "São Miguel do Oeste", "Palmitos", "Cascavel"], "Pinhalzinho": ["Maravilha", "Palmitos", "Chapecó"], "São Miguel do Oeste": ["Cascavel", "Maravilha"], "Rio do Sul": ["Laurentino", "Lontras", "Trombudo Central", "Presidente Getúlio", "Ibirama", "Ituporanga", "José Boiteux", "Agrolândia"], "Ituporanga": ["Trombudo Central", "Rio do Sul", "Agrolândia", "Laurentino", "Lontras", "Pouso Redondo", "Presidente Getúlio", "Ibirama"], "Taió": ["Pouso Redondo", "Laurentino", "Trombudo Central", "Agrolândia", "Rio do Sul", "Presidente Getúlio", "José Boiteux", "Lontras"], "Agrolândia": ["Trombudo Central", "Pouso Redondo", "Laurentino", "Ituporanga", "Rio do Sul", "Taió", "Lontras", "Presidente Getúlio"], "Palmitos": ["Pinhalzinho", "Maravilha", "Cascavel"], "Trombudo Central": ["Laurentino", "Agrolândia", "Rio do Sul", "Pouso Redondo", "Ituporanga", "Lontras", "Taió", "Presidente Getúlio"], "Laurentino": ["Rio do Sul", "Trombudo Central", "Pouso Redondo", "Lontras", "Presidente Getúlio", "Agrolândia", "Ituporanga", "José Boiteux"], "Pouso Redondo": ["Trombudo Central", "Taió", "Agrolândia", "Laurentino", "Rio do Sul", "Ituporanga", "Presidente Getúlio", "Lontras"]};
+
  // troque pelo seu número sem formatação
 
 function renderAdmin(){
