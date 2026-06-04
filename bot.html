@@ -340,15 +340,14 @@ select.inp{cursor:pointer;}
 'use strict';
 
 // ── Configuração ──────────────────────────────────────────────
-let RAILWAY = localStorage.getItem('bot_railway_url')
-  || 'https://figurinhas-copa2026-production.up.railway.app';
+let RAILWAY = sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app';
 document.getElementById('inp-railway').value = RAILWAY;
 
 function saveRailway(){
   const v = document.getElementById('inp-railway').value.trim().replace(/\/$/, '');
   if(!v || !v.startsWith('http')){ toast('URL inválida','var(--red)'); return; }
   RAILWAY = v;
-  localStorage.setItem('bot_railway_url', v);
+  sessionStorage.setItem('rly', v);
   toast('✅ Railway URL salvo!', 'var(--gold)');
   checkStatus();
 }

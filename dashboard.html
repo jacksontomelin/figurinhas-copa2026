@@ -319,8 +319,8 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);color:#fff;min-heigh
       <div class="card">
         <div class="card-title">⚙️ Ações do sistema</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn-sm btn-red"   onclick="if(confirm('Limpar mercado?'))clearMkt()">🗑️ Limpar mercado</button>
-          <button class="btn-sm btn-red"   onclick="if(confirm('Limpar chats?'))clearChats()">🗑️ Limpar chats</button>
+          <button class="btn-sm btn-red"   onclick="if(confirm('Limpar mercado?'))dashClearMkt()">🗑️ Limpar mercado</button>
+          <button class="btn-sm btn-red"   onclick="if(confirm('Limpar chats?'))dashClearChats()">🗑️ Limpar chats</button>
           <button class="btn-sm btn-ghost" onclick="exportBackup()">📤 Exportar backup</button>
           <button class="btn-sm btn-green" onclick="window.open('https://copa2026.familiatomelin.com.br/app.html','_blank')">🎴 Abrir App</button>
           <button class="btn-sm btn-blue"  onclick="window.open('https://copa2026.familiatomelin.com.br/bot.html','_blank')">🤖 Abrir Bot</button>
@@ -344,6 +344,56 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);color:#fff;min-heigh
 <div id="toast"></div>
 
 <script>
+
+// ── Estado do Railway (sem sessionStorage) ─────────────────────
+var _dashState = {users:[], market:[], matches:[], online:{}, chat:{}};
+var RAILWAY = sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app';
+
+async function loadDashState() {
+  try {
+    const r = await fetch(RAILWAY + '/api/state', {signal: AbortSignal.timeout(8000)});
+    const d = await r.json();
+    if (d.ok) {
+      _dashState.users   = d.users   || [];
+      _dashState.market  = d.market  || [];
+      _dashState.matches = d.matches || [];
+      _dashState.online  = d.online  || {};
+      _dashState.chat    = d.chat    || {};
+    }
+    return d.ok;
+  } catch(e) { return false; }
+}
+
+async function dashDeleteUser(phone) {
+  await fetch(RAILWAY + '/api/users/' + phone, {method:'DELETE'});
+  await loadDashState();
+  renderMembers();
+}
+
+async function dashResetStickers(phone) {
+  await fetch(RAILWAY + '/api/users/' + phone + '/stickers', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({stickers:{}})
+  });
+  await loadDashState();
+  renderMembers();
+}
+
+async function dashClearMkt() {
+  await fetch(RAILWAY + '/api/market', {method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({market:[]})
+  });
+  _dashState.market = [];
+  renderMkt();
+}
+
+async function dashClearChats() {
+  await fetch(RAILWAY + '/api/chat', {method:'DELETE'});
+  _dashState.chat = {};
+  toast('✅ Chats limpos', 'var(--green)');
+}
+
 'use strict';
 
 // ── Anti-debug ────────────────────────────────────────────
@@ -441,7 +491,7 @@ let RAILWAY='https://figurinhas-copa2026-production.up.railway.app';
 
 function _init(){
   // Restore railway URL
-  const saved=localStorage.getItem('adm_railway');
+  const saved=sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app';
   if(saved) RAILWAY=saved;
   document.getElementById('rly-url').value=RAILWAY;
 
@@ -551,10 +601,10 @@ async function rpaToggle(){
 // ── Users ────────────────────────────────────────────────────
 function loadUsers(){
   try{
-    const users=JSON.parse(localStorage.getItem('t26_users')||'[]');
-    const mkt=JSON.parse(localStorage.getItem('t26_mkt')||'[]');
-    const matches=JSON.parse(localStorage.getItem('t26_matches')||'[]');
-    const online=JSON.parse(localStorage.getItem('t26_online')||'{}');
+    const users=(_dashState.users||[]);
+    const mkt=(_dashState.mkt||[]);
+    const matches=(_dashState.matches||[]);
+    const online=(_dashState.online||{});
     const now=Date.now();
 
     document.getElementById('k-users').textContent=users.length;
@@ -621,24 +671,24 @@ function loadUsers(){
   }
 }
 
-function deleteUser(phone){
+function dashDeleteUser(phone){
   if(!confirm('Deletar '+phone+'?'))return;
   try{
-    const users=JSON.parse(localStorage.getItem('t26_users')||'[]').filter(u=>u.phone!==phone);
-    localStorage.setItem('t26_users',JSON.stringify(users));
-    const mkt=JSON.parse(localStorage.getItem('t26_mkt')||'[]').filter(m=>m.owner!==phone);
-    localStorage.setItem('t26_mkt',JSON.stringify(mkt));
+    const users=(_dashState.users||[]).filter(u=>u.phone!==phone);
+    /* users saved via Railway */;
+    const mkt=(_dashState.mkt||[]).filter(m=>m.owner!==phone);
+    /* mkt saved via Railway */;
     toast('🗑️ Usuário removido','#ef9a9a');
     loadUsers();
   }catch(e){toast('❌ '+e.message,'#ef9a9a');}
 }
 
-function resetStickers(phone){
+function dashResetStickers(phone){
   if(!confirm('Resetar figurinhas de '+phone+'?'))return;
   try{
-    const users=JSON.parse(localStorage.getItem('t26_users')||'[]');
+    const users=(_dashState.users||[]);
     const idx=users.findIndex(u=>u.phone===phone);
-    if(idx>=0){users[idx].stickers={};localStorage.setItem('t26_users',JSON.stringify(users));}
+    if(idx>=0){users[idx].stickers={};/* users saved via Railway */;}
     toast('🔄 Figurinhas resetadas','var(--gold)');
     loadUsers();
   }catch(e){toast('❌ '+e.message,'#ef9a9a');}
@@ -749,27 +799,27 @@ function saveRailway(){
   const v=document.getElementById('rly-url').value.trim().replace(/\/$/,'');
   if(!v||!v.startsWith('http')){toast('URL inválida','#ef9a9a');return;}
   RAILWAY=v;
-  localStorage.setItem('adm_railway',v);
+  sessionStorage.setItem('rly',v);
   toast('✅ Railway URL salvo!','var(--gold)');
 }
 
-function clearMkt(){
-  localStorage.setItem('t26_mkt',JSON.stringify([]));
+function dashClearMkt(){
+  /* mkt saved via Railway */;
   toast('🗑️ Mercado limpo','#ef9a9a');
   loadUsers();
 }
 
-function clearChats(){
-  localStorage.setItem('t26_chat',JSON.stringify({}));
+function dashClearChats(){
+  /* chat saved via Railway */;
   toast('🗑️ Chats limpos','#ef9a9a');
 }
 
 function exportBackup(){
   try{
     const data={
-      users:JSON.parse(localStorage.getItem('t26_users')||'[]'),
-      mkt:JSON.parse(localStorage.getItem('t26_mkt')||'[]'),
-      matches:JSON.parse(localStorage.getItem('t26_matches')||'[]'),
+      users:(_dashState.users||[]),
+      mkt:(_dashState.mkt||[]),
+      matches:(_dashState.matches||[]),
       ts:new Date().toISOString()
     };
     const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
