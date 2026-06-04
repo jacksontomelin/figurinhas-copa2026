@@ -2204,20 +2204,30 @@ async function apiPut(path, body) {
 }
 
 // ── Carregar estado completo do servidor ──────────────────────
-async function loadStateFromRailway() {
-  try {
-    const d = await apiGet('/api/state');
-    if (!d.ok) return false;
+async function loadStateFromRailway(){
+  try{
+    const rUrl=(sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    const r = await fetch(rUrl+'/api/state',{signal:AbortSignal.timeout(10000)});
+    if(!r.ok) return false;
+    const d = await r.json();
+    if(!d.ok) return false;
+    // Carrega todos os dados em memória
     _USERS   = d.users   || [];
     _MARKET  = d.market  || [];
     _CHAT    = d.chat    || {};
     _MATCHES = d.matches || [];
     _NOTIFS  = d.notifs  || {};
     _ONLINE  = d.online  || {};
-    _STALE   = false;
+    // Atualiza sessão com dados mais recentes do servidor
+    if(_SESSION){
+      const fresh = _USERS.find(u=>u.phone===_SESSION.phone);
+      if(fresh) _SESSION = {...fresh, passHash:_SESSION.passHash};
+    }
+    _stateLoaded = true;
     return true;
-  } catch(e) { return false; }
+  }catch(e){ return false; }
 }
+
 
 // ── Compatibilidade: funções de acesso aos dados ──────────────
 const jg = (key) => {
@@ -2777,6 +2787,15 @@ function cycleFig(id){
 
   toast(id+' → '+label, color);
   refreshFigs();
+  // Sincroniza figurinhas com Railway
+  if(_SESSION){
+    const rUrl=(sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    fetch(rUrl+'/api/users/'+_SESSION.phone+'/stickers',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({stickers:(_SESSION.stickers||{})}),
+      signal:AbortSignal.timeout(8000)
+    }).catch(()=>{});
+  }
   if(next===2) setTimeout(()=>toast('Repetida! Anuncie para troca? 🏷️','var(--gold)'),2000);
 }
 
@@ -3018,7 +3037,16 @@ let currentChatWith=null;
 function getChatId(a,b){ return [a,b].sort().join('__'); }
 function getChatMsgs(cid){ return getChats()[cid]||[]; }
 function saveChatMsg(cid,msg){
-  const ch=getChats(); ch[cid]=[...(ch[cid]||[]),msg]; jsSync(K.CHAT,ch);
+  if(!_CHAT[cid]) _CHAT[cid]=[];
+  _CHAT[cid]=[..._CHAT[cid], msg];
+  jsSync(K.CHAT,_CHAT);
+  // Persiste no Railway
+  const rUrl=(sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+  fetch(rUrl+'/api/chat/'+cid,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({from:msg.from,text:msg.text,ts:msg.ts}),
+    signal:AbortSignal.timeout(8000)
+  }).catch(()=>{});
 }
 function markChatSeen(cid){ js('t26_seen_'+cid,Date.now()); updateBadges(); }
 

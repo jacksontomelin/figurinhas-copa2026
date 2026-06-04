@@ -84,11 +84,13 @@ router.options('*', (req, res) => { cors(res); res.sendStatus(200); });
 // POST /api/auth/register
 router.post('/auth/register', async (req, res) => {
   cors(res);
-  const { phone, name, passHash, avatar, stickers, ts } = req.body;
-  if (!phone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
+  const { phone: rawPhone, name, passHash, avatar, stickers, ts } = req.body;
+  if (!rawPhone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
+  const phone = String(rawPhone).replace(/\D/g, ''); // normaliza: remove formatação
+  if (!phone) return res.json({ ok: false, error: 'Telefone inválido' });
 
   const existing = db.users.find(phone);
-  const user = db.users.upsert(phone, { name, passHash, avatar: avatar||'⚽', stickers: stickers||{}, ts: ts||Date.now() });
+  const user = db.users.upsert(phone, { name: name||phone, passHash, avatar: avatar||'⚽', stickers: stickers||{}, ts: ts||Date.now() });
 
   // Responde imediatamente
   res.json({ ok: true, action: existing ? 'updated' : 'created', user: safe(user) });
@@ -321,7 +323,18 @@ router.get('/online', (req, res) => {
 // GET /api/state — carrega tudo (usado ao abrir o app)
 router.get('/state', (req, res) => {
   cors(res);
-  res.json({ ok: true, ...db.state.get(), users: db.users.all().map(safe) });
+  const state = db.state.get();
+  res.json({
+    ok: true,
+    users:   db.users.all().map(safe),
+    market:  state.market  || [],
+    chat:    state.chat    || {},
+    matches: state.matches || [],
+    notifs:  state.notifs  || {},
+    online:  state.online  || {},
+    news:    db.news.get() || [],
+    ts:      state.ts
+  });
 });
 
 // POST /api/state — salva tudo (sync completo)
@@ -381,7 +394,8 @@ router.post('/shorten', (req, res) => {
 // ── helpers ──────────────────────────────────────────────────
 function safe(u) {
   if (!u) return null;
-  const { passHash, ...rest } = u;
+  // Remove dados sensíveis
+  const { passHash, _test, ...rest } = u;
   return rest;
 }
 

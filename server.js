@@ -612,6 +612,14 @@ cron.schedule('0 */6 * * *', () => {
 });
 
 // ── START ────────────────────────────────────────────────────
+
+// ── /s/:code — redirect encurtador ──────────────────────────
+app.get('/s/:code', (req, res) => {
+  const link = db.links.get(req.params.code);
+  if (!link) return res.status(404).send('Link não encontrado');
+  db.links.hit(req.params.code);
+  res.redirect(302, link.url);
+});
 // ── Startup verification ─────────────────────────────────────
 try {
   const testUser = db.users.upsert('_startup_test', {name:'test',passHash:'test',avatar:'⚽',stickers:{},ts:Date.now()});
