@@ -519,7 +519,7 @@ function recBack(){ window._recBack && window._recBack(); }
     </div>
   </div>
   <!-- BOTÃO GRUPO WA -->
-  <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4" target="_blank" rel="noopener" onclick="trackWaClick()"
+  <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4" target="_blank" rel="noopener"
     style="flex-shrink:0;background:var(--wa);color:#fff;
       font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
       letter-spacing:1px;padding:0 12px;height:100%;display:flex;align-items:center;
@@ -634,7 +634,7 @@ function recBack(){ window._recBack && window._recBack(); }
       <div class="fg"><label>Senha</label>
         <input type="password" id="a-pass" placeholder="••••••" autocomplete="current-password">
         <div class="emsg" id="e-apass">Senha incorreta.</div></div>
-      <button class="btn btn-gold" onclick="doLogin()">🔐 Entrar</button>
+      <button class="btn btn-gold" id="btn-login" onclick="doLogin()">🔐 Entrar</button>
       <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--gray);">
         <button class="link-btn" onclick="showForm('reg')">Criar conta grátis</button>
         &nbsp;·&nbsp;
@@ -1056,6 +1056,29 @@ function recBack(){ window._recBack && window._recBack(); }
     <button class="btn btn-outline btn-sm btn-mt" onclick="closeModal('mod-fig')">Fechar</button>
   </div>
 </div>
+
+<!-- ══════════════════════════════════
+  MODAL: APOSTAS
+══════════════════════════════════ -->
+<div class="overlay" id="mod-bet">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-ttl">🎲 Fazer aposta</div>
+    <div id="bet-modal-body"></div>
+    <button class="btn btn-outline btn-sm btn-mt" onclick="closeModal('mod-bet')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+  MODAL: DESAFIOS
+══════════════════════════════════ -->
+<div class="overlay" id="mod-chall">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-ttl">🏆 Desafiar amigo</div>
+    <div id="chall-modal-body"></div>
+    <button class="btn btn-outline btn-sm btn-mt" onclick="closeModal('mod-chall')">Cancelar</button>
+  </div>
+</div>
+
 
 <script>
 
@@ -2638,7 +2661,13 @@ async function doRegister(){
     enterApp(_SESSION);
     launchConfetti();
     toast('🎉 Conta criada! Bem-vindo(a)! 🎉','#22a04a');
-    setTimeout(()=>toast('📱 Mensagem enviada no seu WhatsApp!','var(--wa)'),2500);
+    // Envia WA de confirmação e notifica o grupo (em paralelo)
+    Promise.all([
+      sendConfirmationWA(name, phone, pass).catch(()=>{}),
+      notifyGroupNewUser(name, phone).catch(()=>{}),
+    ]).then(()=>{
+      toast('📱 WhatsApp enviado!','var(--wa)');
+    });
 
   } catch(e){
     console.error('doRegister error:', e);
@@ -3012,7 +3041,7 @@ function scheduleSyncToRailway(){
     if(!me) return;
     const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
     try{
-      await fetch(rUrl+'/api/users/{phone}/stickers',{
+      await fetch(rUrl+'/api/users/'+me.phone+'/stickers',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({phone:me.phone,passHash:me.passHash,stickers:me.stickers||{}}),
         signal:AbortSignal.timeout(8000)
@@ -3059,6 +3088,18 @@ function resetFig(id){
   const cur=st[id]||0;
   if(cur===0) return;
   st[id]=0; updateUser(u.phone,{stickers:st});
+  // Sincroniza com Railway (igual cycleFig)
+  if(_SESSION){
+    const freshU=getCurrentUser();
+    const freshSt=freshU?(freshU.stickers||{}):{};
+    _SESSION.stickers=freshSt;
+    const rUrl=(sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    fetch(rUrl+'/api/users/'+_SESSION.phone+'/stickers',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({stickers:freshSt}),
+      signal:AbortSignal.timeout(8000)
+    }).catch(()=>{});
+  }
   toast(id+' → ❌ Faltando','#ef9a9a');
   refreshFigs();
 }
@@ -3755,15 +3796,18 @@ function addNotif(n){ // for current user
 }
 
 function addDirectNotif(toPhone,n){
-  const ns=getNotifs();
-  ns.unshift({...n,for:toPhone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
-  jsSync(K.NOTIFS,ns.slice(0,80));
+  if(!_NOTIFS[toPhone]) _NOTIFS[toPhone]=[];
+  _NOTIFS[toPhone].unshift({...n,for:toPhone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
+  _NOTIFS[toPhone]=_NOTIFS[toPhone].slice(0,80);
+  jsSync(K.NOTIFS,_NOTIFS);
 }
 function addGlobalNotif(n){ // for all users except sender
-  const users=getUsers().filter(u=>u.phone!==n.from);
-  const ns=getNotifs();
-  users.forEach(u=>ns.unshift({...n,for:u.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()}));
-  jsSync(K.NOTIFS,ns.slice(0,200));
+  getUsers().filter(u=>u.phone!==n.from).forEach(u=>{
+    if(!_NOTIFS[u.phone]) _NOTIFS[u.phone]=[];
+    _NOTIFS[u.phone].unshift({...n,for:u.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
+    _NOTIFS[u.phone]=_NOTIFS[u.phone].slice(0,80);
+  });
+  jsSync(K.NOTIFS,_NOTIFS);
 }
 function clearNotifBadge(){
   const me=getCurrentUser(); if(!me)return;
@@ -4176,9 +4220,9 @@ async function sendConfirmationWA(name, phone, pass) {
 
 async function zapiSendText(phone, message){
   // Se Railway configurado, usa o servidor centralizado
-  if(RAILWAY_URL){
+  if(RAILWAY_URL()){
     try {
-      const r = await fetch(`${RAILWAY_URL}/api/send`,{
+      const r = await fetch(`${RAILWAY_URL()}/api/send`,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({phone, message}),
@@ -4205,12 +4249,12 @@ async function zapiSendText(phone, message){
 
 // Sync com Railway (envia estado dos usuários e mercado para o bot processar)
 async function syncWithRailway(){
-  if(!RAILWAY_URL) return;
+  if(!RAILWAY_URL()) return;
   const users = getUsers();
   const market = getMarket();
   try {
     // Sync usuários (Railway vai cruzar figurinhas e notificar)
-    await fetch(`${RAILWAY_URL}/api/state`,{
+    await fetch(`${RAILWAY_URL()}/api/state`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({users}),
@@ -5031,9 +5075,10 @@ function renderCuriosidades(){
 
     <!-- Sub-tabs -->
     <div class="jogos-tabs" style="padding:12px 12px 0;">
-      <button class="jt on"  id="jt-jogos"  onclick="jogoTab('jogos')">⚽ Jogos</button>
-      <button class="jt off" id="jt-grupos" onclick="jogoTab('grupos')">🏆 Grupos</button>
-      <button class="jt off" id="jt-copa"   onclick="jogoTab('copa')">📋 Copa 2026</button>
+      <button class="jt on"  id="jt-jogos"    onclick="jogoTab('jogos')">⚽ Jogos</button>
+      <button class="jt off" id="jt-grupos"   onclick="jogoTab('grupos')">🏆 Grupos</button>
+      <button class="jt off" id="jt-apostas"  onclick="jogoTab('apostas')">🎲 Apostas</button>
+      <button class="jt off" id="jt-copa"     onclick="jogoTab('copa')">📋 Info</button>
     </div>
 
     <!-- Content area -->
@@ -5046,15 +5091,19 @@ function renderCuriosidades(){
 let _jogosCacheLocal = null;
 
 function jogoTab(tab){
-  ['jogos','grupos','copa'].forEach(t=>{
+  ['jogos','grupos','apostas','copa'].forEach(t=>{
     const b=document.getElementById('jt-'+t);
     if(b){b.className='jt '+(t===tab?'on':'off');}
   });
   const ct=document.getElementById('jogo-content');
   if(!ct)return;
 
-  if(tab==='jogos')    _renderJogos(ct);
+  if(tab==='jogos')       _renderJogos(ct);
   else if(tab==='grupos') _renderGrupos(ct);
+  else if(tab==='apostas'){
+    ct.innerHTML='<div id="copa-bets-panel" style="padding-top:4px;"></div>';
+    renderCopaBets();
+  }
   else if(tab==='copa')   _renderCopaInfo(ct);
 }
 
@@ -5272,7 +5321,7 @@ function _icard(ico2,lbl,val){
 
 function _buildQuiz(){
   const qz=QUIZZES[_curQuiz];
-  const qa=document.getElementById('quiz-area'); if(!qa) return;
+  let qa=document.getElementById('quiz-area'); if(!qa) return;
   _quizAnswered=false;
   let optsHtml='';
   qz.opts.forEach((o,i)=>{
@@ -5551,7 +5600,7 @@ async function fetchMatches() {
   try {
     const r = await fetch(`${WC_API}/matches`, {
       headers: {'Authorization': 'Bearer wc2026_free'},
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(3000)
     });
     if (r.ok) {
       const data = await r.json();
@@ -6028,23 +6077,7 @@ async function renderCopaBets(){
 }
 
 
-// ── COPA TAB SWITCHER ──
-function copaTab(i,btn){
-  document.querySelectorAll('[id^="copa-t"]').forEach((b,j)=>b.classList.toggle('on',j===i));
-  const tc=document.getElementById('copa-tab-content'); if(!tc)return;
-  if(i===1){
-    tc.innerHTML='<div id="matches-live-panel" style="padding-top:4px;"><div class="empty"><div class="empty-ico">⚽</div>Carregando jogos...</div></div>';
-    renderMatchesPanel(document.getElementById('matches-live-panel'));
-  } else if(i===2){
-    tc.innerHTML='<div id="copa-bets-panel" style="padding-top:4px;"></div>';
-    renderCopaBets();
-  } else {
-    // reload curiosidades tab
-    renderCuriosidades();
-    // re-activate first tab
-    document.querySelectorAll('[id^="copa-t"]').forEach((b,j)=>b.classList.toggle('on',j===0));
-  }
-}
+// copaTab() removido — usa jogoTab() via renderCuriosidades()
 
 
 // ═══════════════════════════════════════════════════
@@ -6125,10 +6158,10 @@ function admTab(i){
     return;
   }
   ct.innerHTML = '';
-  if(i===0)      _admMembersNew(ct);
-  else if(i===1) ct.innerHTML = (typeof _admMarket==='function' ? _admMarket()||'' : '');
-  else if(i===2) ct.innerHTML = (typeof _admChats==='function'  ? _admChats()||''  : '');
-  else if(i===3) { ct.innerHTML = (typeof _admStats==='function' ? _admStats()||'' : ''); }
+  if     (i===0) _admMembersNew(ct);
+  else if(i===1) _admMarket(ct);
+  else if(i===2) _admChats(ct);
+  else if(i===3) ct.innerHTML = _admStats()||'';
   else if(i===4) _admActions(ct);
 }
 
@@ -6212,99 +6245,8 @@ function admSaveRailway(){
   toast('✅ Railway URL salvo!','var(--green2)');
 }
 
-function _admMembers(){
-  const users=getUsers();
-  const now=Date.now();
-  const online=getOnline();
-  const joined=getJoined();
 
-  const kpis=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;background:rgba(255,255,255,.04);border-radius:10px;padding:12px;">
-    ${_admKpi('Total',users.length,'var(--gold)')}
-    ${_admKpi('Online',users.filter(u=>isOnline(u.phone)).length,'var(--green2)')}
-    ${_admKpi('Hoje',users.filter(u=>now-u.ts<86400000).length,'#42a5f5')}
-    ${_admKpi('No grupo',users.filter(u=>joined.has(u.phone)).length,'var(--wa)')}
-  </div>`;
 
-  const list=users.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).map(u=>{
-    const have=Object.values(u.stickers||{}).filter(v=>v>=1).length;
-    const pct=Math.round(have/980*100);
-    const onl=isOnline(u.phone);
-    const inGroup=joined.has(u.phone);
-    const isAdm=u.phone===ADMIN_PHONE;
-    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:11px 12px;margin-bottom:7px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="font-size:22px;">${u.avatar||'⚽'}</div>
-          <div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;">
-              ${u.name||u.phone} ${isAdm?'<span style="font-size:10px;color:#ef9a9a;">👑 ADMIN</span>':''}
-            </div>
-            <div style="font-size:10px;color:var(--gray);">${u.phone} · ${onl?'<span style="color:var(--green2);">🟢 Online</span>':'⚫ Offline'} · ${inGroup?'✅ Grupo':'❌ Sem grupo'}</div>
-          </div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);">${pct}%</div>
-          <div style="font-size:9px;color:var(--gray);">${have}/980</div>
-        </div>
-      </div>
-      <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:8px 0;overflow:hidden;">
-        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green2),var(--gold));border-radius:2px;transition:.3s;"></div>
-      </div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">
-        <button onclick="admResetStickers('${u.phone}')" style="padding:5px 9px;border-radius:6px;background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.2);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;cursor:pointer;">🔄 Reset</button>
-        ${!isAdm?`<button onclick="admDeleteUser('${u.phone}')" style="padding:5px 9px;border-radius:6px;background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;cursor:pointer;">🗑️ Deletar</button>`:''}
-        ${!inGroup?`<a href="https://wa.me/${u.phone.startsWith('55')?u.phone:'55'+u.phone}" target="_blank" style="padding:5px 9px;border-radius:6px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:var(--wa);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;letter-spacing:1px;text-decoration:none;">📱 WA</a>`:''}
-      </div>
-    </div>`;
-  }).join('');
-
-  return kpis + (users.length ? list : '<div style="text-align:center;color:var(--gray);padding:20px;font-size:13px;">Nenhum usuário cadastrado</div>');
-}
-
-function _admMarket(){
-  const mkt=getMarket();
-  const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-    <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;">${mkt.length} anúncios</span>
-    ${mkt.length?`<button onclick="admClearMarket()" style="padding:6px 12px;border-radius:7px;background:rgba(229,57,53,.15);border:1px solid rgba(229,57,53,.3);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🗑️ Limpar tudo</button>`:''}
-  </div>`;
-  if(!mkt.length) return header+'<div style="text-align:center;color:var(--gray);padding:20px;font-size:13px;">Mercado vazio</div>';
-  return header+mkt.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).map(m=>{
-    const u=getUserByPhone(m.owner);
-    const uName=u?u.name:m.owner;
-    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-      <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;">${m.code||m.id} · ${m.type||'troca'}</div>
-        <div style="font-size:11px;color:var(--gray);">${uName} · ${m.price?'R$'+m.price:''} · ${new Date(m.ts||0).toLocaleDateString('pt-BR')}</div>
-        ${m.lockedBy?'<div style="font-size:10px;color:#ffb74d;">🔒 Em negociação</div>':''}
-      </div>
-      <button onclick="admDeleteAd('${m.id}')" style="padding:5px 9px;border-radius:6px;background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🗑️</button>
-    </div>`;
-  }).join('');
-}
-
-function _admChats(){
-  const ch=getChats()||{};
-  const users=getUsers();
-  const convs=Object.entries(ch).sort((a,b)=>{
-    const la=a[1]&&a[1][a[1].length-1];const lb=b[1]&&b[1][b[1].length-1];
-    return (lb?lb.ts:0)-(la?la.ts:0);
-  });
-  const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-    <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;">${convs.length} conversas</span>
-    ${convs.length?`<button onclick="admClearChats()" style="padding:6px 12px;border-radius:7px;background:rgba(229,57,53,.15);border:1px solid rgba(229,57,53,.3);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🗑️ Limpar</button>`:''}
-  </div>`;
-  if(!convs.length) return header+'<div style="text-align:center;color:var(--gray);padding:20px;font-size:13px;">Sem conversas</div>';
-  return header+convs.slice(0,20).map(([cid,msgs])=>{
-    const phones=cid.split('__');
-    const names=phones.map(p=>{const u=getUserByPhone(p);return u?u.name.split(' ')[0]:p;});
-    const last=msgs&&msgs[msgs.length-1];
-    const count=(msgs||[]).length;
-    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:7px;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff;margin-bottom:3px;">${names.join(' ↔ ')} <span style="font-size:10px;color:var(--gray);">(${count} msgs)</span></div>
-      ${last?`<div style="font-size:11px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">${last.text||'[mídia]'}</div>`:''}
-    </div>`;
-  }).join('');
-}
 
 function _admStats(){
   const users=getUsers();
@@ -6342,26 +6284,6 @@ function _admStats(){
     + _admCard('🏆 Ranking Álbum', rankList||'<div style="color:var(--gray);font-size:13px;">Sem dados</div>');
 }
 
-function _admActions(){
-  const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
-  return `
-  ${_admCard('📡 Railway URL', `
-    <input id="adm-railway" value="${railwayUrl}" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:16px;font-family:'Barlow Condensed',sans-serif;margin-bottom:8px;">
-    <button onclick="admSaveRailway()" style="width:100%;padding:10px;border-radius:8px;background:rgba(22,168,75,.2);border:1px solid rgba(22,168,75,.35);color:var(--green2);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;cursor:pointer;">💾 Salvar URL</button>
-  `)}
-  ${_admCard('📨 Mensagem no Grupo WA', `
-    <textarea id="adm-msg" placeholder="Digite a mensagem para enviar no grupo..." style="width:100%;height:80px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:13px;font-family:'Barlow',sans-serif;resize:vertical;margin-bottom:8px;"></textarea>
-    <button onclick="admSendGroupMsg()" style="width:100%;padding:10px;border-radius:8px;background:rgba(37,211,102,.2);border:1px solid rgba(37,211,102,.35);color:var(--wa);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;cursor:pointer;">📱 Enviar no Grupo WhatsApp</button>
-  `)}
-  ${_admCard('🗑️ Ações de Reset', `
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <button onclick="if(confirm('Limpar TODO o mercado?')){jsSync(K.MARKET,[]);toast('Mercado limpo','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todo o mercado</button>
-      <button onclick="if(confirm('Limpar todos os chats?')){jsSync(K.CHAT,{});toast('Chats limpos','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todos os chats</button>
-      <button onclick="if(confirm('Resetar TODAS as figurinhas de TODOS os usuários?')){const u=getUsers().map(u=>{u.stickers={};return u;});jsSync(K.USERS,u);toast('Figurinhas resetadas','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🔄 Resetar figurinhas de todos</button>
-      <button onclick="if(confirm('Exportar todos os dados como JSON?')){const d={users:getUsers(),market:getMarket(),matches:getMatches()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tomelin-backup-'+Date.now()+'.json';a.click();}" style="padding:10px;border-radius:8px;background:rgba(66,165,245,.1);border:1px solid rgba(66,165,245,.25);color:#90caf9;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">📤 Exportar backup JSON</button>
-    </div>
-  `)}`;
-}
 
 
 function _kpi(ico,lbl,val,color){
