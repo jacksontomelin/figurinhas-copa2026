@@ -544,6 +544,8 @@ app.get('/api/info', (_, res) => res.json({
 
 // Serve HTML
 app.get('/', (_, res) => res.sendFile(pathMod.join(__dirname, 'index.html')));
+app.get('/reset-db.html', (_, res) => res.sendFile(pathMod.join(__dirname, 'reset-db.html')));
+app.get('/reset', (_, res) => res.sendFile(pathMod.join(__dirname, 'reset-db.html')));
 app.get('/bot', (_, res) => res.sendFile(pathMod.join(__dirname, 'bot.html')));
 app.get('/dashboard', (_, res) => res.sendFile(pathMod.join(__dirname, 'dashboard.html')));
 
