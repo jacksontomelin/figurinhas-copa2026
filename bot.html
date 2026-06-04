@@ -583,6 +583,78 @@ async function setMonitor(active){
   } catch(e){ toast('❌ '+e.message,'var(--red)'); }
 }
 
+
+// ── CONVITES ──────────────────────────────────────────────────
+let _inviteData = null;
+
+async function loadInvites() {
+  try {
+    const r = await fetch(RAILWAY + '/api/invite/list', { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    _inviteData = d;
+    const el = document.getElementById('invite-list');
+    if (!el) return;
+    if (!d.total) { el.innerHTML = '<div style="color:var(--gray);font-size:12px;text-align:center;">Sem mensagens</div>'; return; }
+
+    el.innerHTML = d.messages.map((m, i) => `
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+        border-radius:10px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
+            letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;margin-bottom:4px;">
+            Convite ${i + 1}/${d.total}
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4;
+            overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">
+            ${m.preview}
+          </div>
+        </div>
+        <button onclick="sendInvite(${i})" class="btn-sm btn-gold"
+          style="flex-shrink:0;padding:7px 12px;font-size:11px;">
+          📤 Enviar
+        </button>
+      </div>`).join('');
+
+    if (d.lastSent) {
+      const st = document.getElementById('invite-status');
+      if (st) st.textContent = '🕐 Último envio: ' + new Date(d.lastSent).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    }
+  } catch(e) {
+    addLog('Erro ao carregar convites: ' + e.message, 'err');
+    toast('❌ ' + e.message, 'var(--red)');
+  }
+}
+
+async function sendInvite(idx) {
+  try {
+    const r = await fetch(RAILWAY + '/api/invite', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ idx }),
+      signal: AbortSignal.timeout(15000)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('✅ Convite ' + (idx + 1) + ' enviado no grupo! 🎉', 'var(--wa)');
+      addLog('Convite #' + (idx + 1) + ' enviado', 'ok');
+      const st = document.getElementById('invite-status');
+      if (st) st.textContent = '🕐 Enviado agora: ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    } else {
+      toast('❌ ' + (d.error || 'Falha'), 'var(--red)');
+    }
+  } catch(e) {
+    toast('❌ ' + e.message, 'var(--red)');
+    addLog('Erro convite: ' + e.message, 'err');
+  }
+}
+
+async function sendInviteRandom() {
+  if (!_inviteData) { await loadInvites(); }
+  const total = _inviteData ? _inviteData.total : 5;
+  const idx = Math.floor(Math.random() * total);
+  await sendInvite(idx);
+}
+
 // ── Init ─────────────────────────────────────────────────────
 checkStatus();
 setInterval(loadRpaStatus, 30000);

@@ -1191,4 +1191,106 @@ app.post('/api/rpa/run-now', async (req, res) => {
   res.json({ ok: true, message: 'RPA executando...' });
 });
 
+
+// ═══════════════════════════════════════════════════════════════
+// 🎯 MENSAGENS DE CONVITE — Chama amigos para o sistema
+// ═══════════════════════════════════════════════════════════════
+
+const INVITE_MSGS = [
+  () => `🎴 *VOCÊ AINDA NÃO TEM O SISTEMA?*
+
+Aqui a galera da Família Tomelin está completando o álbum da Copa 2026 juntos!
+
+✅ Marque suas figurinhas
+🔄 Veja quem tem o que você precisa
+🏷️ Anuncie suas repetidas
+⚽ Acompanhe jogos ao vivo
+
+👉 copa2026.familiatomelin.com.br
+Família Tomelin · Copa 2026 🏆`,
+
+  () => `⚽ *FAMÍLIA TOMELIN — COPA 2026* 🏆
+
+O sistema de trocas de figurinhas Panini está esperando por você!
+
+📱 Acesse, cadastre-se e comece a trocar:
+copa2026.familiatomelin.com.br
+
+980 figurinhas · 48 seleções · troca automática
+Família Tomelin · Copa 2026 🏆`,
+
+  () => `🎴 *DICA DE OURO PRA COMPLETAR O ÁLBUM!*
+
+Chega de sair procurando figurinhas por aí — o sistema cruza automaticamente quem tem o que você precisa!
+
+Só entrar, marcar suas figurinhas e ver os matches 🔄
+
+copa2026.familiatomelin.com.br
+Família Tomelin · Copa 2026 🏆`,
+
+  () => `🏆 *COPA 2026 — 48 SELEÇÕES · 980 FIGURINHAS*
+
+O álbum Panini tá chegando e a Família Tomelin já tá organizando as trocas!
+
+Entre no sistema, cadastre suas figurinhas e troque com a galera:
+copa2026.familiatomelin.com.br
+
+_Gratuito · Rápido · Fácil_ 🎴
+Família Tomelin · Copa 2026 🏆`,
+
+  () => `📣 *CHAMA OS AMIGOS PRO SISTEMA!*
+
+Mais gente = mais chances de completar seu álbum!
+
+O sistema da Família Tomelin já tem membros cadastrando figurinhas. Quanto mais, melhor! 🔄
+
+Entra lá:
+copa2026.familiatomelin.com.br
+Família Tomelin · Copa 2026 🏆`,
+];
+
+let _lastInvite = 0;
+
+async function sendInviteMsg(idx) {
+  const msg = typeof INVITE_MSGS[idx] === 'function'
+    ? INVITE_MSGS[idx]()
+    : INVITE_MSGS[0]();
+  const r = await sendGroup(msg);
+  if (r.ok) {
+    _lastInvite = Date.now();
+    log('📣', 'Mensagem de convite enviada #' + idx);
+    DB.cronStats.enviados++;
+  }
+  return r;
+}
+
+// ── Endpoint: POST /api/invite ───────────────────────────────
+app.post('/api/invite', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const { idx = 0 } = req.body || {};
+  try {
+    const r = await sendInviteMsg(Math.min(Number(idx), INVITE_MSGS.length - 1));
+    res.json({ ok: r.ok, sent: true, idx, total: INVITE_MSGS.length });
+  } catch(e) {
+    log('❌', 'Erro invite: ' + e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ── Endpoint: GET /api/invite/list ──────────────────────────
+app.get('/api/invite/list', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({
+    ok: true,
+    total: INVITE_MSGS.length,
+    lastSent: _lastInvite ? new Date(_lastInvite).toISOString() : null,
+    messages: INVITE_MSGS.map((fn, i) => ({
+      idx: i,
+      preview: fn().substring(0, 80) + '...'
+    }))
+  });
+});
+
+log('📣', 'Sistema de convites inicializado — ' + INVITE_MSGS.length + ' mensagens disponíveis');
+
 log('📰', 'RPA de notícias iniciado — envia a cada 10 minutos');
