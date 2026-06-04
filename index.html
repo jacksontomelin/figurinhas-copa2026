@@ -639,35 +639,77 @@ function _updateLandStats(){
     var st=u.stickers||{};
     return acc+Object.keys(st).filter(function(k){return (st[k]||0)>=1;}).length;
   },0);
+  var ativos=_landMatches.filter(function(m){return m.status!=='cancelled';}).length;
   var el;
   el=document.getElementById('st-members'); if(el) el.textContent=_landUsers.length>0?_landUsers.length:'—';
   el=document.getElementById('st-online');  if(el) el.textContent=_landUsers.length>0?(onN||'0'):'—';
   el=document.getElementById('st-ads');     if(el) el.textContent=totalFigs>0?totalFigs.toLocaleString('pt-BR'):'—';
-  var ativos=_landMatches.filter(function(m){return m.status!=='cancelled';}).length;
-  el=document.getElementById('st-matches'); if(el) el.textContent=ativos||'0';
+  el=document.getElementById('st-matches'); if(el) el.textContent=_landUsers.length>0?(ativos||'0'):'—';
+}
+
+// ── Cache stale-while-revalidate ─────────────────────────────
+var CACHE_KEY='t26_land_v2';
+var CACHE_MAX=30*60*1000; // mostra cache por até 30 min
+var CACHE_TTL=4*60*1000;  // refaz fetch após 4 min
+
+function _saveCache(d){
+  try{ localStorage.setItem(CACHE_KEY,JSON.stringify({d:d,ts:Date.now()})); }catch(e){}
+}
+function _loadCache(){
+  try{
+    var raw=localStorage.getItem(CACHE_KEY);
+    if(!raw) return null;
+    var c=JSON.parse(raw);
+    if(Date.now()-c.ts>CACHE_MAX) return null; // expirado
+    return c;
+  }catch(e){return null;}
+}
+function _applyData(d){
+  _landUsers  =d.users  ||[];
+  _landMkt    =d.market ||[];
+  _landOnline =d.online ||{};
+  _landMatches=d.matches||[];
+  _updateLandStats();
 }
 
 function _fetchLandStats(tries){
   tries=tries||0;
   var ctrl=typeof AbortController!=='undefined'?new AbortController():null;
   var tmr=ctrl?setTimeout(function(){ctrl.abort();},12000):null;
-  fetch('https://figurinhas-copa2026-production.up.railway.app/api/state', ctrl?{signal:ctrl.signal}:{})
+  fetch('https://figurinhas-copa2026-production.up.railway.app/api/state',ctrl?{signal:ctrl.signal}:{})
     .then(function(r){clearTimeout(tmr);return r.json();})
     .then(function(d){
-      if(!d||!d.ok){if(tries<3)setTimeout(function(){_fetchLandStats(tries+1);},(tries+1)*5000);return;}
-      _landUsers  =d.users  ||[];
-      _landMkt    =d.market ||[];
-      _landOnline =d.online ||{};
-      _landMatches=d.matches||[];
-      _updateLandStats();
+      if(!d||!d.ok){
+        if(tries<3) setTimeout(function(){_fetchLandStats(tries+1);},(tries+1)*6000);
+        return;
+      }
+      _saveCache(d);    // salva no cache
+      _applyData(d);    // atualiza DOM com dados frescos
     })
     .catch(function(){
       clearTimeout(tmr);
-      if(tries<3)setTimeout(function(){_fetchLandStats(tries+1);},(tries+1)*5000);
+      if(tries<3) setTimeout(function(){_fetchLandStats(tries+1);},(tries+1)*6000);
     });
 }
-_fetchLandStats(0);
-setInterval(function(){_fetchLandStats(0);},60000);
+
+// Carrega cache imediatamente (zero espera) depois busca frescos
+(function(){
+  var cached=_loadCache();
+  if(cached){
+    _applyData(cached.d);  // mostra cache instantaneamente
+    // Se cache ainda válido, aguarda antes de refazer fetch
+    var age=Date.now()-cached.ts;
+    if(age<CACHE_TTL){
+      setTimeout(function(){_fetchLandStats(0);}, CACHE_TTL-age);
+    } else {
+      _fetchLandStats(0);  // cache velho: busca já
+    }
+  } else {
+    _fetchLandStats(0);    // sem cache: busca direto
+  }
+  // Atualiza em background a cada 4 min
+  setInterval(function(){_fetchLandStats(0);}, CACHE_TTL);
+})();
 function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
 // Renderiza os itens de notícia no grid
 function renderNewsGrid(items){
