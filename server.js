@@ -650,7 +650,7 @@ app.listen(PORT, '0.0.0.0', () => {
   log('👥', `Grupo: ${ZAPI.groupId}`);
   log('🤖', 'Monitor de jogos: ATIVO');
   log('⏰', 'Cron jobs: ATIVOS');
-  log('📡', 'Endpoints: /health /api/status /api/send-group /api/sync-users /api/sync-market');
+  log('📡', `Endpoints Railway: ${db.users.count()} usuários | PG: ${!!process.env.DATABASE_URL}`);
 });
 
 module.exports = app;

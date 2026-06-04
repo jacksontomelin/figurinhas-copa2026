@@ -2316,7 +2316,18 @@ function updateUser(phone,patch) {
 // Online presence: ping every 30s, consider online if pinged in last 90s
 function pingOnline() {
   const u = getCurrentUser(); if (!u) return;
-  const o = getOnline(); o[u.phone] = Date.now(); jsSync(K.ONLINE,o);
+  // Atualiza local
+  if(!_ONLINE) _ONLINE = {};
+  _ONLINE[u.phone] = Date.now();
+  // Sincroniza com Railway e recebe lista online atualizada
+  const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+  fetch(rUrl+'/api/online',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({phone: u.phone}),
+    signal: AbortSignal.timeout(5000)
+  }).then(r=>r.json()).then(d=>{
+    if(d.online) { _ONLINE = d.online; updateBadges(); }
+  }).catch(()=>{});
 }
 // isOnline defined above
 
@@ -2695,7 +2706,8 @@ function updateBadges(){
   Object.keys(ch).forEach(cid=>{
     if(!cid.includes(u.phone))return;
     const msgs=ch[cid]||[];
-    const lastSeen=jg('t26_seen_'+cid)||0;
+    // Usa _chatSeen em memória em vez de localStorage antigo
+    const lastSeen=(_chatSeen&&_chatSeen[cid])||0;
     unread+=msgs.filter(m=>m.from!==u.phone&&m.ts>lastSeen).length;
   });
   const cb=document.getElementById('badge-chat');
@@ -6050,7 +6062,7 @@ function _admActions(el){
 
 function _admBroadcast(){const msg=prompt('Mensagem para todos:');if(!msg)return;const users=getUsers(),ns=getNotifs();users.forEach(u=>ns.unshift({type:'broadcast',ico:'📢',text:'📢 <strong>Admin Tomelin:</strong> '+esc(msg),for:u.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()}));jsSync(K.NOTIFS,ns.slice(0,300));toast('📢 Enviado para '+users.length+' membros!','var(--gold)');}
 function _admClearAds(){const cutoff=Date.now()-7*86400000;const old=getMarket().filter(m=>m.ts<cutoff).length;jsSync(K.MARKET,getMarket().filter(m=>m.ts>=cutoff));renderAdmin();toast('🗑️ '+old+' anúncios removidos.','#ef9a9a');}
-function _admExport(){const data={users:getUsers(),market:getMarket(),chats:getChats(),bets:jg('t26_bets')||[],waJoined:Array.from(getJoined()),exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='tomelin-'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();URL.revokeObjectURL(url);}
+function _admExport(){const data={users:getUsers(),market:getMarket(),chats:getChats(),bets:_bets||{}||[],waJoined:Array.from(getJoined()),exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='tomelin-'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();URL.revokeObjectURL(url);}
 
 // 🤖 MOTOR DE MENSAGENS INTELIGENTES
 // ═══════════════════════════════════════════════════════════════
