@@ -155,10 +155,11 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 /* nav active consolidated */
 .nav-btn .nav-ico{font-size:22px;line-height:1;transition:.2s;display:block;}
 .nav-btn.active .nav-ico{filter:drop-shadow(0 0 6px rgba(245,197,24,.8));}
-.nav-badge{position:absolute;top:6px;right:calc(50% - 18px);
-  background:var(--red);color:#fff;border-radius:20px;padding:1px 5px;
-  font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
-  min-width:16px;text-align:center;display:none;}
+.nav-badge{position:absolute;top:4px;right:calc(50% - 22px);
+  background:var(--red);color:#fff;border-radius:10px;padding:1px 5px;
+  font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.5px;
+  min-width:16px;text-align:center;display:none;z-index:2;
+  box-shadow:0 1px 4px rgba(0,0,0,.4);}
 .nav-badge.show{display:block;}
 
 /* TABS (inside card) */
