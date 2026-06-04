@@ -622,39 +622,21 @@ function closeModal(){
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 
 async function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
-async function loadNews(){
+// Renderiza os itens de notícia no grid
+function renderNewsGrid(items){
   var grid=document.getElementById('news-grid');
-  var items=[];
-  // Railway
-  try{
-    var r=await fetch(RAILWAY+'/api/news',{signal:AbortSignal.timeout(6000)});
-    if(r.ok){var d=await r.json();if(d.items&&d.items.length){items=d.items;}}
-  }catch(e){}
-  // Session cache
-  if(!items.length){
-    try{var c=JSON.parse(sessionStorage.getItem('t26_news_cache')||'null');if(c&&c.items&&Date.now()-c.ts<120*60*1000)items=c.items;}catch(e){}
-  }
-  // Fallback static
-  if(!items.length){items=[
-    {title:'Brasil estreia em 13/06 contra Marrocos na Copa 2026',src:'FIFA',desc:'Seleção Brasileira joga no MetLife Stadium às 16h (Brasília) em busca do hexacampeonato.'},
-    {title:'Panini lança álbum com 980 figurinhas e 48 seleções',src:'Panini Brasil',desc:'Pacotinhos com 7 figurinhas por R$7. Nova numeração: por seleção, de 1 a 20.'},
-    {title:'Copa 2026 terá 104 jogos em EUA, México e Canadá',src:'ESPN Brasil',desc:'48 seleções, formato histórico. Primeira Copa com três países anfitriões simultâneos.'},
-    {title:'Vinicius Jr. chega como favorito ao prêmio da Copa',src:'UOL Esporte',desc:'O atacante do Real Madrid é a principal esperança do Brasil no torneio.'},
-    {title:'MetLife Stadium receberá a final em 19 de julho',src:'FIFA',desc:'O estádio de Nova Jersey será palco da decisão com mais de 82 mil torcedores.'},
-    {title:'Trocas de figurinhas: use o sistema da Família Tomelin',src:'Família Tomelin',desc:'O sistema cruza automaticamente quem tem as figurinhas que faltam no seu álbum.'},
-  ];}
-  _news=items.map(function(it){return{title:stripHtml(it.title||''),desc:stripHtml(it.desc||''),src:it.src||'Copa 2026',link:it.link||'',pub:it.pub||''};});
-  try{sessionStorage.setItem('t26_news_cache',JSON.stringify({items:items,ts:Date.now()}));}catch(e){}
-  var ts=document.getElementById('news-ts');
-  if(ts)ts.textContent='🕐 '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  // Usa _news (já limpo) para renderizar
+  if(!grid)return;
+  _news=items.map(function(it){
+    return{title:stripHtml(it.title||''),desc:stripHtml(it.desc||''),
+           src:it.src||'Copa 2026',link:it.link||'',pub:it.pub||''};
+  });
   if(!_news.length){
-    grid.innerHTML='<div style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:20px;">Sem notícias disponíveis no momento</div>';
+    grid.innerHTML='<div style="color:rgba(255,255,255,.35);font-size:13px;text-align:center;padding:20px;">Sem notícias disponíveis</div>';
     return;
   }
   grid.innerHTML=_news.slice(0,6).map(function(it,i){
     var d=it.pub?new Date(it.pub).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-    return '<div class="n-card" onclick="openModal('+i+')">'
+    return '<div class="n-card" onclick="openModal('+i+')">'  
       +'<div class="n-src">'+stripHtml(it.src||'Copa 2026')+'</div>'
       +'<div class="n-title">'+stripHtml(it.title||'')+'</div>'
       +(it.desc?'<div class="n-desc">'+stripHtml(it.desc).substring(0,120)+'</div>':'')
@@ -663,8 +645,54 @@ async function loadNews(){
       +'</div>';
   }).join('');
 }
+
+function loadNews(){
+  // 1. Mostra cache imediatamente (sem loading state)
+  var cached=null;
+  try{
+    var c=JSON.parse(sessionStorage.getItem('t26_news_cache')||'null');
+    if(c&&c.items&&c.items.length) cached=c;
+  }catch(e){}
+
+  if(cached){
+    renderNewsGrid(cached.items);
+    // Mostra timestamp de quando o cache foi criado
+    var ts=document.getElementById('news-ts');
+    if(ts&&cached.ts){
+      var age=Math.floor((Date.now()-cached.ts)/60000);
+      ts.textContent= age<2 ? '🟢 Atualizado' :
+                      age<60 ? '🕐 Há '+age+'min' :
+                      '🕐 Há '+Math.floor(age/60)+'h';
+    }
+  } else {
+    // Sem cache: mostra fallback estático imediatamente
+    renderNewsGrid([{title:'Brasil estreia em 13/06 contra Marrocos na Copa 2026',src:'FIFA',desc:'Seleção Brasileira joga no MetLife Stadium às 16h (Brasília).',link:'',pub:''},{title:'Panini lança álbum com 980 figurinhas e 48 seleções',src:'Panini Brasil',desc:'Pacotinhos com 7 figurinhas. Nova numeração por seleção.',link:'',pub:''},{title:'Copa 2026 terá 104 jogos em EUA, México e Canadá',src:'ESPN Brasil',desc:'48 seleções, formato histórico com três países anfitriões.',link:'',pub:''},{title:'Vinicius Jr. chega como favorito ao prêmio da Copa',src:'UOL Esporte',desc:'Atacante do Real Madrid é a principal esperança do Brasil.',link:'',pub:''},{title:'MetLife Stadium receberá a final em 19 de julho',src:'FIFA',desc:'Estádio de Nova Jersey com mais de 82 mil torcedores.',link:'',pub:''},{title:'Trocas de figurinhas: use o sistema da Família Tomelin',src:'Família Tomelin',desc:'O sistema cruza automaticamente quem tem as figurinhas que faltam.',link:'',pub:''}]);
+    var ts2=document.getElementById('news-ts');
+    if(ts2) ts2.textContent='📦 Notícias fixas';
+  }
+
+  // 2. Background fetch: atualiza cache silenciosamente após 2s
+  // Só busca se cache > 30min ou não existe
+  var cacheAge = cached ? Date.now()-cached.ts : Infinity;
+  if(cacheAge > 30*60*1000){
+    setTimeout(function(){
+      fetch(RAILWAY+'/api/news',{signal:AbortSignal.timeout(8000)})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(d){
+        if(d&&d.items&&d.items.length){
+          // Salva cache novo
+          try{sessionStorage.setItem('t26_news_cache',JSON.stringify({items:d.items,ts:Date.now()}));}catch(e){}
+          // Atualiza grid com notícias frescas
+          renderNewsGrid(d.items);
+          var ts3=document.getElementById('news-ts');
+          if(ts3) ts3.textContent='🟢 Atualizado';
+        }
+      })
+      .catch(function(){/* silencioso */});
+    }, 2000);
+  }
+}
 loadNews();
-setInterval(loadNews, 5*60*1000);
 
 // ── QUIZ ──────────────────────────────────────
 var QS=[
