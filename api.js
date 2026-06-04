@@ -18,11 +18,20 @@ async function zapiSend(phone, message) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Client-Token': ZAPI_CLI },
       body: JSON.stringify({ phone, message }),
-      timeout: 15000
+      timeout: 20000
     });
+    if (!r.ok) {
+      const errBody = await r.text().catch(()=>'');
+      console.error('[WA] HTTP '+r.status+' para '+phone+':', errBody.substring(0,150));
+      return { ok: false, error: 'HTTP '+r.status, body: errBody };
+    }
     const d = await r.json().catch(() => ({}));
-    return { ok: !!(d.messageId || d.zaapId), ...d };
+    const ok = !!(d.messageId || d.zaapId);
+    if (!ok) console.error('[WA] Sem messageId para '+phone+':', JSON.stringify(d).substring(0,200));
+    else console.log('[WA] ✅ Enviado para '+phone);
+    return { ok, ...d };
   } catch(e) {
+    console.error('[WA] Erro '+phone+':', e.message);
     return { ok: false, error: e.message };
   }
 }
@@ -31,11 +40,16 @@ async function sendWelcomeWA(phone, name, passHash, plainPass) {
   const firstName = (name||'').split(' ')[0];
   // Mostra a senha real mascarada (ex: mi**** para "minha123")
   // Se não tiver a senha real, mostra aviso de usar a que cadastrou
+  // plainPass = senha em texto enviada pelo frontend (nunca armazenada)
   let masked;
-  if (plainPass && plainPass.length >= 2) {
+  if (plainPass && typeof plainPass === 'string' && plainPass.length >= 2 && plainPass.length <= 50) {
+    // Parece ser a senha real (não um hash)
     masked = plainPass.substring(0, 2) + '*'.repeat(Math.max(2, plainPass.length - 2));
+    console.log('[WA] Usando senha real mascarada para ' + phone);
   } else {
+    // plainPass não disponível ou suspeito
     masked = '(a senha que você escolheu)';
+    console.log('[WA] plainPass não disponível para ' + phone + ' - usando texto genérico');
   }
   const cleanPhone = sanitizePhone(phone);
 
@@ -50,8 +64,14 @@ async function sendWelcomeWA(phone, name, passHash, plainPass) {
     `📱 *Grupo WhatsApp:*\n${GRP_LINK}\n\n` +
     `_Guarde esses dados! Família Tomelin · Copa 2026_ 🏆`;
 
-  const r1 = await zapiSend(cleanPhone, msgPrivada);
-  console.log('[WA] Particular ' + name + ':', r1.ok ? '✅' : '❌ ' + (r1.error||''));
+  // Tenta enviar mensagem pessoal (com 1 retry se falhar)
+  let r1 = await zapiSend(cleanPhone, msgPrivada);
+  if (!r1.ok) {
+    console.log('[WA] Retry personal em 3s...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    r1 = await zapiSend(cleanPhone, msgPrivada);
+  }
+  console.log('[WA] Particular ' + name + ' (' + cleanPhone + '):', r1.ok ? '✅' : '❌ ' + (r1.error||JSON.stringify(r1).substring(0,100)));
   db.waMsgs.add(cleanPhone, 'welcome', r1.ok);
 
   // Mensagem no grupo
@@ -428,6 +448,15 @@ function shortenUrl(url) {
 router.get('/wa-msgs', (req, res) => {
   cors(res);
   res.json({ ok: true, msgs: db.waMsgs.recent(100) });
+});
+
+// GET /api/wa-test/:phone — testa envio WA para um número
+router.get('/wa-test/:phone', async (req, res) => {
+  cors(res);
+  const phone = sanitizePhone(req.params.phone);
+  const msg = '✅ *Teste Z-API — Família Tomelin*\n\nSe você recebeu essa mensagem, o WhatsApp está funcionando!\n\n_' + new Date().toLocaleString('pt-BR') + '_';
+  const r = await zapiSend(phone, msg);
+  res.json({ ok: r.ok, phone, error: r.error, messageId: r.messageId, raw: r });
 });
 
 module.exports = { router, shortenUrl };
