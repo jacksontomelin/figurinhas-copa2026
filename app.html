@@ -2752,7 +2752,7 @@ function scheduleSyncToRailway(){
   _syncTimer = setTimeout(async ()=>{
     const me = getCurrentUser();
     if(!me) return;
-    const rUrl = (localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
     try{
       await fetch(rUrl+'/api/auth/sync',{
         method:'POST',headers:{'Content-Type':'application/json'},
@@ -3239,7 +3239,7 @@ function renderFeed(){
   const me=getCurrentUser(); if(!me)return;
   clearNotifBadge();
   const myNotifs=getNotifs().filter(n=>n.for===me.phone);
-  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+  const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
 
   document.getElementById('app-content').innerHTML=`
     <div class="card a-card">
@@ -3504,7 +3504,7 @@ _Família Tomelin · Copa 2026_ ⚽`,
 async function notifyGroupNewUser(userName, userPhone) {
   const firstName = (userName||'').split(' ')[0];
   // URL hardcoded como fallback (igual sendConfirmationWA)
-  const rUrl = (localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+  const rUrl = (sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
 
   // 1ª tentativa: Railway /api/new-user
   let sent = false;
@@ -3575,7 +3575,7 @@ async function sendConfirmationWA(name, phone, pass) {
     + '_Guarde esses dados! Família Tomelin · Copa 2026_ 🏆';
 
   // 1ª tentativa: Railway /api/send
-  const rUrl = (localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+  const rUrl = (sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
   let sent = false;
 
   try {
@@ -3704,7 +3704,7 @@ async function onMarketPublish(ownerPhone, codes){
 // Chamado diretamente de doSellNew após publicar
 async function _afterMarketPublish(ownerPhone, codes){
   if(!codes||!codes.length) return;
-  const railwayUrl = localStorage.getItem('t26_railway_url')||'';
+  const railwayUrl = sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
   try {
     if(railwayUrl){
       await fetch(railwayUrl+'/api/sync-market',{
@@ -4087,7 +4087,7 @@ async function _doSendRecovery() {
     + `_Família Tomelin · Copa 2026_ 🏆`;
 
   const phoneZapi = phone.startsWith('55') ? phone : '55' + phone;
-  const rUrl = (localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+  const rUrl = (sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
 
   let sent = false;
   // Tenta Railway
@@ -4185,7 +4185,7 @@ function _recBack() {
 
 function renderCuriosidades(){
   const el=document.getElementById('app-content'); if(!el)return;
-  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+  const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
 
   el.innerHTML=`
   <div class="card a-card" style="padding:0;overflow:visible;">
@@ -4221,7 +4221,7 @@ function jogoTab(tab){
 
 async function _renderJogos(ct){
   ct.innerHTML='<div class="empty-games"><div class="empty-games-ico">⏳</div><div class="empty-games-txt">Carregando jogos...</div></div>';
-  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+  const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
 
   try {
     const r=await fetch(railwayUrl+'/api/jogos',{signal:AbortSignal.timeout(8000)});
@@ -4478,7 +4478,7 @@ function _proposeMatch(phone){
   sendMatchProposal(phone, d.myGives, d.theyGive);
 }
 
-function saveMatches(arr){ localStorage.setItem(K_MATCHES, JSON.stringify(arr)); }
+function saveMatches(arr){ jsSync(K.MATCHES||'t26_matches', arr); }
 
 // Criar um match entre dois usuários para um conjunto de figurinhas
 // Trava as figurinhas envolvidas para que ninguém mais as pegue
@@ -4848,12 +4848,12 @@ function _matchCard(m, live) {
 const K_BETS = 't26_bets';
 const K_CHALL = 't26_chall';
 const K_COINS = 't26_coins';
-function getBets(){ try{return JSON.parse(localStorage.getItem(K_BETS)||'[]');}catch{return[];} }
+function getBets(){ try{return JSON.parse(sessionStorage.getItem(K_BETS)||'[]');}catch{return[];} }
 function getBet(matchId, phone){ return getBets().find(b=>b.matchId==matchId&&b.phone===phone)||null; }
 function saveBet(b){ const bs=getBets(); const i=bs.findIndex(x=>x.matchId==b.matchId&&x.phone===b.phone); if(i>=0)bs[i]=b; else bs.push(b); js(K_BETS,bs); }
-function getChallenges(){ try{return JSON.parse(localStorage.getItem(K_CHALL)||'[]');}catch{return[];} }
-function getCoins(phone){ try{return JSON.parse(localStorage.getItem(K_COINS)||'{}')[phone]||500;}catch{return 500;} }
-function addCoins(phone,n){ const c=JSON.parse(localStorage.getItem(K_COINS)||'{}'); c[phone]=(c[phone]||500)+n; js(K_COINS,c); }
+function getChallenges(){ try{return JSON.parse(sessionStorage.getItem(K_CHALL)||'[]');}catch{return[];} }
+function getCoins(phone){ try{return JSON.parse(sessionStorage.getItem(K_COINS)||'{}')[phone]||500;}catch{return 500;} }
+function addCoins(phone,n){ const c=JSON.parse(sessionStorage.getItem(K_COINS)||'{}'); c[phone]=(c[phone]||500)+n; js(K_COINS,c); }
 
 let _betMatchId = null;
 let _betMatch = null;
@@ -5346,7 +5346,7 @@ function admClearChats(){
 function admSendGroupMsg(){
   const msg=document.getElementById('adm-msg')?.value?.trim();
   if(!msg){toast('Digite uma mensagem','var(--red)');return;}
-  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+  const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
   fetch(railwayUrl+'/api/send-group',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({message:msg}),signal:AbortSignal.timeout(10000)
@@ -5359,7 +5359,7 @@ function admSendGroupMsg(){
 function admSaveRailway(){
   const url=document.getElementById('adm-railway')?.value?.trim();
   if(!url)return;
-  localStorage.setItem('t26_railway_url',url);
+  sessionStorage.setItem('rly',url);
   toast('✅ Railway URL salvo!','var(--green2)');
 }
 
@@ -5494,7 +5494,7 @@ function _admStats(){
 }
 
 function _admActions(){
-  const railwayUrl=localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app';
+  const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
   return `
   ${_admCard('📡 Railway URL', `
     <input id="adm-railway" value="${railwayUrl}" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:12px;font-family:'Barlow Condensed',sans-serif;margin-bottom:8px;">
@@ -5659,9 +5659,9 @@ function _admActions(el){
     <button class="btn btn-outline" onclick="window.open('dashboard.html','_blank')">📺 Abrir Dashboard TV</button>
     <button class="btn btn-outline" onclick="window.open('bot.html','_blank')">🤖 Abrir Painel do Bot</button>
     <div style="display:flex;gap:6px;margin-bottom:2px;">
-      <input id="railway-url-inp" placeholder="https://figurinhas-copa2026-production.up.railway.app" value="${localStorage.getItem('t26_railway_url')||''}"
+      <input id="railway-url-inp" placeholder="https://figurinhas-copa2026-production.up.railway.app" value="${sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app'}"
         style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 12px;color:#fff;font-size:12px;outline:none;">
-      <button class="btn btn-green btn-xs" onclick="const v=document.getElementById('railway-url-inp').value.trim().replace(/\/+$/,'');localStorage.setItem('t26_railway_url',v);toast('✅ Railway salvo!','#1e9640');">💾</button>
+      <button class="btn btn-green btn-xs" onclick="const v=document.getElementById('railway-url-inp').value.trim().replace(/\/+$/,'');sessionStorage.setItem('rly',v);toast('✅ Railway salvo!','#1e9640');">💾</button>
     </div>
     <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:-4px;padding:0 4px;">URL do servidor Railway para notificações automáticas</div>
     <button class="btn btn-outline" onclick="_admBroadcast()">📢 Notificar todos os membros</button>
@@ -5669,7 +5669,7 @@ function _admActions(el){
     <button class="btn btn-outline" onclick="_admExport()">📤 Exportar dados JSON</button>
     <div style="background:rgba(229,57,53,.07);border:1px solid rgba(229,57,53,.15);border-radius:11px;padding:12px 14px;margin-top:4px;">
       <div class="sec-lbl" style="color:#ef9a9a;">⚠️ Zona perigosa</div>
-      <button class="btn btn-red" style="font-size:12px;margin-top:9px;" onclick="if(confirm('RESETAR TODOS OS DADOS?')){['t26_users','t26_sess','t26_mkt','t26_chat','t26_notifs','t26_online','t26_bets','t26_chall','t26_coins','t26_wa_joined'].forEach(k=>localStorage.removeItem(k));location.reload();}">🗑️ Resetar TODOS os dados</button>
+      <button class="btn btn-red" style="font-size:12px;margin-top:9px;" onclick="if(confirm('RESETAR TODOS OS DADOS?')){['t26_users','t26_sess','t26_mkt','t26_chat','t26_notifs','t26_online','t26_bets','t26_chall','t26_coins','t26_wa_joined'].forEach(k=>sessionStorage.removeItem(k));location.reload();}">🗑️ Resetar TODOS os dados</button>
     </div>
   </div>`;
 }
