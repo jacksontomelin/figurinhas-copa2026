@@ -621,7 +621,7 @@ function closeModal(){
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 
-async function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
+function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
 // Renderiza os itens de notícia no grid
 function renderNewsGrid(items){
   var grid=document.getElementById('news-grid');
