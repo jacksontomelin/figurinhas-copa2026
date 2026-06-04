@@ -2430,6 +2430,12 @@ function doLogout(){
   showForm('login');
 }
 
+
+// WA group reminder (shown after login/register)
+function showWaReminder(){
+  // Silently skip — invitation handled at registration
+}
+
 function enterApp(u){
   // Run sticker format migration if needed
   u = migrateOldStickers(u);
@@ -3242,7 +3248,7 @@ function addGlobalNotif(n){ // for all users except sender
 }
 function clearNotifBadge(){
   const me=getCurrentUser(); if(!me)return;
-  const ns=getNotifs().map(n=>n.for===me.phone?{...n,read:true}:n);
+  const ns=(_NOTIFS[me&&me.phone||_SESSION&&_SESSION.phone||""]||[]).map(n=>n.for===me.phone?{...n,read:true}:n);
   jsSync(K.NOTIFS,ns); updateBadges();
 }
 function clearChatBadge(){ updateBadges(); }
@@ -3267,7 +3273,7 @@ window._timeAgo = _timeAgo;
 function renderFeed(){
   const me=getCurrentUser(); if(!me)return;
   clearNotifBadge();
-  const myNotifs=(_NOTIFS[me.phone]||[]).filter(n=>n);
+  const myNotifs = (_NOTIFS[me.phone]||[]).filter(n=>n);
   const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
 
   document.getElementById('app-content').innerHTML=`
@@ -3755,6 +3761,150 @@ async function _afterMarketPublish(ownerPhone, codes){
 // Script 1 functions — direct exposure
 window.openModal          = openModal;
 window.closeModal         = closeModal;
+
+// ═══════════════════════════════════════════════════════════════
+// 🏷️ SELL MODAL — Anunciar figurinhas para venda/troca
+// ═══════════════════════════════════════════════════════════════
+let _sellFilter   = 'dup';  // filtro ativo: 'dup' | 'have' | 'all'
+let _sellSelected = new Set(); // IDs das figurinhas selecionadas
+let _sellType     = null;   // 'troca' | 'venda' | 'ambos'
+
+function openSellModal() {
+  const me = getCurrentUser(); if(!me) return;
+  _sellSelected = new Set();
+  _sellType = null;
+  // Reset to step 1
+  const s1 = document.getElementById('sell-step1');
+  const s2 = document.getElementById('sell-step2');
+  if(s1) s1.style.display = 'block';
+  if(s2) s2.style.display = 'none';
+  // Default filter: repetidas
+  _sellFilter = 'dup';
+  _renderSellGrid();
+  _updateSellButtons();
+  openModal('mod-sell');
+}
+
+function _renderSellGrid() {
+  const me = getCurrentUser(); if(!me) return;
+  const st = me.stickers || {};
+  const grid = document.getElementById('sell-fig-grid'); if(!grid) return;
+  let stickers = ALL_STICKERS.filter(s => s.team !== 'FWC' && s.tipo !== 'intro');
+  if(_sellFilter === 'dup')  stickers = stickers.filter(s => (st[s.id]||0) >= 2);
+  if(_sellFilter === 'have') stickers = stickers.filter(s => (st[s.id]||0) >= 1);
+  if(!stickers.length) {
+    grid.innerHTML = '<div style="color:var(--gray);text-align:center;padding:20px;font-size:13px;">Nenhuma figurinha nessa categoria</div>';
+    return;
+  }
+  grid.innerHTML = stickers.map(s => {
+    const v = st[s.id] || 0;
+    const sel = _sellSelected.has(s.id);
+    const qty = v >= 2 ? `<span style="position:absolute;bottom:2px;right:2px;background:var(--gold);color:#000;border-radius:4px;font-size:9px;font-weight:700;padding:0 3px;">${v}</span>` : '';
+    return `<div onclick="_toggleSellSticker('${s.id}')" style="position:relative;cursor:pointer;
+      border-radius:8px;border:2px solid ${sel?'var(--gold)':'rgba(255,255,255,.15)'};
+      background:${sel?'rgba(245,197,24,.2)':'rgba(255,255,255,.05)'};
+      padding:6px;text-align:center;transition:.15s;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;color:${sel?'var(--gold)':'rgba(255,255,255,.7)'};">${s.team}</div>
+      <div style="font-size:10px;color:var(--gray);">${s.n}</div>
+      ${sel?'<div style="position:absolute;top:2px;left:2px;font-size:10px;">✓</div>':''}
+      ${qty}
+    </div>`;
+  }).join('');
+}
+
+function _toggleSellSticker(id) {
+  if(_sellSelected.has(id)) _sellSelected.delete(id);
+  else _sellSelected.add(id);
+  _renderSellGrid();
+  _updateSellButtons();
+  // Update chips
+  const wrap = document.getElementById('sell-selected-wrap');
+  const chips = document.getElementById('sell-sel-chips');
+  const count = document.getElementById('sell-sel-count');
+  if(count) count.textContent = _sellSelected.size;
+  if(wrap) wrap.style.display = _sellSelected.size > 0 ? 'block' : 'none';
+  if(chips) chips.innerHTML = [..._sellSelected].map(id => `<span style="background:rgba(245,197,24,.2);border:1px solid var(--gold);border-radius:6px;padding:2px 8px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--gold);">${id}</span>`).join('');
+}
+
+function _updateSellButtons() {
+  const next = document.getElementById('sell-next-btn');
+  if(next) {
+    const canProceed = _sellSelected.size > 0;
+    next.style.opacity = canProceed ? '1' : '.4';
+    next.style.pointerEvents = canProceed ? 'auto' : 'none';
+  }
+  const pub = document.getElementById('sell-pub-btn');
+  if(pub) {
+    const canPublish = _sellSelected.size > 0 && _sellType;
+    pub.style.opacity = canPublish ? '1' : '.4';
+    pub.style.pointerEvents = canPublish ? 'auto' : 'none';
+  }
+}
+
+function setSellFilter(f, btn) {
+  _sellFilter = f;
+  document.querySelectorAll('.sell-filter-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  _renderSellGrid();
+}
+
+function sellGoStep2() {
+  if(_sellSelected.size === 0) { toast('Selecione ao menos uma figurinha', '#ef9a9a'); return; }
+  const s1 = document.getElementById('sell-step1');
+  const s2 = document.getElementById('sell-step2');
+  if(s1) s1.style.display = 'none';
+  if(s2) s2.style.display = 'block';
+  // Show chips in step 2
+  const chips2 = document.getElementById('sell-s2-chips');
+  if(chips2) chips2.innerHTML = [..._sellSelected].map(id => `<span style="background:rgba(245,197,24,.2);border:1px solid var(--gold);border-radius:6px;padding:2px 8px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--gold);">${id}</span>`).join('');
+}
+
+function selectSellType(type, btn) {
+  _sellType = type;
+  document.querySelectorAll('.sell-type-btn').forEach(b => {
+    b.classList.remove('active');
+    const chk = b.querySelector('.stb-check');
+    if(chk) chk.textContent = '○';
+  });
+  if(btn) {
+    btn.classList.add('active');
+    const chk = btn.querySelector('.stb-check');
+    if(chk) chk.textContent = '●';
+  }
+  _updateSellButtons();
+  // Show/hide price field
+  const priceWrap = document.getElementById('sell-price-wrap');
+  if(priceWrap) priceWrap.style.display = (type==='venda'||type==='ambos') ? 'block' : 'none';
+}
+
+function doSellNew() {
+  const me = getCurrentUser(); if(!me) return;
+  if(_sellSelected.size === 0) { toast('Selecione figurinhas', '#ef9a9a'); return; }
+  if(!_sellType) { toast('Escolha o tipo de oferta', '#ef9a9a'); return; }
+  const price = parseFloat((document.getElementById('sell-price')||{}).value||'0') || 0;
+  const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+  let published = 0;
+  const items = [..._sellSelected];
+  items.forEach(code => {
+    const item = {
+      id: me.phone + '_' + code + '_' + Date.now(),
+      owner: me.phone, ownerName: me.name, ownerAvatar: me.avatar||'⚽',
+      code, type: _sellType, price: price, ts: Date.now()
+    };
+    _MARKET.push(item);
+    // Persiste no Railway
+    fetch(rUrl+'/api/market',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(item),signal:AbortSignal.timeout(8000)}).catch(()=>{});
+    published++;
+  });
+  jsSync(K.MARKET, _MARKET);
+  closeModal('mod-sell');
+  toast(`✅ ${published} figurinha${published>1?'s':''} anunciada${published>1?'s':''}!`, '#22a04a');
+  refreshFigs && refreshFigs();
+  renderMarket && renderMarket();
+}
+
+
 window.openSellModal      = openSellModal;
 window.doSellNew          = doSellNew;
 window.setSellFilter      = setSellFilter;
