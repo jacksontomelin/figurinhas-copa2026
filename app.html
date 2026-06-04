@@ -2518,7 +2518,7 @@ function _renderAlbumTeam(idx){
   stickers.forEach(s=>{
     const v = st[s.id]||0;
     const inSale = mktCodes.has(s.id);
-    const cls = inSale?'fc-sale':v===2?'fc-dup':v===1?'fc-have':'fc-miss';
+    const cls = inSale?'fc-sale':v>=2?'fc-dup':v===1?'fc-have':'fc-miss';
     const num = getStickerNum(s.id)||s.n;
     const isSpecial = s.tipo==='escudo'||s.tipo==='equipe';
 
@@ -2531,16 +2531,30 @@ function _renderAlbumTeam(idx){
       +'<div class="fig-card-num">'+s.n+'</div>'
       +'</div>';
 
-    // Badge for owned cards
+    // Badge: mostra quantidade
     if(v>=1){
-      inner += '<div class="fig-badge'+(v===2?' b-dup':'')+'">'+v+'</div>';
+      const isDup = v>=2;
+      inner += '<div class="fig-badge'+(isDup?' b-dup':'')+'">'+v+'</div>';
     }
     if(inSale && v===0){
       inner += '<div class="fig-badge" style="background:#e74c3c;color:#fff;">$</div>';
     }
 
     card.innerHTML = inner;
-    card.onclick = ()=>{ cycleFig(s.id); _renderAlbumTeam(idx); };
+    // Toque curto: cicla | Toque longo (500ms): reseta para 0
+    let _pressTimer = null;
+    card.addEventListener('touchstart', ()=>{
+      _pressTimer = setTimeout(()=>{
+        _pressTimer = null;
+        resetFig(s.id);
+        _renderAlbumTeam(idx);
+      }, 500);
+    }, {passive:true});
+    card.addEventListener('touchend', ()=>{
+      if(_pressTimer){ clearTimeout(_pressTimer); _pressTimer=null; cycleFig(s.id); _renderAlbumTeam(idx); }
+    });
+    card.addEventListener('touchmove', ()=>{ clearTimeout(_pressTimer); _pressTimer=null; }, {passive:true});
+    card.onclick = ()=>{}; // handled by touch events above (fallback for desktop)
     grid.appendChild(card);
   });
 
@@ -2571,14 +2585,30 @@ function refreshFigs(){
 function cycleFig(id){
   const u=getCurrentUser(); if(!u)return;
   const st={...u.stickers||{}};
-  const cur=st[id]||0; const next=(cur+1)%3;
+  const cur=st[id]||0;
+  // 0→1→2→3→...→9→0
+  const next = cur >= 9 ? 0 : cur + 1;
   st[id]=next; updateUser(u.phone,{stickers:st});
-  const labels=['❌ Faltando','✅ Tenho','⭐ Repetida'];
-  const colors=['#ef9a9a','#a5d6a7','var(--gold)'];
-  toast(`${id} → ${labels[next]}`,colors[next]);
+
+  let label, color;
+  if(next===0)     { label='❌ Faltando'; color='#ef9a9a'; }
+  else if(next===1){ label='✅ Tenho 1';  color='#a5d6a7'; }
+  else             { label='⭐ '+next+'× repetida'; color='var(--gold)'; }
+
+  toast(id+' → '+label, color);
   refreshFigs();
-  // If marking as dup, suggest to sell
-  if(next===2) setTimeout(()=>toast('⭐ Repetida! Que tal anunciar para troca?','var(--gold)'),2400);
+  if(next===2) setTimeout(()=>toast('Repetida! Anuncie para troca? 🏷️','var(--gold)'),2000);
+}
+
+// Resetar figurinha para faltando (toque longo)
+function resetFig(id){
+  const u=getCurrentUser(); if(!u)return;
+  const st={...u.stickers||{}};
+  const cur=st[id]||0;
+  if(cur===0) return;
+  st[id]=0; updateUser(u.phone,{stickers:st});
+  toast(id+' → ❌ Faltando','#ef9a9a');
+  refreshFigs();
 }
 
 // ═══════════════════════════════════════════════════
@@ -2758,8 +2788,8 @@ function renderTrades(){
   const matches=[];
   otherUsers.forEach(u=>{
     const ust=u.stickers||{};
-    const theyGiveMe=ALL_STICKERS.filter(s=>(ust[s.id]||0)===2&&myNeed.has(s.id)).map(s=>s.id);
-    const iGiveThem=ALL_STICKERS.filter(s=>myDup.has(s.id)&&(ust[s.id]||0)===0).map(s=>s.id);
+    const theyGiveMe=ALL_STICKERS.filter(s=>(ust[s.id]||0)>=2&&myNeed.has(s.id)).map(s=>s.id);
+    const iGiveThem=ALL_STICKERS.filter(s=>myDup.has(s.id)&&(ust[s.id]||0)<1).map(s=>s.id);
     if(theyGiveMe.length+iGiveThem.length>0)
       matches.push({u,theyGiveMe,iGiveThem,score:theyGiveMe.length+iGiveThem.length});
   });
@@ -3535,7 +3565,7 @@ function _renderSellGrid(){
   const mktCodes = new Set(getMarket().filter(m=>m.owner===u.phone).map(m=>m.code));
 
   let stickers = ALL_STICKERS.filter(s => s.team !== 'FWC');
-  if(_sellFilter === 'dup')  stickers = stickers.filter(s => (st[s.id]||0) === 2);
+  if(_sellFilter === 'dup')  stickers = stickers.filter(s => (st[s.id]||0) >= 2);
   if(_sellFilter === 'have') stickers = stickers.filter(s => (st[s.id]||0) === 1);
 
   if(!stickers.length){
