@@ -356,6 +356,8 @@ app.post('/api/new-user', async (req, res) => {
 // Health check
 app.get('/health', (_, res) => res.json({
   status: 'online',
+    postgres: !!process.env.DATABASE_URL,
+    db_users: db ? db.users.count() : 0,
   uptime: Math.floor(process.uptime()),
   users: DB.users.length,
   market: DB.market.length,
