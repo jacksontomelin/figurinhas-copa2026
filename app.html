@@ -3176,7 +3176,13 @@ function _setTradeCity(city, btn){
   document.querySelectorAll('[data-cidade]').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   const info = document.getElementById('city-filter-info');
-  if(info) info.textContent = city ? '📍 Mostrando apenas membros de ' + city : '';
+  const me2 = getCurrentUser();
+  const myCids = (me2&&me2.cidadesTraca&&me2.cidadesTraca.length) ? me2.cidadesTraca : (me2&&me2.cidade?[me2.cidade]:[]);
+  if(info) {
+    if(city) info.textContent = '📍 Mostrando membros de ' + city;
+    else if(myCids.length > 1) info.textContent = '🔄 Suas cidades: ' + myCids.join(', ');
+    else info.textContent = '';
+  }
   // Re-render sections with filter
   _renderTradeCity();
 }
@@ -3184,13 +3190,30 @@ function _setTradeCity(city, btn){
 function _tradeFilteredUsers(){
   const me = getCurrentUser();
   const all = getUsers().filter(u => u.phone !== (me&&me.phone));
-  if(!_tradeCityFilter) return all;
-  // Filtra por cidade principal OU por cidades de interesse do usuário
-  return all.filter(u => {
-    if(u.cidade === _tradeCityFilter) return true;
-    if(u.cidadesTraca && u.cidadesTraca.includes(_tradeCityFilter)) return true;
+
+  // Cidades onde o usuário quer trocar (padrão: só as suas cidades)
+  const myCidades = (me && me.cidadesTraca && me.cidadesTraca.length)
+    ? me.cidadesTraca
+    : (me && me.cidade ? [me.cidade] : null);
+
+  function userMatchesCidade(u, cidadeFiltro){
+    if(u.cidade === cidadeFiltro) return true;
+    if(u.cidadesTraca && u.cidadesTraca.includes(cidadeFiltro)) return true;
     return false;
-  });
+  }
+
+  // Se há filtro manual ativo (clicou num botão específico)
+  if(_tradeCityFilter) {
+    return all.filter(u => userMatchesCidade(u, _tradeCityFilter));
+  }
+
+  // Sem filtro manual: mostra só usuários das cidades que EU escolhi trocar
+  if(myCidades && myCidades.length) {
+    return all.filter(u => myCidades.some(c => userMatchesCidade(u, c)));
+  }
+
+  // Fallback: sem cidades definidas → mostra todos
+  return all;
 }
 
 async function renderTrades(){
@@ -3210,15 +3233,23 @@ async function renderTrades(){
     <div class="card a-card">
       <div class="alert ok">
         <div class="alert-ico">🤝</div>
-        <div><div class="alert-ttl">Sugestões inteligentes de troca</div>
-        Baseado nas suas figurinhas faltando e repetidas!</div>
+        <div>
+          <div class="alert-ttl">Sugestões inteligentes de troca</div>
+          ${me.cidadesTraca&&me.cidadesTraca.length>1
+            ? '📍 Exibindo membros de: <strong>' + me.cidadesTraca.join(', ') + '</strong>'
+            : 'Baseado nas suas figurinhas faltando e repetidas!'}
+        </div>
       </div>
-      <!-- Filtro por cidade -->
-      <div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;">
-        <button class="sell-filter-btn active" data-cidade="" onclick="_setTradeCity('',this)">🌎 Todas</button>
-        ${[...new Set(getUsers().map(u=>u.cidade).filter(Boolean))].sort().map(c=>
-          `<button class="sell-filter-btn" data-cidade="${esc(c)}" onclick="_setTradeCity('${esc(c)}',this)">📍 ${esc(c)}</button>`
-        ).join('')}
+            <!-- Filtro por cidade: só mostra as cidades do usuário -->
+      <div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;" id="trade-city-btns">
+        ${(()=>{
+          const myCidades = (me.cidadesTraca&&me.cidadesTraca.length) ? me.cidadesTraca : (me.cidade?[me.cidade]:[]);
+          if(!myCidades.length) return '';
+          const btns = myCidades.map(c=>
+            `<button class="sell-filter-btn" data-cidade="${esc(c)}" onclick="_setTradeCity('${esc(c)}',this)">📍 ${esc(c)}</button>`
+          ).join('');
+          return `<button class="sell-filter-btn active" data-cidade="" onclick="_setTradeCity('',this)">🌎 Todas</button>` + btns;
+        })()}
       </div>
       <div id="city-filter-info" style="font-size:11px;color:var(--gray);margin-bottom:8px;"></div>
       <div class="div" style="margin:0 0 10px;"></div>
