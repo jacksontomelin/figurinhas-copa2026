@@ -146,14 +146,6 @@ async function load() {
   }
 }
 
-let _isReady = false;
-const _readyPromise = load().then(() => { _isReady = true; }).catch(e => {
-  console.error('[DB] Init error:', e.message);
-  _isReady = true;
-});
-db.isReady   = () => _isReady;
-db.waitReady = () => _readyPromise;
-
 // ── API do banco ──────────────────────────────────────────────
 const db = {
   raw:  () => _db,
@@ -286,5 +278,14 @@ const db = {
     }
   }
 };
+
+// ── Ready state ───────────────────────────────────────────────
+let _isReady = false;
+const _readyPromise = load().then(() => { _isReady = true; }).catch(e => {
+  console.error('[DB] Init error:', e.message);
+  _isReady = true; // fallback: marca como pronto mesmo com erro
+});
+db.isReady   = () => _isReady;
+db.waitReady = () => _readyPromise;
 
 module.exports = db;
