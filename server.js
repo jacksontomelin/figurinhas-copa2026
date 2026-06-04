@@ -994,12 +994,12 @@ function loadNewsSent() {
   try {
     if (fs.existsSync(NEWS_SENT_FILE)) {
       const data = JSON.parse(fs.readFileSync(NEWS_SENT_FILE, 'utf8'));
-      // Só carrega IDs das últimas 48h
       const cutoff = Date.now() - 48*60*60*1000;
+      let loaded = 0;
       (data.sent || []).forEach(({id, ts}) => {
-        if (ts > cutoff) NEWS_SENT.add(id);
+        if (ts > cutoff) { NEWS_SENT.add(id); loaded++; }
       });
-      log('📰', `News sent carregados: ${NEWS_SENT.size} IDs (últimas 48h)`);
+      log('📰', `News enviadas carregadas: ${loaded} IDs (${(data.sent||[]).length} total no arquivo)`);
     }
   } catch(e) { log('⚠️', 'loadNewsSent: ' + e.message); }
 }
@@ -1072,11 +1072,13 @@ function formatNewsMsg(item, idx) {
 }
 
 
-// Gera ID único para notícia (título + data de publicação)
+// Gera ID único para notícia — só título normalizado
+// (pub date varia entre fetches do Google News, causando reenvio)
 function newsId(item) {
-  const titlePart = (item.title || '').substring(0, 50).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-  const pubPart   = item.pub ? new Date(item.pub).toISOString().substring(0, 10) : 'nodate';
-  return `${titlePart}_${pubPart}`;
+  return (item.title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')   // remove pontuação e espaços
+    .substring(0, 60);            // primeiros 60 chars são suficientes
 }
 
 // RPA principal: puxa notícias frescas e envia as novas no grupo
@@ -1102,14 +1104,14 @@ async function rpaNewsLoop() {
     }
 
     // Filtra: NÃO enviadas + das últimas 48h
-    const cutoff48h = Date.now() - 48 * 60 * 60 * 1000;
+    const MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48h em milliseconds
     const novas = items.filter(it => {
       const id = newsId(it);
       if (NEWS_SENT.has(id)) return false;
       // Se tem data de publicação, só envia se for das últimas 48h
       if (it.pub) {
-        const age = Date.now() - new Date(it.pub).getTime();
-        if (age > cutoff48h) return false;
+        const ageMs = Date.now() - new Date(it.pub).getTime();
+        if (ageMs > MAX_AGE_MS) return false; // mais velha que 48h → ignora
       }
       return true;
     });
