@@ -45,6 +45,7 @@ async function sendWelcomeWA(phone, name, passHash) {
 
   const r1 = await zapiSend(cleanPhone, msgPrivada);
   console.log('[WA] Particular ' + name + ':', r1.ok ? '✅' : '❌ ' + (r1.error||''));
+  db.waMsgs.add(cleanPhone, 'welcome', r1.ok);
 
   // Mensagem no grupo
   const msgGrupo =
@@ -54,6 +55,7 @@ async function sendWelcomeWA(phone, name, passHash) {
 
   const r2 = await zapiSend(ZAPI_GRP, msgGrupo);
   console.log('[WA] Grupo:', r2.ok ? '✅' : '❌ ' + (r2.error||''));
+  db.waMsgs.add('group', 'new_member', r2.ok);
 
   return { particular: r1.ok, grupo: r2.ok };
 }
@@ -397,5 +399,12 @@ function shortenUrl(url) {
   db.links.set(code, { url, hits: 0, created: Date.now() });
   return `${APP_URL}/s/${code}`;
 }
+
+
+// GET /api/wa-msgs — histórico de mensagens WA enviadas
+router.get('/wa-msgs', (req, res) => {
+  cors(res);
+  res.json({ ok: true, msgs: db.waMsgs.recent(100) });
+});
 
 module.exports = { router, shortenUrl };

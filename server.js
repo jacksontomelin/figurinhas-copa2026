@@ -610,7 +610,16 @@ cron.schedule('0 */6 * * *', () => {
 });
 
 // ── START ────────────────────────────────────────────────────
-app.listen(PORT, () => {
+// ── Startup verification ─────────────────────────────────────
+try {
+  const testUser = db.users.upsert('_startup_test', {name:'test',passHash:'test',avatar:'⚽',stickers:{},ts:Date.now()});
+  db.users.delete('_startup_test');
+  log('✅', 'Banco de dados: OK');
+} catch(e) {
+  log('❌', 'Banco de dados ERROR: ' + e.message);
+}
+
+app.listen(PORT, '0.0.0.0', () => {
   log('🚀', `Servidor rodando na porta ${PORT}`);
   log('📱', `Z-API: ${ZAPI.instance}`);
   log('👥', `Grupo: ${ZAPI.groupId}`);

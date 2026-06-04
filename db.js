@@ -19,7 +19,8 @@ const SCHEMA = {
   online:  {},   // {phone: timestamp}
   news:    [],   // cache de notícias do RPA
   links:   {},   // {code: {url, hits, created}}
-  newsSent:[]    // [{id, ts}] — notícias já enviadas
+  newsSent:[],   // [{id, ts}] — notícias já enviadas
+  waMsgs:  [],   // [{to, type, ts, ok}] — histórico de msgs WA enviadas
 };
 
 // Carrega banco na memória
@@ -172,6 +173,17 @@ const db = {
     get:    (code) => _db.links[code],
     set:    (code, data) => { _db.links[code] = data; _dirty = true; },
     hit:    (code) => { if (_db.links[code]) { _db.links[code].hits++; _dirty = true; } },
+  },
+
+  // ── WA MSGS (histórico de envios) ────────────────────────
+  waMsgs: {
+    add: (to, type, ok) => {
+      _db.waMsgs.unshift({ to, type, ok, ts: Date.now() });
+      _db.waMsgs = _db.waMsgs.slice(0, 500); // max 500
+      _dirty = true;
+    },
+    all: () => _db.waMsgs,
+    recent: (n=50) => _db.waMsgs.slice(0, n),
   },
 
   // ── NEWS SENT (dedup RPA) ─────────────────────────────────
