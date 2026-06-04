@@ -2158,72 +2158,129 @@ function getStickerNum(id){
 // ═══════════════════════════════════════════════════
 // STORAGE
 // ═══════════════════════════════════════════════════
-const K = { USERS:'t26_users', SESSION:'t26_sess', MARKET:'t26_mkt',
-            CHAT:'t26_chat', NOTIFS:'t26_notifs', ONLINE:'t26_online' }
+// ════════════════════════════════════════════════════════════
+// 🗄️ API CLIENT — Railway como banco de dados
+// Sem localStorage. Tudo no servidor.
+// ════════════════════════════════════════════════════════════
+const RAILWAY_URL = () =>
+  (sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
 
-// ── Storage — Railway como fonte da verdade, localStorage como cache ──
-const RAILWAY_URL = () => (localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+// Sessão em memória (não persiste entre abas, mas é mais seguro)
+let _SESSION  = null;  // {phone, name, passHash, avatar, stickers, ...}
+let _USERS    = [];    // todos os usuários (sem passHash)
+let _MARKET   = [];
+let _CHAT     = {};
+let _MATCHES  = [];
+let _NOTIFS   = {};
+let _ONLINE   = {};
+let _STALE    = true;  // precisa recarregar do servidor
 
-const jg = key => { try{ return JSON.parse(localStorage.getItem(key)||'null'); }catch(e){return null;} };
-const js = (key, val) => { try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} };
+// ── Chave de compatibilidade com código antigo ────────────────
+const K = { USERS:'users', SESSION:'session', MARKET:'market',
+             CHAT:'chat', NOTIFS:'notifs', ONLINE:'online' };
 
-// Estado sincronizado com Railway
-let _stateLoaded = false;
-let _syncTimer   = null;
+// ── API helpers ───────────────────────────────────────────────
+async function apiGet(path) {
+  const r = await fetch(RAILWAY_URL() + path, {signal: AbortSignal.timeout(10000)});
+  return r.json().catch(() => ({ok:false}));
+}
+async function apiPost(path, body) {
+  const r = await fetch(RAILWAY_URL() + path, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body), signal: AbortSignal.timeout(10000)
+  });
+  return r.json().catch(() => ({ok:false}));
+}
+async function apiDelete(path) {
+  const r = await fetch(RAILWAY_URL() + path, {method:'DELETE', signal: AbortSignal.timeout(10000)});
+  return r.json().catch(() => ({ok:false}));
+}
+async function apiPut(path, body) {
+  const r = await fetch(RAILWAY_URL() + path, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body), signal: AbortSignal.timeout(10000)
+  });
+  return r.json().catch(() => ({ok:false}));
+}
 
-async function loadStateFromRailway(){
-  try{
-    const r = await fetch(RAILWAY_URL() + '/api/state', {signal: AbortSignal.timeout(8000)});
-    if(!r.ok) return false;
-    const d = await r.json();
-    if(!d.ok || !d.state) return false;
-    const s = d.state;
-    if(s.users  ) js(K.USERS,   s.users);
-    if(s.market ) js(K.MARKET,  s.market);
-    if(s.chat   ) js(K.CHAT,    s.chat);
-    if(s.notifs ) js(K.NOTIFS,  s.notifs);
-    if(s.online ) js(K.ONLINE,  s.online);
-    _stateLoaded = true;
+// ── Carregar estado completo do servidor ──────────────────────
+async function loadStateFromRailway() {
+  try {
+    const d = await apiGet('/api/state');
+    if (!d.ok) return false;
+    _USERS   = d.users   || [];
+    _MARKET  = d.market  || [];
+    _CHAT    = d.chat    || {};
+    _MATCHES = d.matches || [];
+    _NOTIFS  = d.notifs  || {};
+    _ONLINE  = d.online  || {};
+    _STALE   = false;
     return true;
-  }catch(e){ return false; }
+  } catch(e) { return false; }
 }
 
-function pushToRailway(){
-  clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(async ()=>{
-    try{
-      const state = {
-        users:   jg(K.USERS)  || [],
-        market:  jg(K.MARKET) || [],
-        chat:    jg(K.CHAT)   || {},
-        notifs:  jg(K.NOTIFS) || {},
-        online:  jg(K.ONLINE) || {},
-      };
-      await fetch(RAILWAY_URL() + '/api/state/push', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(state),
-        signal: AbortSignal.timeout(10000)
-      });
-    }catch(e){}
-  }, 2000);
-}
+// ── Compatibilidade: funções de acesso aos dados ──────────────
+const jg = (key) => {
+  switch(key) {
+    case K.USERS:   return _USERS;
+    case K.MARKET:  return _MARKET;
+    case K.CHAT:    return _CHAT;
+    case K.NOTIFS:  return _NOTIFS;
+    case K.ONLINE:  return _ONLINE;
+    case K.SESSION: return _SESSION;
+    default:        return null;
+  }
+};
+const js = (key, val) => {
+  switch(key) {
+    case K.USERS:   _USERS   = val; break;
+    case K.MARKET:  _MARKET  = val; break;
+    case K.CHAT:    _CHAT    = val; break;
+    case K.NOTIFS:  _NOTIFS  = val; break;
+    case K.ONLINE:  _ONLINE  = val; break;
+    case K.SESSION: _SESSION = val; break;
+  }
+};
 
-const K_SYNC = new Set([K.USERS, K.MARKET, K.CHAT, K.NOTIFS]);
+// jsSync = js + push para Railway
 const jsSync = (key, val) => {
   js(key, val);
-  if(K_SYNC.has(key)) pushToRailway();
-};;
+  // Push para Railway em background
+  const body = {};
+  switch(key) {
+    case K.USERS:   body.users   = val; break;
+    case K.MARKET:  body.market  = val; break;
+    case K.CHAT:    body.chat    = val; break;
+    case K.NOTIFS:  body.notifs  = val; break;
+    case K.ONLINE:  body.online  = val; break;
+    default: return;
+  }
+  apiPost('/api/state', body).catch(() => {});
+};
+
+;
 const AVATARS = ['⚽','🏆','🌟','🎴','🦁','🦊','🐆','🦅','🌍','🥇','🔥','💎','🏅','🎯','⚡'];
 // jg defined above
-const getUsers   = () => jg(K.USERS)  || [];
-const getSession = () => jg(K.SESSION);
-const getMarket  = () => jg(K.MARKET) || [];
-const getChats   = () => jg(K.CHAT)   || {};
-const getNotifs  = () => jg(K.NOTIFS) || [];
-const getOnline  = () => jg(K.ONLINE) || {};
+// getUsers defined below as function
+// // getSession → getCurrentUser() (replaced by function below)
+// const getMarket  = () => jg(K.MARKET) || (replaced by function below)
+// const getChats   = () => jg(K.CHAT)   || (replaced by function below)
+// const getNotifs  = () => jg(K.NOTIFS) || (replaced by function below)
+// getOnline defined as function
 
 function getUserByPhone(phone) { return getUsers().find(u=>u.phone===phone)||null; }
+
+function getUsers(){ return _USERS; }
+// getUserByPhone defined above
+
+function getMarket(){ return _MARKET; }
+function getChats(){ return _CHAT; }
+function getOnline(){ return _ONLINE; }
+function getNotifs(){ return _NOTIFS; }
+function getJoined(){ return new Set(); }
+function isOnline(phone){ return !!(_ONLINE[phone] && Date.now()-_ONLINE[phone]<120000); }
+
+function getSession(){ return _SESSION; }
 function getCurrentUser() { const s=getSession(); return s?getUserByPhone(s.phone):null; }
 function updateUser(phone,patch) {
   const us=getUsers(), i=us.findIndex(u=>u.phone===phone);
@@ -2235,9 +2292,8 @@ function pingOnline() {
   const u = getCurrentUser(); if (!u) return;
   const o = getOnline(); o[u.phone] = Date.now(); jsSync(K.ONLINE,o);
 }
-function isOnline(phone) {
-  const o = getOnline(); return o[phone] && (Date.now()-o[phone] < 90000);
-}
+// isOnline defined above
+
 setInterval(() => { if(getCurrentUser()) pingOnline(); }, 30000);
 
 // ═══════════════════════════════════════════════════
@@ -2268,109 +2324,104 @@ function showForm(w){
   if(fRec) fRec.style.display=w==='recover'?'block':'none';
 }
 async function doLogin(){
-  const phone=document.getElementById('a-phone').value.replace(/\D/g,'');
-  const pass=document.getElementById('a-pass').value;
+  const phoneRaw = document.getElementById('a-phone').value.replace(/\D/g,'');
+  const pass     = document.getElementById('a-pass').value;
   ['a-phone','a-pass'].forEach(id=>document.getElementById(id).classList.remove('err'));
   ['e-aphone','e-apass'].forEach(id=>document.getElementById(id).classList.remove('show'));
 
-  // 1ª tentativa: localStorage (rápido, offline)
-  const localUser=getUserByPhone(phone);
-  if(localUser){
-    if(localUser.passHash!==hash(pass)){
-      document.getElementById('a-pass').classList.add('err');
-      document.getElementById('e-apass').classList.add('show');
-      return;
-    }
-    jsSync(K.SESSION,{phone}); pingOnline(); enterApp(localUser);
-    return;
-  }
+  const btn = document.getElementById('btn-login');
+  if(btn){btn.disabled=true;btn.textContent='🔄 Verificando...';}
 
-  // 2ª tentativa: Railway (outro celular, dados não sincronizados localmente)
-  const btnLogin=document.getElementById('btn-login');
-  if(btnLogin){btnLogin.disabled=true;btnLogin.textContent='🔄 Verificando...';}
   try{
-    const rUrl=(localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
-    const r=await fetch(rUrl+'/api/auth/login',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({phone,passHash:hash(pass)}),
-      signal:AbortSignal.timeout(10000)
+    const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    const r = await fetch(rUrl+'/api/auth/login',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({phone:phoneRaw, passHash:hash(pass)}),
+      signal: AbortSignal.timeout(12000)
     });
-    const d=await r.json().catch(()=>({}));
-    if(d.ok&&d.user){
-      // Importa usuário do Railway para localStorage
-      const users=getUsers();
-      const existing=users.findIndex(u=>u.phone===d.user.phone);
-      const merged={...d.user,passHash:hash(pass)}; // reinsere passHash local
-      if(existing>=0) users[existing]=merged;
-      else users.push(merged);
-      jsSync(K.USERS,users);
-      jsSync(K.SESSION,{phone});
+    const d = await r.json().catch(()=>({}));
+
+    if(d.ok && d.user){
+      // Salva sessão em memória
+      _SESSION = {...d.user, passHash:hash(pass)};
+      // Carrega estado completo do servidor
+      await loadStateFromRailway();
       pingOnline();
-      enterApp(merged);
-      toast('✅ Login sincronizado do servidor!','#a5d6a7');
+      enterApp(_SESSION);
     } else if(d.error==='Senha incorreta'){
       document.getElementById('a-pass').classList.add('err');
       document.getElementById('e-apass').classList.add('show');
     } else {
-      // Não existe nem no Railway
       document.getElementById('a-phone').classList.add('err');
+      document.getElementById('e-aphone').textContent = d.error || 'Usuário não encontrado';
       document.getElementById('e-aphone').classList.add('show');
     }
   } catch(e){
-    // Railway offline — só mostra erro de usuário não encontrado
-    document.getElementById('a-phone').classList.add('err');
-    document.getElementById('e-aphone').classList.add('show');
     toast('⚠️ Servidor offline. Tente mais tarde.','#ef9a9a');
-  } finally{
-    if(btnLogin){btnLogin.disabled=false;btnLogin.textContent='▶ Entrar';}
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='▶ Entrar';}
   }
 }
-function doRegister(){
-  const name=document.getElementById('r-name').value.trim();
-  const phone=document.getElementById('r-phone').value.replace(/\D/g,'');
-  const pass=document.getElementById('r-pass').value;
+async function doRegister(){
+  const name  = document.getElementById('r-name').value.trim();
+  const phone = document.getElementById('r-phone').value.replace(/\D/g,'');
+  const pass  = document.getElementById('r-pass').value;
   let ok=true;
   if(name.split(' ').filter(Boolean).length<2){document.getElementById('r-name').classList.add('err');document.getElementById('e-rname').classList.add('show');ok=false;}
   if(phone.length<10){document.getElementById('r-phone').classList.add('err');document.getElementById('e-rphone').classList.add('show');ok=false;}
   if(pass.length<4){document.getElementById('r-pass').classList.add('err');document.getElementById('e-rpass').classList.add('show');ok=false;}
-  if(!ok)return;
-  const us=getUsers();
-  if(us.find(u=>u.phone===phone)){document.getElementById('r-phone').classList.add('err');document.getElementById('e-rphone').textContent='Número já cadastrado.';document.getElementById('e-rphone').classList.add('show');return;}
-  const nu={phone,name,passHash:hash(pass),avatar:AVATARS[Math.floor(Math.random()*AVATARS.length)],stickers:{},ts:Date.now()};
-  us.push(nu);jsSync(K.USERS,us);
-  // Add welcome notif
-  addNotif({type:'welcome',text:`Bem-vindo(a) ao grupo, ${name.split(' ')[0]}! 🎉 Complete seu álbum e troque figurinhas!`,ico:'🎉'});
-  jsSync(K.SESSION,{phone}); pingOnline(); enterApp(nu);
-  launchConfetti();
-  toast('🎉 Conta criada! Bem-vindo(a) à Família Tomelin! 🎉','#22a04a');
-  // 🤖 Envia confirmação privada no WhatsApp do usuário
-  setTimeout(async ()=>{
-    try { await sendConfirmationWA(name, phone, pass); }
-    catch(e){ toast('⚠️ WA pessoal: '+e.message,'#ef9a9a'); }
-  }, 800);
-  // 🤖 Notifica o grupo no WhatsApp que novo membro entrou
-  setTimeout(async ()=>{
-    try { await notifyGroupNewUser(name, phone); }
-    catch(e){ toast('⚠️ WA grupo: '+e.message,'#ef9a9a'); }
-  }, 2200);
-  // Abre o grupo WA após 4s
-  setTimeout(()=>{trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},4000);
-}
-function doLogout(){
-  // set offline
-  const u=getCurrentUser();
-  if(u){const o=getOnline();delete o[u.phone];jsSync(K.ONLINE,o);}
-  jsSync(K.SESSION,null);
-  document.getElementById('scr-app').classList.remove('on');
-  document.getElementById('bnav').classList.remove('on');
-  document.getElementById('scr-auth').classList.add('on');
-  showForm('login');
-  // Restart countdown if Copa hasn't started
-  if(!_acdTimer && COPA_DATE > Date.now()){
-    _acdTimer = setInterval(_tickCountdown, 1000);
-    _tickCountdown();
+  if(!ok) return;
+
+  const btn = document.getElementById('btn-register');
+  if(btn){btn.disabled=true;btn.textContent='🔄 Cadastrando...';}
+
+  try{
+    const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    const avatar = AVATARS[Math.floor(Math.random()*AVATARS.length)];
+    const r = await fetch(rUrl+'/api/auth/register',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({phone, name, passHash:hash(pass), avatar, stickers:{}, ts:Date.now()}),
+      signal: AbortSignal.timeout(12000)
+    });
+    const d = await r.json().catch(()=>({}));
+
+    if(d.error && d.error.includes('já cadastrado')){
+      document.getElementById('r-phone').classList.add('err');
+      document.getElementById('e-rphone').textContent='Número já cadastrado.';
+      document.getElementById('e-rphone').classList.add('show');
+      if(btn){btn.disabled=false;btn.textContent='✅ Criar conta';}
+      return;
+    }
+
+    // Sessão em memória
+    _SESSION = {phone, name, passHash:hash(pass), avatar, stickers:{}, ts:Date.now()};
+    await loadStateFromRailway();
+    addNotif({type:'welcome',text:`Bem-vindo(a), ${name.split(' ')[0]}! 🎉`,ico:'🎉'});
+    pingOnline();
+    enterApp(_SESSION);
+    launchConfetti();
+    toast('🎉 Conta criada! Bem-vindo(a)! 🎉','#22a04a');
+
+    // WA notifications
+    setTimeout(async()=>{ try{await sendConfirmationWA(name,phone,pass);}catch(e){} }, 800);
+    setTimeout(async()=>{ try{await notifyGroupNewUser(name,phone);}catch(e){} }, 2200);
+    setTimeout(()=>{trackWaClick&&trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},4000);
+
+  } catch(e){
+    toast('⚠️ Erro ao cadastrar: '+e.message,'#ef9a9a');
+    if(btn){btn.disabled=false;btn.textContent='✅ Criar conta';}
   }
 }
+
+function doLogout(){
+  _SESSION = null;
+  _USERS = []; _MARKET = []; _CHAT = {}; _MATCHES = []; _NOTIFS = {}; _ONLINE = {};
+  sessionStorage.clear();
+  document.getElementById('app-wrap').style.display='none';
+  document.getElementById('auth-wrap').style.display='block';
+  showForm('login');
+}
+
 function enterApp(u){
   // Run sticker format migration if needed
   u = migrateOldStickers(u);
@@ -3146,7 +3197,9 @@ function addNotif(n){ // for current user
   const ns=getNotifs();
   ns.unshift({...n,for:me.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
   jsSync(K.NOTIFS,ns.slice(0,80));
+  if(_SESSION) apiPost('/api/notifs/'+_SESSION.phone, notif).catch(()=>{});
 }
+
 function addDirectNotif(toPhone,n){
   const ns=getNotifs();
   ns.unshift({...n,for:toPhone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
@@ -4414,7 +4467,8 @@ function _answerQuiz(i){
 // ═══════════════════════════════════════════════════
 const K_MATCHES = 't26_matches'; // trocas em andamento
 
-function getMatches(){ try{return JSON.parse(localStorage.getItem(K_MATCHES)||'[]');}catch{return[];} }
+function getMatches(){ return _MATCHES; }
+
 
 // ── Match proposal helper (uses stored data to avoid onclick array issues) ──
 const _matchStore = {}; // phone → {myGives, theyGive}

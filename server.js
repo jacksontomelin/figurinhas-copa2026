@@ -756,13 +756,13 @@ async function refreshNews() {
   }
 
   if (items.length > 0) {
-    CACHE.news.data      = items;
-    CACHE.news.updatedAt = Date.now();
+    db.news.get()      = items;
+    db.news.ts() = Date.now();
     log('📰', `Cache de notícias atualizado — ${items.length} itens`);
   } else {
     log('⚠️', 'Nenhuma notícia encontrada, mantendo cache anterior');
   }
-  return CACHE.news.data;
+  return db.news.get();
 }
 
 // ── Busca e cacheia clima (Open-Meteo) ────────────────────────
@@ -829,15 +829,15 @@ async function refreshWeather() {
 app.get('/api/news', async (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=300');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  const age = Date.now() - CACHE.news.updatedAt;
-  if (!CACHE.news.data.length || age > CACHE_TTL_NEWS) {
+  const age = Date.now() - db.news.ts();
+  if (!db.news.get().length || age > CACHE_TTL_NEWS) {
     await refreshNews();
   }
   res.json({
     ok: true,
-    updatedAt: CACHE.news.updatedAt,
-    ageSeconds: Math.floor((Date.now() - CACHE.news.updatedAt) / 1000),
-    items: CACHE.news.data,
+    updatedAt: db.news.ts(),
+    ageSeconds: Math.floor((Date.now() - db.news.ts()) / 1000),
+    items: db.news.get(),
   });
 });
 
@@ -881,106 +881,7 @@ cron.schedule('*/10 * * * *', async () => {
 // 🔗 ENCURTADOR DE URLs — copa2026.familiatomelin.com.br/s/:code
 // Armazena em memória + arquivo JSON para persistência
 // ══════════════════════════════════════════════════════════════
-const LINKS_FILE = pathMod.join(__dirname, 'data', 'links.json');
-let shortLinks = {}; // code → { url, created, hits }
-
-// Carrega links salvos ao iniciar
-function loadLinks() {
-  try {
-    if (fs.existsSync(LINKS_FILE)) {
-      shortLinks = JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8'));
-      log('🔗', `Encurtador: ${Object.keys(shortLinks).length} links carregados`);
-    }
-  } catch (e) { log('⚠️', 'Erro ao carregar links: ' + e.message); }
-}
-
-function saveLinks() {
-  try {
-    fs.mkdirSync(pathMod.dirname(LINKS_FILE), { recursive: true });
-    fs.writeFileSync(LINKS_FILE, JSON.stringify(shortLinks, null, 2));
-  } catch (e) { log('⚠️', 'Erro ao salvar links: ' + e.message); }
-}
-
-// Gera código único de 6 chars
-function genCode() {
-  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-  let code;
-  do {
-    code = Array.from({ length: 6 }, () =>
-      chars[Math.floor(Math.random() * chars.length)]
-    ).join('');
-  } while (shortLinks[code]);
-  return code;
-}
-
-// Cache: url original → code (evita duplicar)
-const urlToCode = new Map();
-
-function shortenUrl(url) {
-  if (!url || url.length < 20) return url;
-  // Verifica cache
-  if (urlToCode.has(url)) {
-    return `${APP_URL}/s/${urlToCode.get(url)}`;
-  }
-  // Verifica links existentes
-  const existing = Object.entries(shortLinks).find(([, v]) => v.url === url);
-  if (existing) {
-    urlToCode.set(url, existing[0]);
-    return `${APP_URL}/s/${existing[0]}`;
-  }
-  // Cria novo código
-  const code = genCode();
-  shortLinks[code] = { url, created: Date.now(), hits: 0 };
-  urlToCode.set(url, code);
-  saveLinks();
-  log('🔗', `Novo link: /s/${code} → ${url.substring(0, 60)}`);
-  return `${APP_URL}/s/${code}`;
-}
-
-// ── Redirect endpoint: GET /s/:code ──────────────────────────
-app.get('/s/:code', (req, res) => {
-  const { code } = req.params;
-  const link = shortLinks[code];
-  if (!link) {
-    return res.status(404).send('<h2>Link não encontrado</h2><p><a href="/">Voltar</a></p>');
-  }
-  link.hits = (link.hits || 0) + 1;
-  saveLinks();
-  res.redirect(302, link.url);
-});
-
-// ── API: POST /api/shorten ─────────────────────────────────────
-app.post('/api/shorten', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const url = req.body?.url || req.query.url;
-  if (!url) return res.json({ ok: false, error: 'Parâmetro url obrigatório' });
-  const short = shortenUrl(url);
-  res.json({ ok: true, short, original: url });
-});
-
-// ── API: GET /api/shorten (conveniência) ─────────────────────
-app.get('/api/shorten', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { url } = req.query;
-  if (!url) return res.json({ ok: false, error: 'Parâmetro url obrigatório' });
-  const short = shortenUrl(url);
-  res.json({ ok: true, short, original: url });
-});
-
-// ── API: GET /api/links (lista todos) ────────────────────────
-app.get('/api/links', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const list = Object.entries(shortLinks).map(([code, v]) => ({
-    code,
-    short: `${APP_URL}/s/${code}`,
-    url: v.url,
-    hits: v.hits || 0,
-    created: v.created,
-  })).sort((a, b) => b.hits - a.hits);
-  res.json({ ok: true, count: list.length, links: list });
-});
-
-loadLinks();
+// Links gerenciados por db.js e api.js
 
 // ═══════════════════════════════════════════════════════════════
 // 📰 RPA DE NOTÍCIAS — Puxa e envia notícias ao vivo a cada 10min
@@ -992,36 +893,13 @@ const NEWS_SENT = new Set();
 let newsRpaEnabled = true;
 let newsRpaCount = 0;
 
-function loadNewsSent() {
-  try {
-    if (fs.existsSync(NEWS_SENT_FILE)) {
-      const data = JSON.parse(fs.readFileSync(NEWS_SENT_FILE, 'utf8'));
-      const cutoff = Date.now() - 48*60*60*1000;
-      let loaded = 0;
-      (data.sent || []).forEach(({id, ts}) => {
-        if (ts > cutoff) { NEWS_SENT.add(id); loaded++; }
-      });
-      log('📰', `News enviadas carregadas: ${loaded} IDs (${(data.sent||[]).length} total no arquivo)`);
-    }
-  } catch(e) { log('⚠️', 'loadNewsSent: ' + e.message); }
-}
+// // newsSent loaded automatically by db { — moved to db.js/api.js
 
-function saveNewsSent() {
-  try {
-    fs.mkdirSync(pathMod.dirname(NEWS_SENT_FILE), { recursive: true });
-    // Salva com timestamp para poder expirar depois
-    const cutoff = Date.now() - 48*60*60*1000;
-    let existing = [];
-    try { existing = JSON.parse(fs.readFileSync(NEWS_SENT_FILE,'utf8')).sent || []; } catch(e){}
-    const updated = existing.filter(x => x.ts > cutoff);
-    NEWS_SENT.forEach(id => {
-      if (!updated.find(x => x.id === id)) updated.push({ id, ts: Date.now() });
-    });
-    fs.writeFileSync(NEWS_SENT_FILE, JSON.stringify({ sent: updated }, null, 2));
-  } catch(e) { log('⚠️', 'saveNewsSent: ' + e.message); }
-}
 
-loadNewsSent();
+// // newsSent saved automatically by db { — moved to db.js/api.js
+
+
+// newsSent loaded automatically by db;
 
 // Formata notícia para WhatsApp
 function formatNewsMsg(item, idx) {
@@ -1098,7 +976,7 @@ async function rpaNewsLoop() {
 
   try {
     // Força refresh do RSS para ter notícias frescas
-    CACHE.news.updatedAt = 0; // invalida cache para forçar novo fetch
+    db.news.ts() = 0; // invalida cache para forçar novo fetch
     const items = await refreshNews();
     if (!items || !items.length) {
       log('📰', 'RPA: sem notícias disponíveis');
@@ -1109,7 +987,7 @@ async function rpaNewsLoop() {
     const MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48h em milliseconds
     const novas = items.filter(it => {
       const id = newsId(it);
-      if (NEWS_SENT.has(id)) return false;
+      if (db.newsSent.has(id)) return false;
       // Se tem data de publicação, só envia se for das últimas 48h
       if (it.pub) {
         const ageMs = Date.now() - new Date(it.pub).getTime();
@@ -1119,7 +997,7 @@ async function rpaNewsLoop() {
     });
 
     if (!novas.length) {
-      log('📰', `RPA: ${NEWS_SENT.size} já enviadas, sem notícias novas nas últimas 48h`);
+      log('📰', `RPA: ${db.newsSent.raw().newsSent.length} já enviadas, sem notícias novas nas últimas 48h`);
       return;
     }
 
@@ -1135,10 +1013,10 @@ async function rpaNewsLoop() {
     const r   = await sendGroup(msg);
 
     if (r.ok) {
-      NEWS_SENT.add(id);
+      db.newsSent.add(id);
       newsRpaCount++;
       _lastRpaSend = Date.now();
-      saveNewsSent(); // persiste em disco
+      // newsSent saved automatically by db; // persiste em disco
       log('✅', `RPA: notícia #${newsRpaCount} enviada`);
       DB.cronStats.enviados++;
     } else {
@@ -1154,9 +1032,9 @@ async function rpaNewsLoop() {
 
 // Limpa histórico de enviados a cada 6h (recicla notícias antigas)
 cron.schedule('0 */6 * * *', () => {
-  const before = NEWS_SENT.size;
-  NEWS_SENT.clear();
-  saveNewsSent();
+  const before = db.newsSent.raw().newsSent.length;
+  db.newsSent.clear();
+  // newsSent saved automatically by db;
   log('♻️', `RPA: cache de notícias limpo (${before} itens)`);
 }, { timezone: 'America/Sao_Paulo' });
 
@@ -1173,9 +1051,9 @@ app.get('/api/rpa/status', (req, res) => {
     ok: true,
     enabled: newsRpaEnabled,
     sent: newsRpaCount,
-    queued: NEWS_SENT.size,
-    lastNews: CACHE.news.updatedAt ? new Date(CACHE.news.updatedAt).toISOString() : null,
-    newsCount: CACHE.news.data.length,
+    queued: db.newsSent.raw().newsSent.length,
+    lastNews: db.news.ts() ? new Date(db.news.ts()).toISOString() : null,
+    newsCount: db.news.get().length,
     lastSend: _lastRpaSend ? new Date(_lastRpaSend).toISOString() : null,
     nextSend: _lastRpaSend ? new Date(_lastRpaSend + 55*60*1000).toISOString() : null,
   });
