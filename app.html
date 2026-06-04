@@ -3011,7 +3011,8 @@ function _buildMarketList(){
         <div class="badge ${m.type}">${typeLabel[m.type]||m.type}</div>
       </div>
       ${(m.type==='venda'||m.type==='ambos')&&m.price?`<div class="li-price">💰 R$ ${m.price.toFixed(2)}</div>`:''}
-      ${m.obs?`<div class="li-desc">${esc(m.obs)}</div>`:''}
+      ${m.obs?`<div class="li-desc" style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;">💬 ${esc(m.obs)}</div>`:''}
+      ${m.cidade?`<div style="font-size:11px;color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;margin-top:2px;">📍 ${esc(m.cidade)}</div>`:''}
       <div class="li-actions">
         ${!isMine?`
           <a href="${waUrl}" target="_blank" rel="noopener">
@@ -3938,19 +3939,106 @@ let _sellFilter   = 'dup';  // filtro ativo: 'dup' | 'have' | 'all'
 let _sellSelected = new Set(); // IDs das figurinhas selecionadas
 let _sellType     = null;   // 'troca' | 'venda' | 'ambos'
 
+
+// ── Mercado — estado do modal de venda ─────────────────────────
+let _sellPrice = 0;
+let _sellObs   = '';
+
+const PRICE_CHIPS = [1, 2, 3, 5, 10];
+const OBS_CHIPS   = ['Ótimo estado! ✨', 'Figurinha de destaque ⭐', 'Aceito propostas 🤝', 'Urgente! Preciso de trocas 🏃'];
+
+function _populatePriceChips(){
+  const el = document.getElementById('sell-price-chips');
+  if(!el) return;
+  el.innerHTML = PRICE_CHIPS.map(p =>
+    `<button type="button" class="obs-chip" onclick="_selectPriceChip(${p},this)"
+      style="padding:7px 14px;border-radius:20px;background:rgba(255,255,255,.08);
+        border:1.5px solid rgba(255,255,255,.12);color:rgba(255,255,255,.8);
+        font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;
+        cursor:pointer;touch-action:manipulation;">
+      R$ ${p},00
+    </button>`
+  ).join('') +
+  `<button type="button" class="obs-chip" onclick="_selectCustomPrice(this)"
+    style="padding:7px 14px;border-radius:20px;background:rgba(255,255,255,.08);
+      border:1.5px solid rgba(245,197,24,.25);color:var(--gold);
+      font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;
+      cursor:pointer;touch-action:manipulation;">
+    Outro valor ✏️
+  </button>`;
+}
+
+function _selectPriceChip(price, btn){
+  _sellPrice = price;
+  document.querySelectorAll('#sell-price-chips .obs-chip').forEach(b=>b.style.background='rgba(255,255,255,.08)');
+  if(btn) btn.style.background = 'rgba(245,197,24,.2)';
+  const cpw = document.getElementById('sell-custom-price-wrap');
+  if(cpw) cpw.style.display = 'none';
+  _updateSellButtons();
+}
+
+function _selectCustomPrice(btn){
+  document.querySelectorAll('#sell-price-chips .obs-chip').forEach(b=>b.style.background='rgba(255,255,255,.08)');
+  if(btn) btn.style.background = 'rgba(245,197,24,.2)';
+  const cpw = document.getElementById('sell-custom-price-wrap');
+  if(cpw) cpw.style.display = 'block';
+  const cp = document.getElementById('sell-custom-price');
+  if(cp) cp.focus();
+}
+
+function updateCustomPrice(val){
+  _sellPrice = parseFloat(val) || 0;
+  _updateSellButtons();
+}
+
+function _populateObsChips(){
+  const el = document.getElementById('obs-chips');
+  if(!el) return;
+  _sellObs = '';
+  el.innerHTML = OBS_CHIPS.map(obs =>
+    `<button type="button" class="obs-chip" onclick="_toggleObsChip('${obs.replace(/'/g,"\\'")}',this)"
+      style="padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);
+        border:1.5px solid rgba(255,255,255,.10);color:rgba(255,255,255,.7);
+        font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
+        cursor:pointer;touch-action:manipulation;margin-bottom:4px;">
+      ${obs}
+    </button>`
+  ).join('');
+}
+
+function _toggleObsChip(obs, btn){
+  if(_sellObs === obs){
+    _sellObs = '';
+    if(btn) btn.style.background = 'rgba(255,255,255,.06)';
+  } else {
+    _sellObs = obs;
+    document.querySelectorAll('#obs-chips .obs-chip').forEach(b=>b.style.background='rgba(255,255,255,.06)');
+    if(btn) btn.style.background = 'rgba(76,175,80,.2)';
+  }
+}
+
 function openSellModal() {
   const me = getCurrentUser(); if(!me) return;
   _sellSelected = new Set();
   _sellType = null;
+  _sellPrice = 0;
+  _sellObs = '';
   // Reset to step 1
   const s1 = document.getElementById('sell-step1');
   const s2 = document.getElementById('sell-step2');
   if(s1) s1.style.display = 'block';
   if(s2) s2.style.display = 'none';
+  // Reset valor section
+  const vs = document.getElementById('sell-valor-section');
+  if(vs) vs.style.display = 'none';
+  const cp = document.getElementById('sell-custom-price');
+  if(cp) cp.value = '';
   // Default filter: repetidas
   _sellFilter = 'dup';
   _renderSellGrid();
   _updateSellButtons();
+  _populatePriceChips();
+  _populateObsChips();
   openModal('mod-sell');
 }
 
@@ -3998,15 +4086,18 @@ function _toggleSellSticker(id) {
 function _updateSellButtons() {
   const next = document.getElementById('sell-next-btn');
   if(next) {
-    const canProceed = _sellSelected.size > 0;
-    next.style.opacity = canProceed ? '1' : '.4';
-    next.style.pointerEvents = canProceed ? 'auto' : 'none';
+    const can = _sellSelected.size > 0;
+    next.style.opacity = can ? '1' : '.4';
+    next.style.pointerEvents = can ? 'auto' : 'none';
   }
   const pub = document.getElementById('sell-pub-btn');
   if(pub) {
-    const canPublish = _sellSelected.size > 0 && _sellType;
-    pub.style.opacity = canPublish ? '1' : '.4';
-    pub.style.pointerEvents = canPublish ? 'auto' : 'none';
+    const customVal = parseFloat((document.getElementById('sell-custom-price')||{}).value||'0');
+    const priceOk = (_sellType==='troca') || (_sellPrice > 0) || (customVal > 0);
+    const can = _sellSelected.size > 0 && _sellType && priceOk;
+    pub.style.opacity = can ? '1' : '.4';
+    pub.style.pointerEvents = can ? 'auto' : 'none';
+    if(pub) pub.textContent = can ? '✅ Publicar anúncio' : (_sellType&&!priceOk ? '💰 Defina o valor' : '✅ Publicar anúncio');
   }
 }
 
@@ -4041,36 +4132,56 @@ function selectSellType(type, btn) {
     if(chk) chk.textContent = '●';
   }
   _updateSellButtons();
-  // Show/hide price field
-  const priceWrap = document.getElementById('sell-price-wrap');
-  if(priceWrap) priceWrap.style.display = (type==='venda'||type==='ambos') ? 'block' : 'none';
+  // Show/hide valor section
+  const valorSec = document.getElementById('sell-valor-section');
+  if(valorSec) valorSec.style.display = (type==='venda'||type==='ambos') ? 'block' : 'none';
+  if(type==='troca'){
+    // Reset price when troca only
+    const cp = document.getElementById('sell-custom-price');
+    if(cp) cp.value = '';
+    _sellPrice = 0;
+  }
 }
 
 function doSellNew() {
   const me = getCurrentUser(); if(!me) return;
   if(_sellSelected.size === 0) { toast('Selecione figurinhas', '#ef9a9a'); return; }
   if(!_sellType) { toast('Escolha o tipo de oferta', '#ef9a9a'); return; }
-  const price = parseFloat((document.getElementById('sell-price')||{}).value||'0') || 0;
+
+  // Lê preço: chip selecionado ou campo customizado
+  const customVal = parseFloat((document.getElementById('sell-custom-price')||{}).value||'0');
+  const finalPrice = customVal > 0 ? customVal : (_sellPrice || 0);
+  if((_sellType==='venda'||_sellType==='ambos') && finalPrice <= 0){
+    toast('💰 Defina o valor da venda', '#ef9a9a'); return;
+  }
+
   const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
   let published = 0;
   const items = [..._sellSelected];
-  items.forEach(code => {
+  const now = Date.now();
+
+  items.forEach((code, idx) => {
     const item = {
-      id: me.phone + '_' + code + '_' + Date.now(),
+      id: me.phone + '_' + code + '_' + (now + idx),
       owner: me.phone, ownerName: me.name, ownerAvatar: me.avatar||'⚽',
-      code, type: _sellType, price: price, ts: Date.now()
+      cidade: me.cidade||'',
+      code, type: _sellType, price: finalPrice,
+      obs: _sellObs || '',
+      ts: now
     };
     _MARKET.push(item);
-    // Persiste no Railway
-    fetch(rUrl+'/api/market',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(item),signal:AbortSignal.timeout(8000)}).catch(()=>{});
+    fetch(rUrl+'/api/market',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(item), signal: AbortSignal.timeout(8000)
+    }).catch(()=>{});
     published++;
   });
+
   jsSync(K.MARKET, _MARKET);
+  _sellSelected = new Set(); _sellType = null; _sellPrice = 0; _sellObs = '';
   closeModal('mod-sell');
   toast(`✅ ${published} figurinha${published>1?'s':''} anunciada${published>1?'s':''}!`, '#22a04a');
-  refreshFigs && refreshFigs();
-  renderMarket && renderMarket();
+  renderMarket();
 }
 
 
