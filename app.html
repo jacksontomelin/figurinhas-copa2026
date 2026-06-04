@@ -187,9 +187,11 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
   border-radius:50%;background:#4caf50;border:2px solid var(--navy);}
 .pbar-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;}
 .pbar-sub{font-size:10px;color:var(--gray);}
-.logout-btn{font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
-  letter-spacing:1px;padding:5px 10px;border-radius:7px;
-  background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);cursor:pointer;}
+.logout-btn{font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  letter-spacing:1px;padding:7px 14px;border-radius:8px;
+  background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.25);
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.logout-btn:active{background:rgba(229,57,53,.3);}
 
 /* STATS */
 .stats{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;}
@@ -2515,11 +2517,24 @@ async function doRegister(){
 }
 
 function doLogout(){
+  // Limpa estado em memória
   _SESSION = null;
-  _USERS = []; _MARKET = []; _CHAT = {}; _MATCHES = []; _NOTIFS = {}; _ONLINE = {};
+  _USERS = []; _MARKET = []; _CHAT = {}; _MATCHES = [];
+  _NOTIFS = {}; _ONLINE = {}; _stateLoaded = false;
   sessionStorage.clear();
-  document.getElementById('app-wrap').style.display='none';
-  document.getElementById('auth-wrap').style.display='block';
+
+  // Troca telas usando o mesmo sistema de classes do enterApp
+  const appScr  = document.getElementById('scr-app');
+  const authScr = document.getElementById('scr-auth');
+  const bnav    = document.getElementById('bnav');
+  if(appScr)  appScr.classList.remove('on');
+  if(authScr) authScr.classList.add('on');
+  if(bnav)    bnav.classList.remove('on');
+
+  // Esconde o footer da app, mostra o footer do auth
+  const pf = document.querySelector('.pom-footer');
+  if(pf) pf.style.display = 'none';
+
   showForm('login');
 }
 
