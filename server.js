@@ -341,8 +341,9 @@ app.post('/api/new-user', async (req, res) => {
   }
 
   const r = await sendGroup(msg);
-  DB.cronStats.enviados++;
-  res.json(r);
+  if (r.ok || r.messageId || r.zaapId) DB.cronStats.enviados++;
+  // Garante que ok está presente na resposta
+  res.json({ ...r, ok: !!(r.ok || r.messageId || r.zaapId) });
 });
 
 // Health check
@@ -376,8 +377,9 @@ app.post('/api/send-group', async (req, res) => {
     else msg = getRandom(CURIOSIDADES);
   }
   const r = await sendGroup(msg);
-  DB.cronStats.enviados++;
-  res.json(r);
+  if (r.ok || r.messageId || r.zaapId) DB.cronStats.enviados++;
+  // Garante que ok está presente na resposta
+  res.json({ ...r, ok: !!(r.ok || r.messageId || r.zaapId) });
 });
 
 // Enviar mensagem privada

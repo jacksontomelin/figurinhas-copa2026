@@ -2243,9 +2243,15 @@ function doRegister(){
   launchConfetti();
   toast('🎉 Conta criada! Bem-vindo(a) à Família Tomelin! 🎉','#22a04a');
   // 🤖 Envia confirmação privada no WhatsApp do usuário
-  setTimeout(()=>{ sendConfirmationWA(name, phone, pass).catch(e=>console.warn('[Bot]',e)); }, 800);
+  setTimeout(async ()=>{
+    try { await sendConfirmationWA(name, phone, pass); }
+    catch(e){ toast('⚠️ WA pessoal: '+e.message,'#ef9a9a'); }
+  }, 800);
   // 🤖 Notifica o grupo no WhatsApp que novo membro entrou
-  setTimeout(()=>{ notifyGroupNewUser(name, phone).catch(e=>console.warn('[Bot]',e)); }, 2200);
+  setTimeout(async ()=>{
+    try { await notifyGroupNewUser(name, phone); }
+    catch(e){ toast('⚠️ WA grupo: '+e.message,'#ef9a9a'); }
+  }, 2200);
   // Abre o grupo WA após 4s
   setTimeout(()=>{trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},4000);
 }
@@ -3324,57 +3330,53 @@ _Família Tomelin · Copa 2026_ ⚽`,
 
 async function notifyGroupNewUser(userName, userPhone) {
   const firstName = (userName||'').split(' ')[0];
-  const railwayUrl = localStorage.getItem('t26_railway_url') || '';
+  // URL hardcoded como fallback (igual sendConfirmationWA)
+  const rUrl = (localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
 
-  // Tenta via Railway (envia ao grupo E registra usuário no bot)
-  if (railwayUrl) {
-    try {
-      const r = await fetch(railwayUrl + '/api/new-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: userName, phone: userPhone }),
-        signal: AbortSignal.timeout(8000)
-      });
-      const d = await r.json();
-      if (d.ok) {
-        console.log('[Bot] Boas-vindas enviadas ao grupo via Railway!');
-        return;
-      }
-    } catch(e) { console.warn('[Bot] Railway /api/new-user falhou:', e.message); }
-  }
-
-  // Fallback: monta mensagem localmente e envia direto Z-API
-  const template = WELCOME_GROUP_MSGS[Math.floor(Math.random() * WELCOME_GROUP_MSGS.length)];
-  const msg = template.replace(/\{NOME_COMPLETO\}/g, userName).replace(/\{NOME\}/g, firstName);
-  const GROUP_ID = '120363409442378564-group';
+  // 1ª tentativa: Railway /api/new-user
+  let sent = false;
   try {
-    await fetch(
-      'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Client-Token': 'Ff0f0920827ca4987818cafa9ba0f97a7S'
-        },
-        body: JSON.stringify({ phone: GROUP_ID, message: msg }),
-        signal: AbortSignal.timeout(8000)
+    const r = await fetch(rUrl + '/api/new-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: userName, phone: userPhone }),
+      signal: AbortSignal.timeout(10000)
+    });
+    const d = await r.json().catch(()=>({}));
+    if (d.ok || d.messageId || d.zaapId) {
+      sent = true;
+      toast('🎉 Grupo notificado!', 'var(--wa)');
+    }
+  } catch(e) { /* tenta Z-API */ }
+
+  // 2ª tentativa: Z-API direto para o grupo
+  if (!sent) {
+    const template = WELCOME_GROUP_MSGS[Math.floor(Math.random() * WELCOME_GROUP_MSGS.length)];
+    const msg = template.replace(/\{NOME_COMPLETO\}/g, userName).replace(/\{NOME\}/g, firstName);
+    try {
+      const r2 = await fetch(
+        'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Client-Token': 'Ff0f0920827ca4987818cafa9ba0f97a7S' },
+          body: JSON.stringify({ phone: '120363409442378564-group', message: msg }),
+          signal: AbortSignal.timeout(10000)
+        }
+      );
+      const d2 = await r2.json().catch(()=>({}));
+      if (d2.messageId || d2.zaapId || r2.ok) {
+        sent = true;
+        toast('🎉 Grupo notificado!', 'var(--wa)');
+      } else {
+        toast('⚠️ Grupo WA: ' + (d2.reason || d2.error || 'falha'), '#ef9a9a');
       }
-    );
-    console.log('[Bot] Boas-vindas enviadas direto Z-API!');
-  } catch(e) {
-    console.warn('[Bot] Falha ao notificar grupo:', e.message);
+    } catch(e) {
+      toast('⚠️ Grupo WA: ' + e.message, '#ef9a9a');
+    }
   }
+  return sent;
 }
 
-
-// ═══════════════════════════════════════════════════
-// 📱 MENSAGEM PRIVADA DE CONFIRMAÇÃO DE CADASTRO
-// ═══════════════════════════════════════════════════
-function buildLandingUrl(name, phone, token) {
-  const base = 'https://copa2026.familiatomelin.com.br/landing.html';
-  const p = new URLSearchParams({ name, phone, token });
-  return base + '?' + p.toString();
-}
 
 async function sendConfirmationWA(name, phone, pass) {
   const firstName = name.split(' ')[0];
