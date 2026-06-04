@@ -501,6 +501,21 @@ router.get('/admin/integrity', (req, res) => {
   res.json({ ok: true, total: users.length, broken: broken.length, users: broken });
 });
 
+
+// ── RESET TOTAL DO BANCO (admin) ─────────────────────────────────
+router.post('/admin/reset-db', async (req, res) => {
+  cors(res);
+  const { secret } = req.body;
+  if (secret !== 'TOMELIN2026RESET') return res.status(403).json({ ok: false, error: 'Não autorizado' });
+  try {
+    await db.resetAll();
+    res.json({ ok: true, message: 'Banco zerado com sucesso. Cadastre-se novamente.' });
+  } catch(e) {
+    console.error('[ADMIN] Erro no reset:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 router.post('/state/reload', async (req, res) => {
   cors(res);
   try {

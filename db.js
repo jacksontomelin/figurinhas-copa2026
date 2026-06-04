@@ -155,6 +155,29 @@ const db = {
   raw:  () => _db,
   save,
 
+  // ── Acesso ao PG client (para operações admin) ─────
+  pg: { query: async (...args) => _pgClient ? _pgClient.query(...args) : null },
+
+  // ── Reset total do banco ───────────────────────────
+  async resetAll() {
+    const empty = {
+      users:[], market:[], chat:{}, matches:[], notifs:{},
+      online:{}, news:[], links:[], newsSent:[], waMsgs:[],
+    };
+    _db = { ..._db, ...empty };
+    if (_pgClient) {
+      for (const [key, val] of Object.entries(empty)) {
+        await _pgClient.query(
+          `INSERT INTO app_state(key,value,updated_at) VALUES($1,$2,NOW())
+           ON CONFLICT(key) DO UPDATE SET value=$2,updated_at=NOW()`,
+          [key, JSON.stringify(val)]
+        );
+      }
+    }
+    _dirty = false;
+    console.log('[DB] 🗑️  Reset completo executado');
+  },
+
   users: {
     all:   ()       => _db.users,
     find:  (phone)  => _db.users.find(u => u.phone === phone),
