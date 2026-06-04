@@ -5427,39 +5427,28 @@ function renderAdmin(){
 let _admCurTab = 0;
 function admTab(i){
   _admCurTab = i;
-  // Atualiza estilo dos botões
-  ['👥 Membros','🛒 Mercado','💬 Chats','📊 Stats','⚙️ Ações'].forEach((_,j)=>{
+  // Atualiza botões
+  for(let j=0;j<5;j++){
     const b=document.getElementById('atb'+j);
-    if(!b)return;
-    if(j===i){
-      b.style.borderColor='rgba(245,197,24,.5)';b.style.background='rgba(245,197,24,.15)';b.style.color='var(--gold)';
-    } else {
-      b.style.borderColor='rgba(255,255,255,.1)';b.style.background='transparent';b.style.color='rgba(255,255,255,.4)';
-    }
-  });
-  // Espera o DOM do admin-content estar disponível
+    if(!b)continue;
+    if(j===i){b.style.borderColor='rgba(245,197,24,.5)';b.style.background='rgba(245,197,24,.15)';b.style.color='var(--gold)';}
+    else{b.style.borderColor='';b.style.background='';b.style.color='';}
+  }
+  // Aguarda admin-content estar no DOM (renderAdmin pode estar setando innerHTML)
   let ct = document.getElementById('admin-content');
   if(!ct){
-    // Tenta novamente após microtask (renderAdmin pode estar setando innerHTML)
-    setTimeout(()=>{ admTab(i); }, 50);
+    setTimeout(()=>{
+      ct = document.getElementById('admin-content');
+      if(ct) admTab(i);
+    }, 80);
     return;
   }
   ct.innerHTML = '';
-  try {
-    if(i===0){
-      // Usa _admMembersNew se disponível (mais completo), senão _admMembers
-      if(typeof _admMembersNew==='function') _admMembersNew(ct);
-      else ct.innerHTML=_admMembers();
-    } else if(i===1) ct.innerHTML=_admMarket();
-    else if(i===2) ct.innerHTML=_admChats();
-    else if(i===3){
-      if(typeof _admData==='function') _admData(ct);
-      else ct.innerHTML=_admStats();
-    }
-    else if(i===4) ct.innerHTML=_admActions();
-  } catch(e) {
-    ct.innerHTML='<div style="color:#ef9a9a;padding:16px;font-size:13px;">⚠️ Erro: '+e.message+'</div>';
-  }
+  if(i===0)      _admMembersNew(ct);
+  else if(i===1) ct.innerHTML = (typeof _admMarket==='function' ? _admMarket()||'' : '');
+  else if(i===2) ct.innerHTML = (typeof _admChats==='function'  ? _admChats()||''  : '');
+  else if(i===3) { ct.innerHTML = (typeof _admStats==='function' ? _admStats()||'' : ''); }
+  else if(i===4) _admActions(ct);
 }
 
 function _admCard(title, content){
@@ -5746,6 +5735,7 @@ function _admMembersNew(el){
 }
 
 function _admMarket(el){
+  if(!el){console&&console.warn("[Admin] _admMarket: el null");return;}
   const mkt=[...getMarket()].sort((a,b)=>b.ts-a.ts);
   if(!mkt.length){el.innerHTML='<div class="empty"><div class="empty-ico">🏷️</div>Sem anúncios.</div>';return;}
   mkt.forEach(m=>{
@@ -5772,6 +5762,7 @@ function _admMarket(el){
 }
 
 function _admChats(el){
+  if(!el){console&&console.warn("[Admin] _admChats: el null");return;}
   const ch=getChats()||{};
   const keys=Object.keys(ch);
   if(!keys.length){el.innerHTML='<div class="empty"><div class="empty-ico">💬</div>Sem conversas.</div>';return;}
@@ -5834,6 +5825,7 @@ function _admData(el){
 }
 
 function _admActions(el){
+  if(!el){console&&console.warn("[Admin] _admActions: el null");return;}
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;padding-top:4px;">
     <button class="btn btn-outline" onclick="window.open('dashboard.html','_blank')">📺 Abrir Dashboard TV</button>
     <button class="btn btn-outline" onclick="window.open('bot.html','_blank')">🤖 Abrir Painel do Bot</button>
