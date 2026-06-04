@@ -2437,7 +2437,7 @@ function enterApp(u){
   document.getElementById('pb-name').textContent=u.name.split(' ')[0]+' '+u.name.split(' ').slice(-1)[0];
   document.getElementById('pb-sub').textContent='🟢 Online agora';
   // Online badge update
-  setTimeout(updateOnlineBadge, 200);
+  setTimeout(()=>{ if(typeof updateBadges==="function") updateBadges(); }, 200);
   // WA reminder (after short delay so screen loads first)
   setTimeout(showWaReminder, 1200);
   // Show footer in app
