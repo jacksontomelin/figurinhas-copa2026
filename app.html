@@ -712,7 +712,20 @@ function recBack(){ window._recBack && window._recBack(); }
       <div class="fg"><label>Senha (mín. 4 caracteres)</label>
         <input type="password" id="r-pass" placeholder="••••••" autocomplete="new-password">
         <div class="emsg" id="e-rpass">Mínimo 4 caracteres.</div></div>
-      <button class="btn btn-green btn-mt" onclick="doRegister()">✅ Criar conta e entrar no grupo</button>
+      <!-- Cidade -->
+      <div class="form-group">
+        <label class="form-label">📍 SUA CIDADE (SC)</label>
+        <div style="position:relative;">
+          <input class="form-input" id="r-cidade" placeholder="Digite sua cidade em SC..."
+            autocomplete="off" oninput="_filterCidades(this.value)">
+          <div id="cidade-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;
+            background:#1a2744;border:1.5px solid rgba(245,197,24,.3);border-radius:10px;
+            max-height:180px;overflow-y:auto;z-index:999;margin-top:3px;
+            box-shadow:0 8px 24px rgba(0,0,0,.5);"></div>
+        </div>
+        <div class="emsg" id="e-rcidade" style="display:none;">Selecione sua cidade</div>
+      </div>
+      <button id="btn-register" class="btn btn-green btn-mt" onclick="doRegister()">✅ Criar conta e entrar no grupo</button>
       <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray);">
         Já tem conta? <button class="link-btn" onclick="showForm('login')">Entrar</button>
       </div>
@@ -2411,24 +2424,49 @@ function _selectCidade(city, region){
 }
 
 async function doRegister(){
-  const name  = document.getElementById('r-name').value.trim();
-  const phone = document.getElementById('r-phone').value.replace(/\D/g,'');
-  const pass  = document.getElementById('r-pass').value;
-  let ok=true;
-  if(name.split(' ').filter(Boolean).length<2){document.getElementById('r-name').classList.add('err');document.getElementById('e-rname').classList.add('show');ok=false;}
-  if(phone.length<10){document.getElementById('r-phone').classList.add('err');document.getElementById('e-rphone').classList.add('show');ok=false;}
-  if(pass.length<4){document.getElementById('r-pass').classList.add('err');document.getElementById('e-rpass').classList.add('show');ok=false;}
-  if(!ok) return;
+  // ── Coleta e valida campos ─────────────────────────────────
+  const elName  = document.getElementById('r-name');
+  const elPhone = document.getElementById('r-phone');
+  const elPass  = document.getElementById('r-pass');
+  const elCid   = document.getElementById('r-cidade');
+  const name    = elName  ? elName.value.trim()              : '';
+  const phone   = elPhone ? elPhone.value.replace(/\D/g,'')  : '';
+  const pass    = elPass  ? elPass.value                      : '';
+  const cidadeRaw = _cidadeSelected || (elCid ? elCid.value.split('(')[0].trim() : '');
 
-  // Valida cidade
-  const cidadeVal = _cidadeSelected || document.getElementById('r-cidade').value.split('(')[0].trim();
-  if(!cidadeVal){
-    document.getElementById('e-rcidade').classList.add('show');
-    document.getElementById('r-cidade').classList.add('err');
+  // Limpa erros anteriores
+  ['r-name','r-phone','r-pass','r-cidade'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.remove('err');
+  });
+  ['e-rname','e-rphone','e-rpass','e-rcidade'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.remove('show');
+  });
+
+  let ok = true;
+  if(name.split(' ').filter(Boolean).length < 2){
+    if(elName) elName.classList.add('err');
+    const en=document.getElementById('e-rname');if(en)en.classList.add('show');
+    ok=false;
+  }
+  if(phone.length < 10){
+    if(elPhone) elPhone.classList.add('err');
+    const ep=document.getElementById('e-rphone');if(ep)ep.classList.add('show');
+    ok=false;
+  }
+  if(pass.length < 4){
+    if(elPass) elPass.classList.add('err');
+    const epp=document.getElementById('e-rpass');if(epp)epp.classList.add('show');
+    ok=false;
+  }
+  if(!cidadeRaw){
+    if(elCid) elCid.classList.add('err');
+    const ec=document.getElementById('e-rcidade');
+    if(ec){ec.style.display='block';ec.textContent='Selecione sua cidade';}
     ok=false;
   }
   if(!ok) return;
 
+  const cidadeVal = cidadeRaw;
   const btn = document.getElementById('btn-register');
   if(btn){btn.disabled=true;btn.textContent='🔄 Cadastrando...';}
 
@@ -2438,19 +2476,27 @@ async function doRegister(){
     const r = await fetch(rUrl+'/api/auth/register',{
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({phone, name, passHash:hash(pass), plainPass:pass, avatar, cidade:cidadeVal, stickers:{}, ts:Date.now()}),
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(15000)
     });
-    const d = await r.json().catch(()=>({}));
+    const d = await r.json().catch(()=>null);
 
-    if(!d.ok || (d.error && d.error.toLowerCase().includes('cadastrado'))){
-      document.getElementById('r-phone').classList.add('err');
-      document.getElementById('e-rphone').textContent = d.error || 'Este número já tem cadastro. Faça login.';
-      document.getElementById('e-rphone').classList.add('show');
+    // Erro de rede
+    if(!d){
+      toast('⚠️ Sem resposta do servidor. Tente novamente.','#ef9a9a');
       if(btn){btn.disabled=false;btn.textContent='✅ Criar conta';}
       return;
     }
 
-    // Sessão em memória
+    // Número já cadastrado
+    if(!d.ok && d.error){
+      const epn = document.getElementById('e-rphone');
+      if(epn){ epn.textContent = d.error; epn.classList.add('show'); }
+      if(elPhone) elPhone.classList.add('err');
+      if(btn){btn.disabled=false;btn.textContent='✅ Criar conta';}
+      return;
+    }
+
+    // ✅ Sucesso
     _SESSION = {phone, name, passHash:hash(pass), avatar, cidade:cidadeVal, stickers:{}, ts:Date.now()};
     await loadStateFromRailway();
     addNotif({type:'welcome',text:`Bem-vindo(a), ${name.split(' ')[0]}! 🎉`,ico:'🎉'});
@@ -2458,10 +2504,11 @@ async function doRegister(){
     enterApp(_SESSION);
     launchConfetti();
     toast('🎉 Conta criada! Bem-vindo(a)! 🎉','#22a04a');
-    setTimeout(()=>toast('📱 Mensagem enviada no seu WhatsApp!','var(--wa)'),2000);
+    setTimeout(()=>toast('📱 Mensagem enviada no seu WhatsApp!','var(--wa)'),2500);
 
   } catch(e){
-    toast('⚠️ Erro ao cadastrar: '+e.message,'#ef9a9a');
+    console.error('doRegister error:', e);
+    toast('⚠️ Erro: '+e.message,'#ef9a9a');
     if(btn){btn.disabled=false;btn.textContent='✅ Criar conta';}
   }
 }
