@@ -369,7 +369,7 @@ app.get('/health', (_, res) => res.json({
   users:    db.users.count(),
   market:   db.market.all().length,
   uptime:   Math.floor(process.uptime()),
-  monitor:  monitorAtivo,
+  monitor:  monitorActive,
   ts:       new Date().toISOString(),
 }));
 
