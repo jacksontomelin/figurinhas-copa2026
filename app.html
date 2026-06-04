@@ -2159,10 +2159,63 @@ function getStickerNum(id){
 // STORAGE
 // ═══════════════════════════════════════════════════
 const K = { USERS:'t26_users', SESSION:'t26_sess', MARKET:'t26_mkt',
-            CHAT:'t26_chat', NOTIFS:'t26_notifs', ONLINE:'t26_online' };
+            CHAT:'t26_chat', NOTIFS:'t26_notifs', ONLINE:'t26_online' }
+
+// ── Storage — Railway como fonte da verdade, localStorage como cache ──
+const RAILWAY_URL = () => (localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+
+const jg = key => { try{ return JSON.parse(localStorage.getItem(key)||'null'); }catch(e){return null;} };
+const js = (key, val) => { try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} };
+
+// Estado sincronizado com Railway
+let _stateLoaded = false;
+let _syncTimer   = null;
+
+async function loadStateFromRailway(){
+  try{
+    const r = await fetch(RAILWAY_URL() + '/api/state', {signal: AbortSignal.timeout(8000)});
+    if(!r.ok) return false;
+    const d = await r.json();
+    if(!d.ok || !d.state) return false;
+    const s = d.state;
+    if(s.users  ) js(K.USERS,   s.users);
+    if(s.market ) js(K.MARKET,  s.market);
+    if(s.chat   ) js(K.CHAT,    s.chat);
+    if(s.notifs ) js(K.NOTIFS,  s.notifs);
+    if(s.online ) js(K.ONLINE,  s.online);
+    _stateLoaded = true;
+    return true;
+  }catch(e){ return false; }
+}
+
+function pushToRailway(){
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async ()=>{
+    try{
+      const state = {
+        users:   jg(K.USERS)  || [],
+        market:  jg(K.MARKET) || [],
+        chat:    jg(K.CHAT)   || {},
+        notifs:  jg(K.NOTIFS) || {},
+        online:  jg(K.ONLINE) || {},
+      };
+      await fetch(RAILWAY_URL() + '/api/state/push', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(state),
+        signal: AbortSignal.timeout(10000)
+      });
+    }catch(e){}
+  }, 2000);
+}
+
+const K_SYNC = new Set([K.USERS, K.MARKET, K.CHAT, K.NOTIFS]);
+const jsSync = (key, val) => {
+  js(key, val);
+  if(K_SYNC.has(key)) pushToRailway();
+};;
 const AVATARS = ['⚽','🏆','🌟','🎴','🦁','🦊','🐆','🦅','🌍','🥇','🔥','💎','🏅','🎯','⚡'];
-const jg = k => { try{return JSON.parse(localStorage.getItem(k)||'null');}catch{return null;} };
-const js = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+// jg defined above
 const getUsers   = () => jg(K.USERS)  || [];
 const getSession = () => jg(K.SESSION);
 const getMarket  = () => jg(K.MARKET) || [];
@@ -2174,13 +2227,13 @@ function getUserByPhone(phone) { return getUsers().find(u=>u.phone===phone)||nul
 function getCurrentUser() { const s=getSession(); return s?getUserByPhone(s.phone):null; }
 function updateUser(phone,patch) {
   const us=getUsers(), i=us.findIndex(u=>u.phone===phone);
-  if(i>=0){us[i]={...us[i],...patch};js(K.USERS,us);}
+  if(i>=0){us[i]={...us[i],...patch};jsSync(K.USERS,us);}
 }
 
 // Online presence: ping every 30s, consider online if pinged in last 90s
 function pingOnline() {
   const u = getCurrentUser(); if (!u) return;
-  const o = getOnline(); o[u.phone] = Date.now(); js(K.ONLINE,o);
+  const o = getOnline(); o[u.phone] = Date.now(); jsSync(K.ONLINE,o);
 }
 function isOnline(phone) {
   const o = getOnline(); return o[phone] && (Date.now()-o[phone] < 90000);
@@ -2228,7 +2281,7 @@ async function doLogin(){
       document.getElementById('e-apass').classList.add('show');
       return;
     }
-    js(K.SESSION,{phone}); pingOnline(); enterApp(localUser);
+    jsSync(K.SESSION,{phone}); pingOnline(); enterApp(localUser);
     return;
   }
 
@@ -2250,8 +2303,8 @@ async function doLogin(){
       const merged={...d.user,passHash:hash(pass)}; // reinsere passHash local
       if(existing>=0) users[existing]=merged;
       else users.push(merged);
-      js(K.USERS,users);
-      js(K.SESSION,{phone});
+      jsSync(K.USERS,users);
+      jsSync(K.SESSION,{phone});
       pingOnline();
       enterApp(merged);
       toast('✅ Login sincronizado do servidor!','#a5d6a7');
@@ -2284,10 +2337,10 @@ function doRegister(){
   const us=getUsers();
   if(us.find(u=>u.phone===phone)){document.getElementById('r-phone').classList.add('err');document.getElementById('e-rphone').textContent='Número já cadastrado.';document.getElementById('e-rphone').classList.add('show');return;}
   const nu={phone,name,passHash:hash(pass),avatar:AVATARS[Math.floor(Math.random()*AVATARS.length)],stickers:{},ts:Date.now()};
-  us.push(nu);js(K.USERS,us);
+  us.push(nu);jsSync(K.USERS,us);
   // Add welcome notif
   addNotif({type:'welcome',text:`Bem-vindo(a) ao grupo, ${name.split(' ')[0]}! 🎉 Complete seu álbum e troque figurinhas!`,ico:'🎉'});
-  js(K.SESSION,{phone}); pingOnline(); enterApp(nu);
+  jsSync(K.SESSION,{phone}); pingOnline(); enterApp(nu);
   launchConfetti();
   toast('🎉 Conta criada! Bem-vindo(a) à Família Tomelin! 🎉','#22a04a');
   // 🤖 Envia confirmação privada no WhatsApp do usuário
@@ -2306,8 +2359,8 @@ function doRegister(){
 function doLogout(){
   // set offline
   const u=getCurrentUser();
-  if(u){const o=getOnline();delete o[u.phone];js(K.ONLINE,o);}
-  js(K.SESSION,null);
+  if(u){const o=getOnline();delete o[u.phone];jsSync(K.ONLINE,o);}
+  jsSync(K.SESSION,null);
   document.getElementById('scr-app').classList.remove('on');
   document.getElementById('bnav').classList.remove('on');
   document.getElementById('scr-auth').classList.add('on');
@@ -2324,7 +2377,7 @@ function enterApp(u){
   if (u._migrated2026) {
     const users = getUsers();
     const idx = users.findIndex(x => x.phone === u.phone);
-    if (idx >= 0) { users[idx] = u; js(K.USERS, users); }
+    if (idx >= 0) { users[idx] = u; jsSync(K.USERS, users); }
   }
   // Hide footer on auth
   const pf2=document.querySelector('.pom-footer');
@@ -2403,7 +2456,7 @@ function runMigration() {
       return after;
     });
     if (changed) {
-      js(K.USERS, migrated);
+      jsSync(K.USERS, migrated);
       console.log('[Migration] Sticker migration complete');
     }
   } catch(e) { console.warn('[Migration]', e); }
@@ -2642,7 +2695,7 @@ function refreshFigs(){
 
 
 // Sincroniza figurinhas com Railway (debounced 5s)
-let _syncTimer = null;
+// _syncTimer defined above
 function scheduleSyncToRailway(){
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(async ()=>{
@@ -2674,7 +2727,6 @@ function cycleFig(id){
 
   toast(id+' → '+label, color);
   refreshFigs();
-  scheduleSyncToRailway(); // sincroniza com Railway em background
   if(next===2) setTimeout(()=>toast('Repetida! Anuncie para troca? 🏷️','var(--gold)'),2000);
 }
 
@@ -2779,7 +2831,7 @@ function _buildMarketList(){
 }
 function removeAd(id){
   if(!confirm('Remover este anúncio?'))return;
-  js(K.MARKET,getMarket().filter(m=>String(m.id)!==String(id)));
+  jsSync(K.MARKET,getMarket().filter(m=>String(m.id)!==String(id)));
   renderMarket(); toast('Anúncio removido.','#ef9a9a'); updateBadges();
 }
 
@@ -2916,7 +2968,7 @@ let currentChatWith=null;
 function getChatId(a,b){ return [a,b].sort().join('__'); }
 function getChatMsgs(cid){ return getChats()[cid]||[]; }
 function saveChatMsg(cid,msg){
-  const ch=getChats(); ch[cid]=[...(ch[cid]||[]),msg]; js(K.CHAT,ch);
+  const ch=getChats(); ch[cid]=[...(ch[cid]||[]),msg]; jsSync(K.CHAT,ch);
 }
 function markChatSeen(cid){ js('t26_seen_'+cid,Date.now()); updateBadges(); }
 
@@ -3093,23 +3145,23 @@ function addNotif(n){ // for current user
   const me=getCurrentUser(); if(!me)return;
   const ns=getNotifs();
   ns.unshift({...n,for:me.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
-  js(K.NOTIFS,ns.slice(0,80));
+  jsSync(K.NOTIFS,ns.slice(0,80));
 }
 function addDirectNotif(toPhone,n){
   const ns=getNotifs();
   ns.unshift({...n,for:toPhone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
-  js(K.NOTIFS,ns.slice(0,80));
+  jsSync(K.NOTIFS,ns.slice(0,80));
 }
 function addGlobalNotif(n){ // for all users except sender
   const users=getUsers().filter(u=>u.phone!==n.from);
   const ns=getNotifs();
   users.forEach(u=>ns.unshift({...n,for:u.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()}));
-  js(K.NOTIFS,ns.slice(0,200));
+  jsSync(K.NOTIFS,ns.slice(0,200));
 }
 function clearNotifBadge(){
   const me=getCurrentUser(); if(!me)return;
   const ns=getNotifs().map(n=>n.for===me.phone?{...n,read:true}:n);
-  js(K.NOTIFS,ns); updateBadges();
+  jsSync(K.NOTIFS,ns); updateBadges();
 }
 function clearChatBadge(){ updateBadges(); }
 
@@ -4057,7 +4109,7 @@ async function _doConfirmRecovery() {
   const idx   = users.findIndex(u => u.phone.replace(/\D/g,'') === phone || u.phone === phone);
   if (idx >= 0) {
     users[idx].pass = pass1;
-    js(K.USERS, users);
+    jsSync(K.USERS, users);
     delete _recCodes[phone];
     if(fb2){ fb2.textContent='✅ Senha alterada com sucesso!'; fb2.style.color='#a5d6a7'; }
     toast('✅ Senha redefinida! Faça login.', '#a5d6a7');
@@ -4407,7 +4459,7 @@ function lockMarketItems(ownerPhone, codes, matchId){
       changed = true;
     }
   });
-  if(changed) js(K.MARKET, mkt);
+  if(changed) jsSync(K.MARKET, mkt);
 }
 
 // Liberar figurinhas de um match cancelado
@@ -4416,7 +4468,7 @@ function unlockMatchItems(matchId){
     if(item.lockedBy===matchId){ delete item.lockedBy; delete item.lockedAt; }
     return item;
   });
-  js(K.MARKET, mkt);
+  jsSync(K.MARKET, mkt);
 }
 
 // Aceitar match
@@ -4483,7 +4535,7 @@ function applyMatchStickers(m){
   const us=getUsers();
   const fi=us.findIndex(u=>u.phone===m.from); if(fi>=0)us[fi]=fromUser;
   const ti=us.findIndex(u=>u.phone===m.to); if(ti>=0)us[ti]=toUser;
-  js(K.USERS,us);
+  jsSync(K.USERS,us);
 }
 
 function removeMatchFromMarket(m){
@@ -4491,7 +4543,7 @@ function removeMatchFromMarket(m){
   const mkt=getMarket().filter(item=>
     !((item.owner===m.from||item.owner===m.to)&&allCodes.includes(item.code))
   );
-  js(K.MARKET,mkt);
+  jsSync(K.MARKET,mkt);
 }
 
 // Notificar via chat interno sobre atualização do match
@@ -4506,7 +4558,7 @@ function notifyMatchUpdate(match, type){
   if(msgs[type]){
     const cid=[me.phone,other].sort().join('__');
     const ch=getChats(); ch[cid]=[...(ch[cid]||[]),{from:me.phone,text:msgs[type],ts:Date.now(),isSticker:true}];
-    js(K.CHAT,ch);
+    jsSync(K.CHAT,ch);
   }
 }
 
@@ -4561,7 +4613,7 @@ function sendMatchProposal(toPhone, myGives, theyGive){
     +`🎁 Você dá: *${theyGive.join(', ')||'—'}*\n\n`
     +`Aceita? (ID: ${matchId.slice(-6)})`;
   ch[cid]=[...(ch[cid]||[]),{from:me.phone,text:msg,ts:Date.now(),isSticker:true,matchId}];
-  js(K.CHAT,ch);
+  jsSync(K.CHAT,ch);
   addDirectNotif&&addDirectNotif(toPhone,{type:'match',ico:'🤝',text:`${me.name.split(' ')[0]} propôs um match de troca! Verifique em Trocas.`});
   toast('🤝 Match proposto! Aguardando resposta...','var(--gold)');
   navTo(3); openChatWith(toPhone);
@@ -5194,10 +5246,10 @@ function _admKpi(label, val, color){
 function admDeleteUser(phone){
   if(!confirm('Deletar usuário '+phone+'? Esta ação não pode ser desfeita.'))return;
   const users=getUsers().filter(u=>u.phone!==phone);
-  js(K.USERS,users);
+  jsSync(K.USERS,users);
   // Also remove from market, chats
   const mkt=getMarket().filter(m=>m.owner!==phone);
-  js(K.MARKET,mkt);
+  jsSync(K.MARKET,mkt);
   toast('🗑️ Usuário '+phone+' removido','var(--red)');
   admTab(0);
 }
@@ -5206,7 +5258,7 @@ function admResetStickers(phone){
   if(!confirm('Resetar todas as figurinhas de '+phone+'?'))return;
   const users=getUsers();
   const idx=users.findIndex(u=>u.phone===phone);
-  if(idx>=0){users[idx].stickers={};js(K.USERS,users);}
+  if(idx>=0){users[idx].stickers={};jsSync(K.USERS,users);}
   toast('🔄 Figurinhas resetadas','var(--gold)');
   admTab(0);
 }
@@ -5218,21 +5270,21 @@ function admSetAdmin(phone){
 
 function admClearMarket(){
   if(!confirm('Limpar TODO o mercado?'))return;
-  js(K.MARKET,[]);
+  jsSync(K.MARKET,[]);
   toast('🗑️ Mercado limpo','var(--red)');
   admTab(1);
 }
 
 function admDeleteAd(id){
   const mkt=getMarket().filter(m=>m.id!==id);
-  js(K.MARKET,mkt);
+  jsSync(K.MARKET,mkt);
   toast('🗑️ Anúncio removido','var(--red)');
   admTab(1);
 }
 
 function admClearChats(){
   if(!confirm('Limpar TODOS os chats?'))return;
-  js(K.CHAT,{});
+  jsSync(K.CHAT,{});
   toast('🗑️ Chats apagados','var(--red)');
   admTab(2);
 }
@@ -5400,9 +5452,9 @@ function _admActions(){
   `)}
   ${_admCard('🗑️ Ações de Reset', `
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <button onclick="if(confirm('Limpar TODO o mercado?')){js(K.MARKET,[]);toast('Mercado limpo','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todo o mercado</button>
-      <button onclick="if(confirm('Limpar todos os chats?')){js(K.CHAT,{});toast('Chats limpos','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todos os chats</button>
-      <button onclick="if(confirm('Resetar TODAS as figurinhas de TODOS os usuários?')){const u=getUsers().map(u=>{u.stickers={};return u;});js(K.USERS,u);toast('Figurinhas resetadas','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🔄 Resetar figurinhas de todos</button>
+      <button onclick="if(confirm('Limpar TODO o mercado?')){jsSync(K.MARKET,[]);toast('Mercado limpo','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todo o mercado</button>
+      <button onclick="if(confirm('Limpar todos os chats?')){jsSync(K.CHAT,{});toast('Chats limpos','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🗑️ Limpar todos os chats</button>
+      <button onclick="if(confirm('Resetar TODAS as figurinhas de TODOS os usuários?')){const u=getUsers().map(u=>{u.stickers={};return u;});jsSync(K.USERS,u);toast('Figurinhas resetadas','var(--red)');}" style="padding:10px;border-radius:8px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.25);color:#ef9a9a;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">🔄 Resetar figurinhas de todos</button>
       <button onclick="if(confirm('Exportar todos os dados como JSON?')){const d={users:getUsers(),market:getMarket(),matches:getMatches()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tomelin-backup-'+Date.now()+'.json';a.click();}" style="padding:10px;border-radius:8px;background:rgba(66,165,245,.1);border:1px solid rgba(66,165,245,.25);color:#90caf9;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1px;cursor:pointer;text-align:left;">📤 Exportar backup JSON</button>
     </div>
   `)}`;
@@ -5450,7 +5502,7 @@ function _admMembersNew(el){
       </div>
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-blue btn-xs" onclick="navTo(3);openChatWith('${u.phone}')">💬 Chat</button>
-        <button class="btn btn-xs" style="background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);" onclick="if(confirm('Remover ${esc(u.name)}?')){js(K.USERS,getUsers().filter(x=>x.phone!=='${u.phone}'));js(K.MARKET,getMarket().filter(m=>m.owner!=='${u.phone}'));renderAdmin();toast('Removido','#ef9a9a');}">🗑️</button>
+        <button class="btn btn-xs" style="background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);" onclick="if(confirm('Remover ${esc(u.name)}?')){jsSync(K.USERS,getUsers().filter(x=>x.phone!=='${u.phone}'));jsSync(K.MARKET,getMarket().filter(m=>m.owner!=='${u.phone}'));renderAdmin();toast('Removido','#ef9a9a');}">🗑️</button>
         <span style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;${didJoin?'color:var(--wa);':'color:#ef9a9a;'}">
           ${didJoin?'✅ No grupo WA':'❌ Não entrou no WA'}
         </span>
@@ -5480,7 +5532,7 @@ function _admMarket(el){
       </div>
       ${m.obs?`<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px;">${esc(m.obs)}</div>`:''}
       <div style="margin-top:7px;">
-        <button class="btn btn-xs" style="background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);" onclick="js(K.MARKET,getMarket().filter(x=>String(x.id)!=='${m.id}'));renderAdmin();toast('Removido','#ef9a9a');">🗑️ Remover</button>
+        <button class="btn btn-xs" style="background:rgba(229,57,53,.14);color:#ef9a9a;border:1px solid rgba(229,57,53,.2);" onclick="jsSync(K.MARKET,getMarket().filter(x=>String(x.id)!=='${m.id}'));renderAdmin();toast('Removido','#ef9a9a');">🗑️ Remover</button>
       </div>`;
     el.appendChild(d);
   });
@@ -5568,8 +5620,8 @@ function _admActions(el){
   </div>`;
 }
 
-function _admBroadcast(){const msg=prompt('Mensagem para todos:');if(!msg)return;const users=getUsers(),ns=getNotifs();users.forEach(u=>ns.unshift({type:'broadcast',ico:'📢',text:'📢 <strong>Admin Tomelin:</strong> '+esc(msg),for:u.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()}));js(K.NOTIFS,ns.slice(0,300));toast('📢 Enviado para '+users.length+' membros!','var(--gold)');}
-function _admClearAds(){const cutoff=Date.now()-7*86400000;const old=getMarket().filter(m=>m.ts<cutoff).length;js(K.MARKET,getMarket().filter(m=>m.ts>=cutoff));renderAdmin();toast('🗑️ '+old+' anúncios removidos.','#ef9a9a');}
+function _admBroadcast(){const msg=prompt('Mensagem para todos:');if(!msg)return;const users=getUsers(),ns=getNotifs();users.forEach(u=>ns.unshift({type:'broadcast',ico:'📢',text:'📢 <strong>Admin Tomelin:</strong> '+esc(msg),for:u.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()}));jsSync(K.NOTIFS,ns.slice(0,300));toast('📢 Enviado para '+users.length+' membros!','var(--gold)');}
+function _admClearAds(){const cutoff=Date.now()-7*86400000;const old=getMarket().filter(m=>m.ts<cutoff).length;jsSync(K.MARKET,getMarket().filter(m=>m.ts>=cutoff));renderAdmin();toast('🗑️ '+old+' anúncios removidos.','#ef9a9a');}
 function _admExport(){const data={users:getUsers(),market:getMarket(),chats:getChats(),bets:jg('t26_bets')||[],waJoined:Array.from(getJoined()),exportDate:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='tomelin-'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.json';a.click();URL.revokeObjectURL(url);}
 
 // 🤖 MOTOR DE MENSAGENS INTELIGENTES
