@@ -2864,7 +2864,7 @@ function scheduleSyncToRailway(){
     if(!me) return;
     const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
     try{
-      await fetch(rUrl+'/api/auth/sync',{
+      await fetch(rUrl+'/api/users/{phone}/stickers',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({phone:me.phone,passHash:me.passHash,stickers:me.stickers||{}}),
         signal:AbortSignal.timeout(8000)
@@ -3833,7 +3833,7 @@ async function syncWithRailway(){
   const market = getMarket();
   try {
     // Sync usuários (Railway vai cruzar figurinhas e notificar)
-    await fetch(`${RAILWAY_URL}/api/sync-users`,{
+    await fetch(`${RAILWAY_URL}/api/state`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({users}),
@@ -3884,10 +3884,10 @@ async function _afterMarketPublish(ownerPhone, codes){
   const railwayUrl = sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
   try {
     if(railwayUrl){
-      await fetch(railwayUrl+'/api/sync-market',{
-        method:'POST',
+      await fetch(railwayUrl+'/api/market',{
+        method:'PUT',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({items:getMarket(),ownerPhone}),
+        body:JSON.stringify({market:getMarket()}),
         signal:AbortSignal.timeout(8000)
       });
     } else {

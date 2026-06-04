@@ -356,22 +356,21 @@ app.post('/api/new-user', async (req, res) => {
   }
 
   const r = await sendGroup(msg);
-  if (r.ok || r.messageId || r.zaapId) DB.cronStats.enviados++;
+  if (r.ok || r.messageId || r.zaapId) cronStats.enviados++;
   // Garante que ok está presente na resposta
   res.json({ ...r, ok: !!(r.ok || r.messageId || r.zaapId) });
 });
 
 // Health check
 app.get('/health', (_, res) => res.json({
-  status: 'online',
-    postgres: !!process.env.DATABASE_URL,
-    db_users: db ? db.users.count() : 0,
-  uptime: Math.floor(process.uptime()),
-  users: DB.users.length,
-  market: DB.market.length,
-  monitor: monitorActive,
-  cronStats: DB.cronStats,
-  ts: new Date().toISOString(),
+  status:   'online',
+  postgres: !!process.env.DATABASE_URL,
+  db_users: db.users.count(),
+  users:    db.users.count(),
+  market:   db.market.all().length,
+  uptime:   Math.floor(process.uptime()),
+  monitor:  monitorAtivo,
+  ts:       new Date().toISOString(),
 }));
 
 // Status Z-API
@@ -394,7 +393,7 @@ app.post('/api/send-group', async (req, res) => {
     else msg = getRandom(CURIOSIDADES);
   }
   const r = await sendGroup(msg);
-  if (r.ok || r.messageId || r.zaapId) DB.cronStats.enviados++;
+  if (r.ok || r.messageId || r.zaapId) cronStats.enviados++;
   // Garante que ok está presente na resposta
   res.json({ ...r, ok: !!(r.ok || r.messageId || r.zaapId) });
 });
@@ -440,9 +439,10 @@ app.post('/api/notify-sticker', async (req, res) => {
 
 // Sync usuários do app (o app envia o estado dos usuários)
 app.post('/api/sync-users', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const { users } = req.body;
   if (!Array.isArray(users)) return res.status(400).json({ error: 'Campo users deve ser um array' });
-  const before = DB.users.length;
+  const before = db.users.count();
 
   // Detectar novos usuários ou stickers alterados
   for (const u of users) {
@@ -470,7 +470,7 @@ app.post('/api/sync-users', async (req, res) => {
     if (!DB.users.find(x => x.phone === u.phone)) DB.users.push(u);
   }
 
-  res.json({ ok: true, before, after: DB.users.length });
+  res.json({ ok: true, before, after: db.users.count() });
 });
 
 // Sync mercado (quando alguém anuncia figurinha)
@@ -502,7 +502,7 @@ app.post('/api/sync-market', async (req, res) => {
     }
   }
 
-  res.json({ ok: true, items: DB.market.length });
+  res.json({ ok: true, items: db.market.all().length });
 });
 
 // Jogos ao vivo
@@ -535,10 +535,10 @@ app.post('/api/monitor', (req, res) => {
 
 // Listar estado
 app.get('/api/info', (_, res) => res.json({
-  users: DB.users.length,
-  market: DB.market.length,
+  users: db.users.count(),
+  market: db.market.all().length,
   monitorActive,
-  cronStats: DB.cronStats,
+  cronStats: cronStats,
   lastScores: Object.keys(DB.lastScores).length,
 }));
 
@@ -553,22 +553,22 @@ app.get('/dashboard', (_, res) => res.sendFile(pathMod.join(__dirname, 'dashboar
 cron.schedule('0 12 * * *', async () => {
   log('⏰', 'Cron: curiosidade diária');
   const r = await sendGroup(getRandom(CURIOSIDADES));
-  if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
-  DB.cronStats.lastRun = new Date().toISOString();
+  if (r.ok) cronStats.enviados++; else cronStats.erros++;
+  cronStats.lastRun = new Date().toISOString();
 }, { timezone: 'America/Sao_Paulo' });
 
 // 🎴 Lembrete figurinhas — terça e quinta às 11h BRT
 cron.schedule('0 11 * * 2,4', async () => {
   log('⏰', 'Cron: lembrete figurinhas');
   const r = await sendGroup(getRandom(MSGS_FIGURINHA));
-  if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
+  if (r.ok) cronStats.enviados++; else cronStats.erros++;
 }, { timezone: 'America/Sao_Paulo' });
 
 // 🔥 Hype fim de semana — sábado às 10h BRT
 cron.schedule('0 10 * * 6', async () => {
   log('⏰', 'Cron: hype fim de semana');
   const r = await sendGroup(getRandom(MSGS_HYPE));
-  if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
+  if (r.ok) cronStats.enviados++; else cronStats.erros++;
 }, { timezone: 'America/Sao_Paulo' });
 
 // 🇧🇷 Jogo do Brasil — 13, 19, 25 jun às 13h BRT
@@ -577,7 +577,7 @@ cron.schedule('0 10 * * 6', async () => {
   cron.schedule(`0 13 ${day} ${month} *`, async () => {
     log('🇧🇷', `Cron: Brasil joga hoje! (${day}/${month})`);
     const r = await sendGroup(getRandom(MSGS_BRASIL));
-    if (r.ok) DB.cronStats.enviados++; else DB.cronStats.erros++;
+    if (r.ok) cronStats.enviados++; else cronStats.erros++;
   }, { timezone: 'America/Sao_Paulo' });
 });
 
@@ -628,6 +628,13 @@ app.get('/s/:code', (req, res) => {
   db.links.hit(req.params.code);
   res.redirect(302, link.url);
 });
+cron.schedule('0 * * * *', () => {
+  db.newsSent.clean();
+  // Limpa usuarios online inativos > 2min
+  db.online.get();
+  log('🧹', 'Limpeza horária: newsSent + online');
+});
+
 // ── Startup verification ─────────────────────────────────────
 try {
   const testUser = db.users.upsert('_startup_test', {name:'test',passHash:'test',avatar:'⚽',stickers:{},ts:Date.now()});
@@ -1051,15 +1058,15 @@ async function rpaNewsLoop() {
       _lastRpaSend = Date.now();
       // newsSent saved automatically by db; // persiste em disco
       log('✅', `RPA: notícia #${newsRpaCount} enviada`);
-      DB.cronStats.enviados++;
+      cronStats.enviados++;
     } else {
       log('❌', `RPA: falha — ${JSON.stringify(r).substring(0,100)}`);
-      DB.cronStats.erros++;
+      cronStats.erros++;
     }
 
   } catch (e) {
     log('❌', `RPA news erro: ${e.message}`);
-    DB.cronStats.erros++;
+    cronStats.erros++;
   }
 }
 
@@ -1178,7 +1185,7 @@ async function sendInviteMsg(idx) {
   if (r.ok) {
     _lastInvite = Date.now();
     log('📣', 'Mensagem de convite enviada #' + idx);
-    DB.cronStats.enviados++;
+    cronStats.enviados++;
   }
   return r;
 }
@@ -1217,50 +1224,8 @@ loadUsers();
 // /api/auth/register handled by api.js
 ;
 
-// ── POST /api/auth/login ─────────────────────────────────────
-// Verifica credenciais e retorna dados do usuário
-app.post('/api/auth/login', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { phone, passHash } = req.body;
-  if (!phone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
+// ── /api/auth/* → Handled entirely by api.js router ──────────
 
-  const cleanPhone = phone.replace(/\D/g, '');
-  const user = DB_USERS.find(u =>
-    u.phone.replace(/\D/g, '') === cleanPhone ||
-    u.phone === cleanPhone
-  );
-
-  if (!user) return res.json({ ok: false, error: 'Usuário não encontrado' });
-  if (user.passHash !== passHash) return res.json({ ok: false, error: 'Senha incorreta' });
-
-  log('👤', `Login: ${user.name} (${phone})`);
-  res.json({ ok: true, user: sanitizeUser(user) });
-});
-
-// ── POST /api/auth/sync ──────────────────────────────────────
-// Sincroniza figurinhas do dispositivo para o servidor
-app.post('/api/auth/sync', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { phone, passHash, stickers } = req.body;
-  if (!phone || !passHash) return res.json({ ok: false, error: 'auth required' });
-
-  const user = DB_USERS.find(u => u.phone.replace(/\D/g,'') === phone.replace(/\D/g,'') && u.passHash === passHash);
-  if (!user) return res.json({ ok: false, error: 'Credenciais inválidas' });
-
-  if (stickers) user.stickers = stickers;
-  user.lastSync = Date.now();
-  saveUsers();
-  res.json({ ok: true, user: sanitizeUser(user) });
-});
-
-// ── GET /api/auth/user/:phone ────────────────────────────────
-app.get('/api/auth/user/:phone', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const cleanPhone = req.params.phone.replace(/\D/g, '');
-  const user = DB_USERS.find(u => u.phone.replace(/\D/g,'') === cleanPhone);
-  if (!user) return res.json({ ok: false, error: 'Não encontrado' });
-  res.json({ ok: true, user: sanitizeUser(user) });
-});
 
 function sanitizeUser(u) {
   // Nunca enviar passHash para o cliente
