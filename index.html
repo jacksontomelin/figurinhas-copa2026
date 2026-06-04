@@ -629,30 +629,45 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()
 
 // ── Dados do Railway para a landing ──────────────────────────
 var _landUsers=[], _landMkt=[], _landOnline={}, _landMatches=[];
-(function loadLandStats(){
-  fetch('https://figurinhas-copa2026-production.up.railway.app/api/state',{signal:AbortSignal.timeout(6000)})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    if(!d.ok) return;
-    _landUsers  = d.users   || [];
-    _landMkt    = d.market  || [];
-    _landOnline = d.online  || {};
-    _landMatches= d.matches || [];
-    // ── Atualiza stats na landing ──────────────
-    var now = Date.now();
-    var onN = _landUsers.filter(function(u){
-      return _landOnline[u.phone] && now - _landOnline[u.phone] < 90000;
-    }).length;
-    var totalFigs = _landUsers.reduce(function(acc,u){
-      return acc + Object.values(u.stickers||{}).reduce(function(s,v){return s+(v>=1?1:0);},0);
-    }, 0);
-    var el;
-    el = document.getElementById('st-members');  if(el) el.textContent = _landUsers.length || '—';
-    el = document.getElementById('st-online');   if(el) el.textContent = onN || '—';
-    el = document.getElementById('st-ads');      if(el) el.textContent = totalFigs ? totalFigs.toLocaleString('pt-BR') : '—';
-    el = document.getElementById('st-matches');  if(el) el.textContent = _landMatches.filter(function(m){return m.status!=='cancelled';}).length || '—';
-  }).catch(function(){});
-})();
+
+function _updateLandStats(){
+  var now=Date.now();
+  var onN=_landUsers.filter(function(u){
+    return _landOnline[u.phone]&&now-_landOnline[u.phone]<90000;
+  }).length;
+  var totalFigs=_landUsers.reduce(function(acc,u){
+    var st=u.stickers||{};
+    return acc+Object.keys(st).filter(function(k){return (st[k]||0)>=1;}).length;
+  },0);
+  var el;
+  el=document.getElementById('st-members'); if(el) el.textContent=_landUsers.length>0?_landUsers.length:'—';
+  el=document.getElementById('st-online');  if(el) el.textContent=_landUsers.length>0?(onN||'0'):'—';
+  el=document.getElementById('st-ads');     if(el) el.textContent=totalFigs>0?totalFigs.toLocaleString('pt-BR'):'—';
+  var ativos=_landMatches.filter(function(m){return m.status!=='cancelled';}).length;
+  el=document.getElementById('st-matches'); if(el) el.textContent=ativos||'0';
+}
+
+function _fetchLandStats(tries){
+  tries=tries||0;
+  var ctrl=typeof AbortController!=='undefined'?new AbortController():null;
+  var tmr=ctrl?setTimeout(function(){ctrl.abort();},12000):null;
+  fetch('https://figurinhas-copa2026-production.up.railway.app/api/state', ctrl?{signal:ctrl.signal}:{})
+    .then(function(r){clearTimeout(tmr);return r.json();})
+    .then(function(d){
+      if(!d||!d.ok){if(tries<3)setTimeout(function(){_fetchLandStats(tries+1);},(tries+1)*5000);return;}
+      _landUsers  =d.users  ||[];
+      _landMkt    =d.market ||[];
+      _landOnline =d.online ||{};
+      _landMatches=d.matches||[];
+      _updateLandStats();
+    })
+    .catch(function(){
+      clearTimeout(tmr);
+      if(tries<3)setTimeout(function(){_fetchLandStats(tries+1);},(tries+1)*5000);
+    });
+}
+_fetchLandStats(0);
+setInterval(function(){_fetchLandStats(0);},60000);
 function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
 // Renderiza os itens de notícia no grid
 function renderNewsGrid(items){

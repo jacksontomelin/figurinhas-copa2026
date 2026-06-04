@@ -362,17 +362,16 @@ router.get('/online', (req, res) => {
 // GET /api/state — carrega tudo (usado ao abrir o app)
 router.get('/state', (req, res) => {
   cors(res);
-  const state = db.state.get();
   res.json({
-    ok: true,
+    ok:      true,
     users:   db.users.all().map(safe),
-    market:  state.market  || [],
-    chat:    state.chat    || {},
-    matches: state.matches || [],
-    notifs:  state.notifs  || {},
-    online:  state.online  || {},
+    market:  db.market.all ? db.market.all() : [],
+    chat:    db.chat   ? db.chat.get()    : {},
+    matches: db.matches ? db.matches.all() : [],
+    notifs:  db.notifs  ? db.notifs.get()  : {},
+    online:  db.online.get(),
     news:    db.news.get() || [],
-    ts:      state.ts
+    ts:      Date.now()
   });
 });
 
