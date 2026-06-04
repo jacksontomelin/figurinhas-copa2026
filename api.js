@@ -36,7 +36,7 @@ async function zapiSend(phone, message) {
   }
 }
 
-async function sendWelcomeWA(phone, name, passHash, plainPass) {
+async function sendWelcomeWA(phone, name, passHash, plainPass, cidade) {
   const firstName = (name||'').split(' ')[0];
   // Mostra a senha real mascarada (ex: mi**** para "minha123")
   // Se não tiver a senha real, mostra aviso de usar a que cadastrou
@@ -111,14 +111,14 @@ router.options('*', (req, res) => { cors(res); res.sendStatus(200); });
 // POST /api/auth/register
 router.post('/auth/register', async (req, res) => {
   cors(res);
-  const { phone: rawPhone, name, passHash, plainPass, avatar, stickers, ts } = req.body;
+  const { phone: rawPhone, name, passHash, plainPass, avatar, cidade, stickers, ts } = req.body;
   if (!rawPhone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
   const phone = String(rawPhone).replace(/\D/g, '');
   if (!phone) return res.json({ ok: false, error: 'Telefone inválido' });
 
   const existing = db.users.find(phone);
   // Salva no banco SEM a senha em texto (só o hash)
-  const user = db.users.upsert(phone, { name: name||phone, passHash, avatar: avatar||'⚽', stickers: stickers||{}, ts: ts||Date.now() });
+  const user = db.users.upsert(phone, { name: name||phone, passHash, avatar: avatar||'⚽', cidade: cidade||'SC', stickers: stickers||{}, ts: ts||Date.now() });
 
   res.json({ ok: true, action: existing ? 'updated' : 'created', user: safe(user) });
 
@@ -126,7 +126,7 @@ router.post('/auth/register', async (req, res) => {
   if (!existing) {
     // Usa plainPass se disponível (senha real), senão mascara o hash
     const passForWA = plainPass || null;
-    setImmediate(() => sendWelcomeWA(phone, name, passHash, passForWA).catch(e => console.error('[WA]', e.message)));
+    setImmediate(() => sendWelcomeWA(phone, name, passHash, passForWA, cidade).catch(e => console.error('[WA]', e.message)));
   }
 });
 

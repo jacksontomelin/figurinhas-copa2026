@@ -2372,6 +2372,44 @@ async function doLogin(){
     if(btn){btn.disabled=false;btn.textContent='▶ Entrar';}
   }
 }
+
+// ── Autocomplete de cidades ───────────────────────────────────
+let _cidadeSelected = '';
+
+function _filterCidades(q){
+  const dd = document.getElementById('cidade-dropdown');
+  if(!dd) return;
+  const query = (q||'').toLowerCase().trim();
+  if(!query){ dd.style.display='none'; _cidadeSelected=''; return; }
+
+  const matches = TODAS_CIDADES.filter(c =>
+    c.city.toLowerCase().includes(query) ||
+    c.region.toLowerCase().includes(query)
+  ).slice(0, 12);
+
+  if(!matches.length){ dd.style.display='none'; return; }
+
+  dd.innerHTML = matches.map(c => `
+    <div onclick="_selectCidade('${c.city}','${c.region}')"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);
+        font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;
+        display:flex;justify-content:space-between;align-items:center;"
+      onmouseover="this.style.background='rgba(245,197,24,.12)'"
+      onmouseout="this.style.background='transparent'">
+      <span>📍 ${c.city}</span>
+      <span style="font-size:10px;color:var(--gray);font-weight:400;">${c.region}</span>
+    </div>`).join('');
+  dd.style.display = 'block';
+}
+
+function _selectCidade(city, region){
+  _cidadeSelected = city;
+  const inp = document.getElementById('r-cidade');
+  const dd = document.getElementById('cidade-dropdown');
+  if(inp) inp.value = city + ' (' + region + ')';
+  if(dd) dd.style.display = 'none';
+}
+
 async function doRegister(){
   const name  = document.getElementById('r-name').value.trim();
   const phone = document.getElementById('r-phone').value.replace(/\D/g,'');
@@ -2382,6 +2420,15 @@ async function doRegister(){
   if(pass.length<4){document.getElementById('r-pass').classList.add('err');document.getElementById('e-rpass').classList.add('show');ok=false;}
   if(!ok) return;
 
+  // Valida cidade
+  const cidadeVal = _cidadeSelected || document.getElementById('r-cidade').value.split('(')[0].trim();
+  if(!cidadeVal){
+    document.getElementById('e-rcidade').classList.add('show');
+    document.getElementById('r-cidade').classList.add('err');
+    ok=false;
+  }
+  if(!ok) return;
+
   const btn = document.getElementById('btn-register');
   if(btn){btn.disabled=true;btn.textContent='🔄 Cadastrando...';}
 
@@ -2390,7 +2437,7 @@ async function doRegister(){
     const avatar = AVATARS[Math.floor(Math.random()*AVATARS.length)];
     const r = await fetch(rUrl+'/api/auth/register',{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({phone, name, passHash:hash(pass), plainPass:pass, avatar, stickers:{}, ts:Date.now()}),
+      body: JSON.stringify({phone, name, passHash:hash(pass), plainPass:pass, avatar, cidade:cidadeVal, stickers:{}, ts:Date.now()}),
       signal: AbortSignal.timeout(12000)
     });
     const d = await r.json().catch(()=>({}));
@@ -2451,7 +2498,7 @@ function enterApp(u){
   document.getElementById('scr-app').classList.add('on');
   document.getElementById('bnav').classList.add('on');
   document.getElementById('pb-name').textContent=u.name.split(' ')[0]+' '+u.name.split(' ').slice(-1)[0];
-  document.getElementById('pb-sub').textContent='🟢 Online agora';
+  document.getElementById('pb-sub').textContent='🟢 Online agora' + (u.cidade ? ' · 📍 ' + u.cidade : '');
   // Online badge update
   setTimeout(()=>{ if(typeof updateBadges==="function") updateBadges(); }, 200);
   // WA reminder (after short delay so screen loads first)
@@ -2914,6 +2961,37 @@ function removeAd(id){
 // ═══════════════════════════════════════════════════
 // TRADES — sugestões inteligentes
 // ═══════════════════════════════════════════════════
+
+// ── Filtro de cidade nas trocas ───────────────────────────────
+let _tradeCityFilter = '';
+
+
+function _renderTradeCity(){
+  // Re-aplica filtro de cidade nas seções de trocas
+  const onlineSec = document.getElementById('online-section');
+  const matchSec  = document.getElementById('match-section');
+  const rankSec   = document.getElementById('rank-section');
+  // Trigger full re-render of trades
+  renderTrades().catch(()=>{});
+}
+
+function _setTradeCity(city, btn){
+  _tradeCityFilter = city;
+  document.querySelectorAll('[data-cidade]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const info = document.getElementById('city-filter-info');
+  if(info) info.textContent = city ? '📍 Mostrando apenas membros de ' + city : '';
+  // Re-render sections with filter
+  _renderTradeCity();
+}
+
+function _tradeFilteredUsers(){
+  const me = getCurrentUser();
+  const all = getUsers().filter(u => u.phone !== (me&&me.phone));
+  if(!_tradeCityFilter) return all;
+  return all.filter(u => u.cidade === _tradeCityFilter);
+}
+
 async function renderTrades(){
   const me=getCurrentUser(); if(!me)return;
   // Recarrega dados do Railway se _USERS estiver vazio ou desatualizado
@@ -2925,7 +3003,7 @@ async function renderTrades(){
   const mySt=me.stickers||{};
   const myNeed=new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)===0).map(s=>s.id));
   const myDup =new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)>=2).map(s=>s.id));
-  const otherUsers=getUsers().filter(u=>u.phone!==me.phone);
+  const otherUsers=_tradeFilteredUsers ? _tradeFilteredUsers() : getUsers().filter(u=>u.phone!==me.phone);
 
   document.getElementById('app-content').innerHTML=`
     <div class="card a-card">
@@ -2934,6 +3012,14 @@ async function renderTrades(){
         <div><div class="alert-ttl">Sugestões inteligentes de troca</div>
         Baseado nas suas figurinhas faltando e repetidas!</div>
       </div>
+      <!-- Filtro por cidade -->
+      <div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;">
+        <button class="sell-filter-btn active" data-cidade="" onclick="_setTradeCity('',this)">🌎 Todas</button>
+        ${[...new Set(getUsers().map(u=>u.cidade).filter(Boolean))].sort().map(c=>
+          `<button class="sell-filter-btn" data-cidade="${esc(c)}" onclick="_setTradeCity('${esc(c)}',this)">📍 ${esc(c)}</button>`
+        ).join('')}
+      </div>
+      <div id="city-filter-info" style="font-size:11px;color:var(--gray);margin-bottom:8px;"></div>
       <div class="div" style="margin:0 0 10px;"></div>
       <!-- Online agora -->
       <div class="sec-lbl">🟢 Membros online agora</div>
@@ -2989,6 +3075,7 @@ async function renderTrades(){
       <div class="rank-av">${u.avatar||'⚽'}</div>
       <div class="rank-info">
         <div class="rank-name">${esc(u.name)}${isMe?' (você)':''}</div>
+              ${u.cidade?`<div class="rank-sub" style="color:var(--gold);font-size:9px;">📍 ${esc(u.cidade)}</div>`:''}
         <div class="rank-sub">${u.count} figurinhas · ${u.pct}%</div>
       </div>
       <div class="rank-pct">${u.pct}%</div>`;
@@ -3023,6 +3110,7 @@ async function renderTrades(){
             </div>
             <div>
               <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;">${esc(u.name)}</div>
+              ${u.cidade?`<div style="font-size:10px;color:var(--gold);">📍 ${esc(u.cidade)}</div>`:''}
               <div style="font-size:10px;color:var(--gray);">🤝 ${m.score} figurinha(s) compatíveis ${online?'· 🟢 Online':''}</div>
             </div>
           </div>
@@ -5397,7 +5485,22 @@ function copaTab(i,btn){
 // ═══════════════════════════════════════════════════
 // 🔐 PAINEL ADMINISTRATIVO COMPLETO
 // ═══════════════════════════════════════════════════
-const ADMIN_PHONE = '47999357131'; // troque pelo seu número sem formatação
+const ADMIN_PHONE = '47999357131';
+
+// ── Cidades de Santa Catarina ─────────────────────────────────
+const CIDADES_SC = {
+  "Vale do Itajaí":        ["Blumenau","Indaial","Pomerode","Gaspar","Timbó","Apiúna","Ascurra","Benedito Novo","Doutor Pedrinho","Ibirama","José Boiteux","Lontras","Presidente Getúlio","Rio dos Cedros","Rodeio","Witmarsum"],
+  "Litoral Norte":         ["Joinville","Jaraguá do Sul","São Bento do Sul","Campo Alegre","Corupá","Guaramirim","Itapoá","São Francisco do Sul","Schroeder"],
+  "Foz do Itajaí":         ["Itajaí","Balneário Camboriú","Camboriú","Brusque","Navegantes","Penha","Piçarras","Porto Belo","Tijucas","Bombinhas","Ilhota"],
+  "Grande Florianópolis":  ["Florianópolis","São José","Palhoça","Biguaçu","Santo Amaro da Imperatriz","Governador Celso Ramos","Antônio Carlos","Rancho Queimado","Angelina"],
+  "Sul Catarinense":       ["Criciúma","Tubarão","Araranguá","Içara","Laguna","Imbituba","Orleans","Braço do Norte","São Luís","Urussanga","Sombrio"],
+  "Planalto/Serrano":      ["Lages","Curitibanos","Canoinhas","Mafra","Porto União","São Joaquim","Campos Novos","Rio Negrinho","Correia Pinto"],
+  "Oeste":                 ["Chapecó","Cascavel","Concórdia","Xanxerê","Joaçaba","Videira","Caçador","Maravilha","Pinhalzinho","São Miguel do Oeste"],
+  "Alto Vale":             ["Rio do Sul","Ituporanga","Taió","Agrolândia","Palmitos","Trombudo Central","Laurentino","Pouso Redondo"]
+};
+// Flat list para busca
+const TODAS_CIDADES = Object.entries(CIDADES_SC).flatMap(([r,cs]) => cs.map(c => ({city:c,region:r})));
+ // troque pelo seu número sem formatação
 
 function renderAdmin(){
   const el=document.getElementById('app-content'); if(!el)return;
