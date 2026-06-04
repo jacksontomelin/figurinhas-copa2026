@@ -2214,15 +2214,63 @@ function showForm(w){
   const fRec=document.getElementById('f-recover');
   if(fRec) fRec.style.display=w==='recover'?'block':'none';
 }
-function doLogin(){
+async function doLogin(){
   const phone=document.getElementById('a-phone').value.replace(/\D/g,'');
   const pass=document.getElementById('a-pass').value;
   ['a-phone','a-pass'].forEach(id=>document.getElementById(id).classList.remove('err'));
   ['e-aphone','e-apass'].forEach(id=>document.getElementById(id).classList.remove('show'));
-  const u=getUserByPhone(phone);
-  if(!u){document.getElementById('a-phone').classList.add('err');document.getElementById('e-aphone').classList.add('show');return;}
-  if(u.passHash!==hash(pass)){document.getElementById('a-pass').classList.add('err');document.getElementById('e-apass').classList.add('show');return;}
-  js(K.SESSION,{phone}); pingOnline(); enterApp(u);
+
+  // 1ª tentativa: localStorage (rápido, offline)
+  const localUser=getUserByPhone(phone);
+  if(localUser){
+    if(localUser.passHash!==hash(pass)){
+      document.getElementById('a-pass').classList.add('err');
+      document.getElementById('e-apass').classList.add('show');
+      return;
+    }
+    js(K.SESSION,{phone}); pingOnline(); enterApp(localUser);
+    return;
+  }
+
+  // 2ª tentativa: Railway (outro celular, dados não sincronizados localmente)
+  const btnLogin=document.getElementById('btn-login');
+  if(btnLogin){btnLogin.disabled=true;btnLogin.textContent='🔄 Verificando...';}
+  try{
+    const rUrl=(localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    const r=await fetch(rUrl+'/api/auth/login',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone,passHash:hash(pass)}),
+      signal:AbortSignal.timeout(10000)
+    });
+    const d=await r.json().catch(()=>({}));
+    if(d.ok&&d.user){
+      // Importa usuário do Railway para localStorage
+      const users=getUsers();
+      const existing=users.findIndex(u=>u.phone===d.user.phone);
+      const merged={...d.user,passHash:hash(pass)}; // reinsere passHash local
+      if(existing>=0) users[existing]=merged;
+      else users.push(merged);
+      js(K.USERS,users);
+      js(K.SESSION,{phone});
+      pingOnline();
+      enterApp(merged);
+      toast('✅ Login sincronizado do servidor!','#a5d6a7');
+    } else if(d.error==='Senha incorreta'){
+      document.getElementById('a-pass').classList.add('err');
+      document.getElementById('e-apass').classList.add('show');
+    } else {
+      // Não existe nem no Railway
+      document.getElementById('a-phone').classList.add('err');
+      document.getElementById('e-aphone').classList.add('show');
+    }
+  } catch(e){
+    // Railway offline — só mostra erro de usuário não encontrado
+    document.getElementById('a-phone').classList.add('err');
+    document.getElementById('e-aphone').classList.add('show');
+    toast('⚠️ Servidor offline. Tente mais tarde.','#ef9a9a');
+  } finally{
+    if(btnLogin){btnLogin.disabled=false;btnLogin.textContent='▶ Entrar';}
+  }
 }
 function doRegister(){
   const name=document.getElementById('r-name').value.trim();
@@ -2592,6 +2640,25 @@ function refreshFigs(){
 
 
 
+
+// Sincroniza figurinhas com Railway (debounced 5s)
+let _syncTimer = null;
+function scheduleSyncToRailway(){
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async ()=>{
+    const me = getCurrentUser();
+    if(!me) return;
+    const rUrl = (localStorage.getItem('t26_railway_url')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    try{
+      await fetch(rUrl+'/api/auth/sync',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({phone:me.phone,passHash:me.passHash,stickers:me.stickers||{}}),
+        signal:AbortSignal.timeout(8000)
+      });
+    }catch(e){}
+  }, 5000);
+}
+
 function cycleFig(id){
   const u=getCurrentUser(); if(!u)return;
   const st={...u.stickers||{}};
@@ -2607,6 +2674,7 @@ function cycleFig(id){
 
   toast(id+' → '+label, color);
   refreshFigs();
+  scheduleSyncToRailway(); // sincroniza com Railway em background
   if(next===2) setTimeout(()=>toast('Repetida! Anuncie para troca? 🏷️','var(--gold)'),2000);
 }
 

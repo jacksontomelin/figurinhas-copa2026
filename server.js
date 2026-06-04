@@ -1269,6 +1269,110 @@ async function sendInviteMsg(idx) {
 }
 
 // ── Endpoint: POST /api/invite ───────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════
+// 👤 AUTENTICAÇÃO CROSS-DEVICE — salva e verifica no Railway
+// Permite que o mesmo usuário faça login em qualquer celular
+// ═══════════════════════════════════════════════════════════════
+
+// DB de usuários persistente
+const USERS_FILE = pathMod.join(__dirname, 'data', 'users.json');
+let DB_USERS = []; // { phone, name, passHash, avatar, stickers, ts }
+
+function loadUsers() {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      DB_USERS = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+      log('👤', `Usuários carregados: ${DB_USERS.length}`);
+    }
+  } catch(e) { log('⚠️', 'loadUsers: ' + e.message); }
+}
+
+function saveUsers() {
+  try {
+    fs.mkdirSync(pathMod.dirname(USERS_FILE), { recursive: true });
+    fs.writeFileSync(USERS_FILE, JSON.stringify(DB_USERS, null, 2));
+  } catch(e) { log('⚠️', 'saveUsers: ' + e.message); }
+}
+
+loadUsers();
+
+// ── POST /api/auth/register ──────────────────────────────────
+// Registra ou atualiza usuário no Railway
+app.post('/api/auth/register', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const { phone, name, passHash, avatar, ts } = req.body;
+  if (!phone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
+
+  const existing = DB_USERS.find(u => u.phone === phone);
+  if (existing) {
+    // Atualiza dados se necessário
+    if (name)     existing.name     = name;
+    if (avatar)   existing.avatar   = avatar;
+    if (passHash) existing.passHash = passHash;
+    saveUsers();
+    return res.json({ ok: true, action: 'updated', user: sanitizeUser(existing) });
+  }
+
+  const newUser = { phone, name: name||phone, passHash, avatar: avatar||'⚽', stickers: {}, ts: ts||Date.now() };
+  DB_USERS.push(newUser);
+  saveUsers();
+  log('👤', `Novo usuário registrado: ${name} (${phone})`);
+  res.json({ ok: true, action: 'created', user: sanitizeUser(newUser) });
+});
+
+// ── POST /api/auth/login ─────────────────────────────────────
+// Verifica credenciais e retorna dados do usuário
+app.post('/api/auth/login', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const { phone, passHash } = req.body;
+  if (!phone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
+
+  const cleanPhone = phone.replace(/\D/g, '');
+  const user = DB_USERS.find(u =>
+    u.phone.replace(/\D/g, '') === cleanPhone ||
+    u.phone === cleanPhone
+  );
+
+  if (!user) return res.json({ ok: false, error: 'Usuário não encontrado' });
+  if (user.passHash !== passHash) return res.json({ ok: false, error: 'Senha incorreta' });
+
+  log('👤', `Login: ${user.name} (${phone})`);
+  res.json({ ok: true, user: sanitizeUser(user) });
+});
+
+// ── POST /api/auth/sync ──────────────────────────────────────
+// Sincroniza figurinhas do dispositivo para o servidor
+app.post('/api/auth/sync', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const { phone, passHash, stickers } = req.body;
+  if (!phone || !passHash) return res.json({ ok: false, error: 'auth required' });
+
+  const user = DB_USERS.find(u => u.phone.replace(/\D/g,'') === phone.replace(/\D/g,'') && u.passHash === passHash);
+  if (!user) return res.json({ ok: false, error: 'Credenciais inválidas' });
+
+  if (stickers) user.stickers = stickers;
+  user.lastSync = Date.now();
+  saveUsers();
+  res.json({ ok: true, user: sanitizeUser(user) });
+});
+
+// ── GET /api/auth/user/:phone ────────────────────────────────
+app.get('/api/auth/user/:phone', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const cleanPhone = req.params.phone.replace(/\D/g, '');
+  const user = DB_USERS.find(u => u.phone.replace(/\D/g,'') === cleanPhone);
+  if (!user) return res.json({ ok: false, error: 'Não encontrado' });
+  res.json({ ok: true, user: sanitizeUser(user) });
+});
+
+function sanitizeUser(u) {
+  // Nunca enviar passHash para o cliente
+  const { passHash, ...safe } = u;
+  return safe;
+}
+
+
 app.post('/api/invite', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const { idx = 0 } = req.body || {};
