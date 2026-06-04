@@ -117,7 +117,7 @@ router.options('*', (req, res) => { cors(res); res.sendStatus(200); });
 // POST /api/auth/register
 router.post('/auth/register', async (req, res) => {
   cors(res);
-  const { phone: rawPhone, name, passHash, plainPass, avatar, cidade, stickers, ts } = req.body;
+  const { phone: rawPhone, name, passHash, plainPass, avatar, cidade, cidadesTraca, stickers, ts } = req.body;
   if (!rawPhone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
   const phone = String(rawPhone).replace(/\D/g, '');
   if (!phone) return res.json({ ok: false, error: 'Telefone inválido' });
@@ -128,7 +128,7 @@ router.post('/auth/register', async (req, res) => {
     return res.json({ ok: false, error: 'Número já cadastrado. Faça login ou use recuperação de senha.' });
   }
   // Salva no banco SEM a senha em texto (só o hash)
-  const user = db.users.upsert(phone, { name: name||phone, passHash, avatar: avatar||'⚽', cidade: cidade||'SC', stickers: stickers||{}, ts: ts||Date.now() });
+  const user = db.users.upsert(phone, { name: name||phone, passHash, avatar: avatar||'⚽', cidade: cidade||'SC', cidadesTraca: cidadesTraca||[cidade||'SC'], stickers: stickers||{}, ts: ts||Date.now() });
 
   res.json({ ok: true, action: existing ? 'updated' : 'created', user: safe(user) });
 

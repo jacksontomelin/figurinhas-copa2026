@@ -715,18 +715,25 @@ function recBack(){ window._recBack && window._recBack(); }
         <input type="password" id="r-pass" placeholder="••••••" autocomplete="new-password">
         <div class="emsg" id="e-rpass">Mínimo 4 caracteres.</div></div>
       <!-- Cidade -->
-      <div class="form-group">
-        <label class="form-label">📍 SUA CIDADE (SC)</label>
+      <div class="fg">
+        <label>📍 Sua cidade (SC)</label>
         <div style="position:relative;">
-          <input class="form-input" id="r-cidade" placeholder="Ex: Blumenau, Pomerode, Indaial..."
+          <input id="r-cidade" placeholder="Ex: Blumenau, Pomerode, Indaial..."
             autocomplete="off" oninput="_filterCidades(this.value)"
-            style="font-size:16px;letter-spacing:.3px;">
+            style="font-size:16px;">
           <div id="cidade-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;
-            background:#1a2744;border:1.5px solid rgba(245,197,24,.3);border-radius:10px;
-            max-height:180px;overflow-y:auto;z-index:999;margin-top:3px;
-            box-shadow:0 8px 24px rgba(0,0,0,.5);"></div>
+            background:#1a2744;border:1.5px solid rgba(245,197,24,.4);border-radius:10px;
+            max-height:200px;overflow-y:auto;z-index:999;margin-top:4px;
+            box-shadow:0 8px 32px rgba(0,0,0,.6);"></div>
         </div>
-        <div class="emsg" id="e-rcidade" style="display:none;">Selecione sua cidade</div>
+        <div class="emsg" id="e-rcidade">Selecione sua cidade</div>
+      </div>
+
+      <!-- Cidades p/ trocas -->
+      <div class="fg" id="r-cidades-troca-wrap" style="display:none;">
+        <label>🔄 Cidades onde quer trocar <span style="font-size:10px;color:var(--gray);">(opcional)</span></label>
+        <div id="r-cidades-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        <div style="font-size:10px;color:var(--gray);margin-top:5px;">Aparece nas sugestões de troca dessas cidades</div>
       </div>
       <button id="btn-register" class="btn btn-green btn-mt" onclick="doRegister()">✅ Criar conta e entrar no grupo</button>
       <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray);">
@@ -2433,8 +2440,41 @@ function _selectCidade(city, region){
   _cidadeSelected = city;
   const inp = document.getElementById('r-cidade');
   const dd = document.getElementById('cidade-dropdown');
-  if(inp) inp.value = city + ' (' + region + ')';
+  if(inp) inp.value = city;
   if(dd) dd.style.display = 'none';
+  // Mostra cidades vizinhas para participar nas trocas
+  _showCidadesTraco(city, region);
+}
+
+function _showCidadesTraco(city, region){
+  const wrap = document.getElementById('r-cidades-troca-wrap');
+  const chips = document.getElementById('r-cidades-chips');
+  if(!wrap || !chips) return;
+  // Pega cidades da mesma região (exceto a selecionada)
+  const regionCities = (CIDADES_SC[region]||[]).filter(c=>c!==city);
+  if(!regionCities.length){ wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  chips.innerHTML = regionCities.slice(0,8).map(c=>`
+    <button type="button" onclick="_toggleTradeCity('${c}',this)"
+      style="padding:6px 14px;border-radius:20px;background:rgba(255,255,255,.07);
+        border:1.5px solid rgba(255,255,255,.12);color:rgba(255,255,255,.7);
+        font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
+        cursor:pointer;touch-action:manipulation;">
+      📍 ${c}
+    </button>`).join('');
+  _cidadesTraca = new Set([city]); // começa com a cidade própria
+}
+
+let _cidadesTraca = new Set();
+
+function _toggleTradeCity(city, btn){
+  if(_cidadesTraca.has(city)){
+    _cidadesTraca.delete(city);
+    if(btn){ btn.style.background='rgba(255,255,255,.07)'; btn.style.borderColor='rgba(255,255,255,.12)'; btn.style.color='rgba(255,255,255,.7)'; }
+  } else {
+    _cidadesTraca.add(city);
+    if(btn){ btn.style.background='rgba(245,197,24,.15)'; btn.style.borderColor='rgba(245,197,24,.4)'; btn.style.color='var(--gold)'; }
+  }
 }
 
 async function doRegister(){
@@ -2489,7 +2529,7 @@ async function doRegister(){
     const avatar = AVATARS[Math.floor(Math.random()*AVATARS.length)];
     const r = await fetch(rUrl+'/api/auth/register',{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({phone, name, passHash:hash(pass), plainPass:pass, avatar, cidade:cidadeVal, stickers:{}, ts:Date.now()}),
+      body: JSON.stringify({phone, name, passHash:hash(pass), plainPass:pass, avatar, cidade:cidadeVal, cidadesTraca:[..._cidadesTraca], stickers:{}, ts:Date.now()}),
       signal: AbortSignal.timeout(15000)
     });
     const d = await r.json().catch(()=>null);
@@ -2570,7 +2610,8 @@ function enterApp(u){
   document.getElementById('scr-app').classList.add('on');
   document.getElementById('bnav').classList.add('on');
   document.getElementById('pb-name').textContent=u.name.split(' ')[0]+' '+u.name.split(' ').slice(-1)[0];
-  const _subTxt = '🟢 Online agora' + (u.cidade ? '  ·  📍 ' + u.cidade : '');
+  const _cidadesInfo = u.cidade ? ('  ·  📍 ' + u.cidade + (u.cidadesTraca&&u.cidadesTraca.length>1?' + '+(u.cidadesTraca.length-1)+' cidade(s)':'')) : '';
+  const _subTxt = '🟢 Online agora' + _cidadesInfo;
   document.getElementById('pb-sub').textContent=_subTxt;
   // Online badge update
   setTimeout(()=>{ if(typeof updateBadges==="function") updateBadges(); }, 200);
@@ -3064,7 +3105,12 @@ function _tradeFilteredUsers(){
   const me = getCurrentUser();
   const all = getUsers().filter(u => u.phone !== (me&&me.phone));
   if(!_tradeCityFilter) return all;
-  return all.filter(u => u.cidade === _tradeCityFilter);
+  // Filtra por cidade principal OU por cidades de interesse do usuário
+  return all.filter(u => {
+    if(u.cidade === _tradeCityFilter) return true;
+    if(u.cidadesTraca && u.cidadesTraca.includes(_tradeCityFilter)) return true;
+    return false;
+  });
 }
 
 async function renderTrades(){
@@ -3185,7 +3231,9 @@ async function renderTrades(){
             </div>
             <div>
               <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;">${esc(u.name)}</div>
-              ${u.cidade?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--gold);font-weight:600;">📍 ${esc(u.cidade)}</div>`:''}
+              ${u.cidade?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--gold);font-weight:600;">
+              📍 ${esc(u.cidade||'')}${(u.cidadesTraca&&u.cidadesTraca.length>1)?'<span style="font-size:10px;color:rgba(255,255,255,.5);"> + '+(u.cidadesTraca.length-1)+' cidade(s)</span>':''}
+            </div>`:''}
               <div style="font-size:10px;color:var(--gray);">🤝 ${m.score} figurinha(s) compatíveis ${online?'· 🟢 Online':''}</div>
             </div>
           </div>
