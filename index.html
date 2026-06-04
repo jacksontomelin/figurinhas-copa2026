@@ -640,7 +640,9 @@ function _updateLandStats(){
   }).length;
   var totalFigs=_landUsers.reduce(function(acc,u){
     var st=u.stickers||{};
-    return acc+Object.keys(st).filter(function(k){return (st[k]||0)>=1;}).length;
+    var cnt=0;
+    for(var k in st){if(Object.prototype.hasOwnProperty.call(st,k)&&(parseInt(st[k])||0)>=1)cnt++;}
+    return acc+cnt;
   },0);
   var ativos=_landMatches.filter(function(m){return m.status!=='cancelled';}).length;
   var el;

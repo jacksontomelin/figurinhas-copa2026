@@ -3038,10 +3038,14 @@ function cycleFig(id){
   refreshFigs();
   // Sincroniza figurinhas com Railway
   if(_SESSION){
+    // currentUser() reflete _USERS atualizado (não _SESSION.stickers que é stale)
+    const _freshU = getCurrentUser();
+    const _freshSt = _freshU ? (_freshU.stickers||{}) : {};
+    _SESSION.stickers = _freshSt; // mantém _SESSION em sincronia
     const rUrl=(sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
     fetch(rUrl+'/api/users/'+_SESSION.phone+'/stickers',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({stickers:(_SESSION.stickers||{})}),
+      body:JSON.stringify({stickers:_freshSt}),
       signal:AbortSignal.timeout(8000)
     }).catch(()=>{});
   }

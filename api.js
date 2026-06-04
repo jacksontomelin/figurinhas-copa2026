@@ -188,11 +188,14 @@ router.get('/users/:phone', (req, res) => {
 router.post('/users/:phone/stickers', (req, res) => {
   cors(res);
   const { stickers, passHash } = req.body;
+  if (!stickers || typeof stickers !== 'object') return res.json({ ok: false, error: 'Payload inválido' });
   const u = db.users.find(req.params.phone);
   if (!u) return res.json({ ok: false, error: 'Usuário não encontrado' });
   if (passHash && u.passHash !== passHash) return res.json({ ok: false, error: 'Não autorizado' });
-  db.users.updateStickers(req.params.phone, stickers || {});
-  res.json({ ok: true });
+  db.users.updateStickers(req.params.phone, stickers);
+  const cnt = Object.values(stickers).filter(v => Number(v) >= 1).length;
+  console.log('[STICKERS] ' + req.params.phone + ': ' + cnt + ' figurinhas');
+  res.json({ ok: true, count: cnt });
 });
 
 // DELETE /api/users/:phone
@@ -378,7 +381,21 @@ router.get('/state', (req, res) => {
 // POST /api/state — salva tudo (sync completo)
 router.post('/state', (req, res) => {
   cors(res);
-  db.state.set(req.body);
+  const body = req.body;
+  // Quando vem users: MERGE para preservar passHash
+  if (body.users && Array.isArray(body.users)) {
+    body.users.forEach(u => {
+      const existing = db.users.find(u.phone);
+      if (existing) {
+        db.users.upsert(u.phone, {
+          ...u,
+          passHash: existing.passHash, // nunca perde passHash
+        });
+      }
+    });
+    delete body.users;
+  }
+  if (Object.keys(body).length) db.state.set(body);
   res.json({ ok: true });
 });
 
