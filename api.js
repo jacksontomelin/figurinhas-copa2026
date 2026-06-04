@@ -382,16 +382,17 @@ router.get('/state', (req, res) => {
 router.post('/state', (req, res) => {
   cors(res);
   const body = req.body;
-  // Quando vem users: MERGE para preservar passHash
+  // Quando vem users: NUNCA toca passHash
+  // db.users.upsert faz { ...existingUser, ...newData }
+  // então se newData não tem passHash, o existente é mantido automaticamente
   if (body.users && Array.isArray(body.users)) {
-    body.users.forEach(u => {
-      const existing = db.users.find(u.phone);
+    body.users.forEach(incoming => {
+      const { passHash, _test, ...safeData } = incoming; // remove campos sensíveis
+      const existing = db.users.find(incoming.phone);
       if (existing) {
-        db.users.upsert(u.phone, {
-          ...u,
-          passHash: existing.passHash, // nunca perde passHash
-        });
+        db.users.upsert(incoming.phone, safeData); // spread preserva passHash existente
       }
+      // Se não existe: não cria (registro só via /auth/register)
     });
     delete body.users;
   }
@@ -487,6 +488,19 @@ router.get('/wa-test/:phone', async (req, res) => {
 
 
 // POST /api/state/reload — força reload do PostgreSQL (útil para debug)
+
+// ── Diagnóstico: lista usuários com passHash ausente ──────────────
+router.get('/admin/integrity', (req, res) => {
+  cors(res);
+  const users = db.users.all();
+  const broken = users.filter(u => !u.passHash).map(u => ({
+    phone: u.phone,
+    name: u.name,
+    hasStickers: Object.keys(u.stickers||{}).length > 0,
+  }));
+  res.json({ ok: true, total: users.length, broken: broken.length, users: broken });
+});
+
 router.post('/state/reload', async (req, res) => {
   cors(res);
   try {

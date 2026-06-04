@@ -64,7 +64,11 @@ async function loadFromPG() {
       }
     }
     const userCount = (_db.users||[]).length;
-    console.log(`[DB] ✅ PostgreSQL carregado: ${userCount} usuários`);
+    const broken = (_db.users||[]).filter(u => !u.passHash);
+    if (broken.length > 0) {
+      console.log(`[DB] ⚠️  ${broken.length} usuário(s) SEM passHash: ${broken.map(u=>u.phone).join(', ')}`);
+    }
+    console.log(`[DB] ✅ PostgreSQL carregado: ${userCount} usuários, ${broken.length} sem senha`);
     return true;
   } catch(e) {
     console.log('[DB] ⚠️ Erro ao carregar PostgreSQL:', e.message);

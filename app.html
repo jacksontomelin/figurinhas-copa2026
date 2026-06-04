@@ -2436,6 +2436,16 @@ async function doLogin(){
       await loadStateFromRailway();
       pingOnline();
       enterApp(_SESSION);
+    } else if(d.needsReset){
+      // passHash corrompida — leva direto para recuperação de senha
+      toast('⚠️ Senha não configurada. Redefina abaixo.','#ef9a9a');
+      const ph = document.getElementById('a-phone');
+      const recPhone = ph ? ph.value.trim().replace(/\D/g,'') : '';
+      showForm('rec');
+      setTimeout(()=>{
+        const rp = document.getElementById('r-phone');
+        if(rp && recPhone) rp.value = recPhone;
+      }, 100);
     } else if(d.error==='Senha incorreta'){
       document.getElementById('a-pass').classList.add('err');
       document.getElementById('e-apass').classList.add('show');
