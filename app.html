@@ -2402,10 +2402,8 @@ async function doRegister(){
     launchConfetti();
     toast('🎉 Conta criada! Bem-vindo(a)! 🎉','#22a04a');
 
-    // WA notifications
-    setTimeout(async()=>{ try{await sendConfirmationWA(name,phone,pass);}catch(e){} }, 800);
-    setTimeout(async()=>{ try{await notifyGroupNewUser(name,phone);}catch(e){} }, 2200);
-    setTimeout(()=>{trackWaClick&&trackWaClick();window.open('https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4','_blank');},4000);
+    // WA enviado pelo servidor em background (ver api.js → sendWelcomeWA)
+    toast('📱 Você receberá uma mensagem no WhatsApp!', 'var(--wa)');
 
   } catch(e){
     toast('⚠️ Erro ao cadastrar: '+e.message,'#ef9a9a');

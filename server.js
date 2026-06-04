@@ -305,24 +305,30 @@ async function checkStickerMatches(changedPhone) {
 }
 
 // ── MIDDLEWARES ───────────────────────────────────────────────
-app.use(require('express').json());
+app.use(require('express').json({ limit: '5mb' }));
 app.use(require('express').static(pathMod.join(__dirname)));
 // CORS global
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
-// ── ROTAS ─────────────────────────────────────────────────────
+// ── API REST (db.js + api.js) ─────────────────────────────────
+const { router: apiRouter } = require('./api');
+app.use('/api', apiRouter);
+
+// ── ROTAS LEGADAS ─────────────────────────────────────────────
 
 
 // Notificação de novo usuário cadastrado
 app.post('/api/new-user', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const { name, phone } = req.body;
   if (!name) return res.status(400).json({ error: 'Campo name obrigatório' });
+  log('👤', 'Novo usuário: ' + name + ' (' + (phone||'sem tel') + ')');
 
   const firstName = name.split(' ')[0];
   const templates = [

@@ -1,3 +1,63 @@
+
+// ── Z-API helpers (standalone, não depende de server.js) ──────
+const fetch_node = require('node-fetch');
+const ZAPI_BASE = 'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5';
+const ZAPI_CLI  = 'Ff0f0920827ca4987818cafa9ba0f97a7S';
+const ZAPI_GRP  = '120363409442378564-group';
+const APP_URL   = 'https://copa2026.familiatomelin.com.br';
+const GRP_LINK  = 'https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW';
+
+function sanitizePhone(p) {
+  const d = String(p).replace(/\D/g,'');
+  return d.startsWith('55') ? d : '55' + d;
+}
+
+async function zapiSend(phone, message) {
+  try {
+    const r = await fetch_node(ZAPI_BASE + '/send-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Client-Token': ZAPI_CLI },
+      body: JSON.stringify({ phone, message }),
+      timeout: 15000
+    });
+    const d = await r.json().catch(() => ({}));
+    return { ok: !!(d.messageId || d.zaapId), ...d };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function sendWelcomeWA(phone, name, passHash) {
+  const firstName = (name||'').split(' ')[0];
+  const masked    = (passHash||'').substring(0,3) + '****';
+  const cleanPhone = sanitizePhone(phone);
+
+  // Mensagem particular
+  const msgPrivada =
+    `🏆 *Olá, ${firstName}! Bem-vindo(a) à Família Tomelin!* 🎉\n\n` +
+    `Seu cadastro no sistema de figurinhas da Copa 2026 foi confirmado!\n\n` +
+    `🔑 *Seus dados de acesso:*\n` +
+    `📱 Login: *${phone.replace(/\D/g,'')}*\n` +
+    `🔒 Senha: *${masked}*\n\n` +
+    `👉 *Acesse o sistema:*\n${APP_URL}\n\n` +
+    `📱 *Grupo WhatsApp:*\n${GRP_LINK}\n\n` +
+    `_Guarde esses dados! Família Tomelin · Copa 2026_ 🏆`;
+
+  const r1 = await zapiSend(cleanPhone, msgPrivada);
+  console.log('[WA] Particular ' + name + ':', r1.ok ? '✅' : '❌ ' + (r1.error||''));
+
+  // Mensagem no grupo
+  const msgGrupo =
+    `🎉 *NOVO MEMBRO NA FAMÍLIA TOMELIN!*\n\n` +
+    `👋 Bem-vindo(a), *${name}*! Agora é só marcar suas figurinhas e trocar! 🎴\n\n` +
+    `👉 ${APP_URL}\n_Família Tomelin · Copa 2026_ 🏆`;
+
+  const r2 = await zapiSend(ZAPI_GRP, msgGrupo);
+  console.log('[WA] Grupo:', r2.ok ? '✅' : '❌ ' + (r2.error||''));
+
+  return { particular: r1.ok, grupo: r2.ok };
+}
+
 'use strict';
 /**
  * API REST completa — Railway como fonte da verdade
@@ -20,12 +80,21 @@ router.options('*', (req, res) => { cors(res); res.sendStatus(200); });
 // ════════════════════════════════════════════════════════════
 
 // POST /api/auth/register
-router.post('/auth/register', (req, res) => {
+router.post('/auth/register', async (req, res) => {
   cors(res);
   const { phone, name, passHash, avatar, stickers, ts } = req.body;
   if (!phone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
+
+  const existing = db.users.find(phone);
   const user = db.users.upsert(phone, { name, passHash, avatar: avatar||'⚽', stickers: stickers||{}, ts: ts||Date.now() });
-  res.json({ ok: true, user: safe(user) });
+
+  // Responde imediatamente
+  res.json({ ok: true, action: existing ? 'updated' : 'created', user: safe(user) });
+
+  // Envia WA em background apenas para novos usuários
+  if (!existing) {
+    setImmediate(() => sendWelcomeWA(phone, name, passHash).catch(e => console.error('[WA]', e.message)));
+  }
 });
 
 // POST /api/auth/login
