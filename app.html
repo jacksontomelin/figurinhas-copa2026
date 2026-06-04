@@ -4499,8 +4499,8 @@ async function _doConfirmRecovery() {
     const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
     const newHash = await hash(pass1);
 
-    // ── Persiste nova senha no Railway (não apenas local) ──
-    const r = await fetch(rUrl + '/api/auth/register', {
+    // ── Persiste nova senha no Railway ──────────────────────
+    const r = await fetch(rUrl + '/api/auth/update-password', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ phone, passHash: newHash }),
       signal: AbortSignal.timeout(10000)

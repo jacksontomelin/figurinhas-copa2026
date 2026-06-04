@@ -492,4 +492,18 @@ router.post('/state/reload', async (req, res) => {
     res.json({ ok: false, error: e.message });
   }
 });
+
+// POST /api/auth/update-password — atualiza senha (recovery flow)
+router.post('/auth/update-password', async (req, res) => {
+  cors(res);
+  const { phone: rawPhone, passHash } = req.body;
+  if (!rawPhone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
+  const phone = String(rawPhone).replace(/\D/g, '');
+  const user = db.users.find(phone);
+  if (!user) return res.json({ ok: false, error: 'Usuário não encontrado' });
+  // Atualiza só o passHash
+  db.users.upsert(phone, { passHash });
+  console.log('[AUTH] Senha atualizada para:', phone);
+  res.json({ ok: true });
+});
 module.exports = { router, shortenUrl };
