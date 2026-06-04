@@ -5231,9 +5231,14 @@ function admTab(i){
       b.style.borderColor='rgba(255,255,255,.1)';b.style.background='transparent';b.style.color='rgba(255,255,255,.4)';
     }
   });
-  const ct=document.getElementById('admin-content');
-  if(!ct)return;
-  ct.innerHTML='';
+  // Espera o DOM do admin-content estar disponível
+  let ct = document.getElementById('admin-content');
+  if(!ct){
+    // Tenta novamente após microtask (renderAdmin pode estar setando innerHTML)
+    setTimeout(()=>{ admTab(i); }, 50);
+    return;
+  }
+  ct.innerHTML = '';
   try {
     if(i===0){
       // Usa _admMembersNew se disponível (mais completo), senão _admMembers
@@ -5495,6 +5500,7 @@ function _kpi(ico,lbl,val,color){
 
 
 function _admMembersNew(el){
+  if(!el){console&&console.warn('[Admin] _admMembersNew: el is null');return;}
   const users=getUsers();
   const joined=getJoined();
   if(!users.length){el.innerHTML='<div class="empty"><div class="empty-ico">👥</div>Nenhum membro.</div>';return;}
@@ -5583,6 +5589,7 @@ function _admChats(el){
 }
 
 function _admData(el){
+  if(!el){console&&console.warn('[Admin] _admData: el is null');return;}
   const users=getUsers();
   const wantCount={},dupCount={},teamCount={};
   users.forEach(u=>{
