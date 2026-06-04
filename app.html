@@ -2914,11 +2914,17 @@ function removeAd(id){
 // ═══════════════════════════════════════════════════
 // TRADES — sugestões inteligentes
 // ═══════════════════════════════════════════════════
-function renderTrades(){
+async function renderTrades(){
   const me=getCurrentUser(); if(!me)return;
+  // Recarrega dados do Railway se _USERS estiver vazio ou desatualizado
+  if(_USERS.length <= 1 || !_stateLoaded){
+    const ct = document.getElementById('app-content');
+    if(ct) ct.innerHTML='<div style="text-align:center;padding:40px;color:rgba(255,255,255,.5);">⏳ Carregando membros...</div>';
+    await loadStateFromRailway();
+  }
   const mySt=me.stickers||{};
   const myNeed=new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)===0).map(s=>s.id));
-  const myDup =new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)===2).map(s=>s.id));
+  const myDup =new Set(ALL_STICKERS.filter(s=>(mySt[s.id]||0)>=2).map(s=>s.id));
   const otherUsers=getUsers().filter(u=>u.phone!==me.phone);
 
   document.getElementById('app-content').innerHTML=`

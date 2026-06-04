@@ -316,6 +316,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Middleware: aguarda banco estar pronto ─────────────────────
+app.use((req, res, next) => {
+  if (db.isReady && db.isReady()) return next();
+  // Banco ainda carregando - espera até 5s
+  const t = setTimeout(() => next(), 5000);
+  db.waitReady().then(() => { clearTimeout(t); next(); }).catch(() => { clearTimeout(t); next(); });
+});
+
 // ── API REST (db.js + api.js) ─────────────────────────────────
 const { router: apiRouter } = require('./api');
 app.use('/api', apiRouter);

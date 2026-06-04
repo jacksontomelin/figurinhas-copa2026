@@ -459,4 +459,27 @@ router.get('/wa-test/:phone', async (req, res) => {
   res.json({ ok: r.ok, phone, error: r.error, messageId: r.messageId, raw: r });
 });
 
+
+// POST /api/state/reload — força reload do PostgreSQL (útil para debug)
+router.post('/state/reload', async (req, res) => {
+  cors(res);
+  try {
+    const count_before = db.users.all().length;
+    // Recarrega do PostgreSQL
+    const { Client } = require('pg');
+    if (process.env.DATABASE_URL) {
+      const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+      await client.connect();
+      const result = await client.query('SELECT key, value FROM app_state');
+      const raw = db.raw();
+      for (const row of result.rows) {
+        if (raw.hasOwnProperty(row.key)) raw[row.key] = row.value;
+      }
+      await client.end();
+    }
+    res.json({ ok: true, users: db.users.count(), before: count_before });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
 module.exports = { router, shortenUrl };

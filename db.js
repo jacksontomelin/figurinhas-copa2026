@@ -146,7 +146,13 @@ async function load() {
   }
 }
 
-load().catch(e => console.error('[DB] Init error:', e.message));
+let _isReady = false;
+const _readyPromise = load().then(() => { _isReady = true; }).catch(e => {
+  console.error('[DB] Init error:', e.message);
+  _isReady = true;
+});
+db.isReady   = () => _isReady;
+db.waitReady = () => _readyPromise;
 
 // ── API do banco ──────────────────────────────────────────────
 const db = {
