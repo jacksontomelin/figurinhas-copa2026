@@ -716,8 +716,9 @@ function recBack(){ window._recBack && window._recBack(); }
       <div class="form-group">
         <label class="form-label">📍 SUA CIDADE (SC)</label>
         <div style="position:relative;">
-          <input class="form-input" id="r-cidade" placeholder="Digite sua cidade em SC..."
-            autocomplete="off" oninput="_filterCidades(this.value)">
+          <input class="form-input" id="r-cidade" placeholder="Ex: Blumenau, Pomerode, Indaial..."
+            autocomplete="off" oninput="_filterCidades(this.value)"
+            style="font-size:16px;letter-spacing:.3px;">
           <div id="cidade-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;
             background:#1a2744;border:1.5px solid rgba(245,197,24,.3);border-radius:10px;
             max-height:180px;overflow-y:auto;z-index:999;margin-top:3px;
@@ -2404,13 +2405,13 @@ function _filterCidades(q){
 
   dd.innerHTML = matches.map(c => `
     <div onclick="_selectCidade('${c.city}','${c.region}')"
-      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);
-        font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;
-        display:flex;justify-content:space-between;align-items:center;"
-      onmouseover="this.style.background='rgba(245,197,24,.12)'"
+      style="padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.07);
+        display:flex;justify-content:space-between;align-items:center;
+        -webkit-tap-highlight-color:transparent;touch-action:manipulation;"
+      onmouseover="this.style.background='rgba(245,197,24,.15)'"
       onmouseout="this.style.background='transparent'">
-      <span>📍 ${c.city}</span>
-      <span style="font-size:10px;color:var(--gray);font-weight:400;">${c.region}</span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;color:#fff;">📍 ${c.city}</span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--gold);opacity:.7;">${c.region}</span>
     </div>`).join('');
   dd.style.display = 'block';
 }
@@ -3121,7 +3122,7 @@ async function renderTrades(){
       <div class="rank-av">${u.avatar||'⚽'}</div>
       <div class="rank-info">
         <div class="rank-name">${esc(u.name)}${isMe?' (você)':''}</div>
-              ${u.cidade?`<div class="rank-sub" style="color:var(--gold);font-size:9px;">📍 ${esc(u.cidade)}</div>`:''}
+              ${u.cidade?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--gold);font-weight:600;letter-spacing:.5px;">📍 ${esc(u.cidade)}</div>`:''}
         <div class="rank-sub">${u.count} figurinhas · ${u.pct}%</div>
       </div>
       <div class="rank-pct">${u.pct}%</div>`;
@@ -3156,7 +3157,7 @@ async function renderTrades(){
             </div>
             <div>
               <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:#fff;">${esc(u.name)}</div>
-              ${u.cidade?`<div style="font-size:10px;color:var(--gold);">📍 ${esc(u.cidade)}</div>`:''}
+              ${u.cidade?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--gold);font-weight:600;">📍 ${esc(u.cidade)}</div>`:''}
               <div style="font-size:10px;color:var(--gray);">🤝 ${m.score} figurinha(s) compatíveis ${online?'· 🟢 Online':''}</div>
             </div>
           </div>
@@ -4377,76 +4378,91 @@ async function _doSendRecovery() {
   const phoneRaw = (document.getElementById('rec-phone')||{}).value || '';
   const phone = phoneRaw.replace(/\D/g,'');
   const fb = document.getElementById('rec-feedback');
+  const btn = document.getElementById('rec-btn');
 
   if (phone.length < 10) {
     if(fb){ fb.textContent='⚠️ Digite seu telefone com DDD (ex: 47999357131)'; fb.style.color='#ef9a9a'; }
     return;
   }
 
-  // Verifica se o telefone está cadastrado
-  const users = getUsers();
-  const user  = users.find(u => u.phone.replace(/\D/g,'') === phone || ('55'+u.phone.replace(/\D/g,'')) === phone || u.phone.replace(/\D/g,'') === phone.replace(/^55/,''));
-  if (!user) {
-    if(fb){ fb.textContent='❌ Telefone não encontrado. Verifique ou cadastre-se.'; fb.style.color='#ef9a9a'; }
-    return;
-  }
-
-  if(fb){ fb.textContent='📤 Enviando código...'; fb.style.color='#90caf9'; }
-  const btn = document.getElementById('rec-btn');
+  if(fb){ fb.textContent='🔍 Verificando...'; fb.style.color='#90caf9'; }
   if(btn) btn.disabled = true;
 
-  // Gera código de 6 dígitos
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  _recCodes[phone] = { code, ts: Date.now(), phone: user.phone };
-
-  const msg = `🔐 *Família Tomelin — Recuperação de Senha*\n\n`
-    + `Seu código de verificação é:\n\n`
-    + `*${code}*\n\n`
-    + `⏳ Válido por 10 minutos.\n`
-    + `Se não foi você, ignore esta mensagem.\n\n`
-    + `_Família Tomelin · Copa 2026_ 🏆`;
-
-  const phoneZapi = phone.startsWith('55') ? phone : '55' + phone;
-  const rUrl = (sessionStorage.getItem('rly') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
-
-  let sent = false;
-  // Tenta Railway
   try {
-    const r = await fetch(rUrl + '/api/send', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ phone, message: msg }),
+    const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+
+    // ── Verifica no Railway (não usa _USERS local que pode estar vazio) ──
+    const checkRes = await fetch(rUrl + '/api/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone, passHash: '__check_only__' }),
       signal: AbortSignal.timeout(10000)
     });
-    const d = await r.json().catch(()=>({}));
-    if (d.ok || d.messageId || d.zaapId) sent = true;
-  } catch(e) {}
+    const checkData = await checkRes.json().catch(() => ({}));
 
-  // Fallback Z-API
-  if (!sent) {
+    // Login retorna 'Senha incorreta' se o usuário EXISTE mas senha errada
+    // Retorna 'Usuário não encontrado' se NÃO existe
+    const userExists = checkData.error === 'Senha incorreta' || checkData.ok;
+    if (!userExists) {
+      if(fb){ fb.textContent='❌ Telefone não encontrado. Verifique ou cadastre-se.'; fb.style.color='#ef9a9a'; }
+      if(btn) btn.disabled = false;
+      return;
+    }
+
+    if(fb){ fb.textContent='📤 Enviando código...'; fb.style.color='#90caf9'; }
+
+    // ── Gera código de 6 dígitos ──
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    _recCodes[phone] = { code, ts: Date.now(), phone };
+
+    const msg = `🔐 *Família Tomelin — Recuperação de Senha*\n\n`
+      + `Seu código de verificação é:\n\n`
+      + `*${code}*\n\n`
+      + `⏳ Válido por 10 minutos.\n`
+      + `Se não foi você, ignore esta mensagem.\n\n`
+      + `_Família Tomelin · Copa 2026_ 🏆`;
+
+    // ── Envia código via Railway → Z-API ──
+    let sent = false;
     try {
-      const r2 = await fetch(
-        'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',
-        { method:'POST', headers:{'Content-Type':'application/json','Client-Token':'Ff0f0920827ca4987818cafa9ba0f97a7S'},
-           body: JSON.stringify({ phone: phoneZapi, message: msg }),
-           signal: AbortSignal.timeout(10000) }
-      );
-      const d2 = await r2.json().catch(()=>({}));
-      if (d2.messageId || d2.zaapId || r2.ok) sent = true;
+      const r = await fetch(rUrl + '/api/send', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ phone, message: msg }),
+        signal: AbortSignal.timeout(12000)
+      });
+      const d = await r.json().catch(()=>({}));
+      if (d.ok || d.messageId || d.zaapId) sent = true;
     } catch(e) {}
-  }
 
-  if (sent) {
-    if(fb){ fb.textContent='✅ Código enviado! Verifique seu WhatsApp.'; fb.style.color='#a5d6a7'; }
-    // Mostra step 2
-    const s1 = document.getElementById('recover-step-1');
-    const s2 = document.getElementById('recover-step-2');
-    if(s1) s1.style.display = 'none';
-    if(s2) s2.style.display = 'block';
-    // Salva phone no step 2
-    const ph2 = document.getElementById('rec-phone-hidden');
-    if(ph2) ph2.value = phone;
-  } else {
-    if(fb){ fb.textContent='❌ Falha ao enviar. Verifique o número e tente novamente.'; fb.style.color='#ef9a9a'; }
+    // ── Fallback direto Z-API ──
+    if (!sent) {
+      try {
+        const phoneZ = phone.startsWith('55') ? phone : '55' + phone;
+        const r2 = await fetch(
+          'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',
+          { method:'POST',
+            headers:{'Content-Type':'application/json','Client-Token':'Ff0f0920827ca4987818cafa9ba0f97a7S'},
+            body: JSON.stringify({ phone: phoneZ, message: msg }),
+            signal: AbortSignal.timeout(12000) }
+        );
+        const d2 = await r2.json().catch(()=>({}));
+        if (d2.messageId || d2.zaapId) sent = true;
+      } catch(e) {}
+    }
+
+    if (sent) {
+      if(fb){ fb.textContent='✅ Código enviado! Verifique seu WhatsApp.'; fb.style.color='#a5d6a7'; }
+      const s1=document.getElementById('recover-step-1');
+      const s2=document.getElementById('recover-step-2');
+      if(s1) s1.style.display='none';
+      if(s2) s2.style.display='block';
+      const ph2=document.getElementById('rec-phone-hidden');
+      if(ph2) ph2.value = phone;
+    } else {
+      if(fb){ fb.textContent='❌ Falha ao enviar. Tente novamente.'; fb.style.color='#ef9a9a'; }
+      if(btn) btn.disabled = false;
+    }
+  } catch(e) {
+    if(fb){ fb.textContent='⚠️ Erro: '+e.message; fb.style.color='#ef9a9a'; }
     if(btn) btn.disabled = false;
   }
 }
@@ -4477,18 +4493,34 @@ async function _doConfirmRecovery() {
     return;
   }
 
-  // Atualiza a senha do usuário
-  const users = getUsers();
-  const idx   = users.findIndex(u => u.phone.replace(/\D/g,'') === phone || u.phone === phone);
-  if (idx >= 0) {
-    users[idx].pass = pass1;
-    jsSync(K.USERS, users);
-    delete _recCodes[phone];
-    if(fb2){ fb2.textContent='✅ Senha alterada com sucesso!'; fb2.style.color='#a5d6a7'; }
-    toast('✅ Senha redefinida! Faça login.', '#a5d6a7');
-    setTimeout(() => showForm('login'), 2000);
-  } else {
-    if(fb2){ fb2.textContent='❌ Usuário não encontrado.'; fb2.style.color='#ef9a9a'; }
+  if(fb2){ fb2.textContent='💾 Salvando nova senha...'; fb2.style.color='#90caf9'; }
+
+  try {
+    const rUrl = (sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+    const newHash = await hash(pass1);
+
+    // ── Persiste nova senha no Railway (não apenas local) ──
+    const r = await fetch(rUrl + '/api/auth/register', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone, passHash: newHash }),
+      signal: AbortSignal.timeout(10000)
+    });
+    const d = await r.json().catch(()=>({}));
+
+    if (d.ok) {
+      // Atualiza local também
+      const users = getUsers();
+      const idx = users.findIndex(u => u.phone.replace(/\D/g,'') === phone || u.phone === phone);
+      if (idx >= 0) { users[idx].passHash = newHash; jsSync(K.USERS, users); }
+      delete _recCodes[phone];
+      if(fb2){ fb2.textContent='✅ Senha alterada com sucesso!'; fb2.style.color='#a5d6a7'; }
+      toast('✅ Senha redefinida! Faça login.', '#a5d6a7');
+      setTimeout(() => showForm('login'), 2000);
+    } else {
+      if(fb2){ fb2.textContent='❌ Erro ao salvar. Tente novamente.'; fb2.style.color='#ef9a9a'; }
+    }
+  } catch(e) {
+    if(fb2){ fb2.textContent='⚠️ Erro: '+e.message; fb2.style.color='#ef9a9a'; }
   }
 }
 
