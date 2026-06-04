@@ -638,6 +638,19 @@ var _landUsers=[], _landMkt=[], _landOnline={}, _landMatches=[];
     _landMkt    = d.market  || [];
     _landOnline = d.online  || {};
     _landMatches= d.matches || [];
+    // ── Atualiza stats na landing ──────────────
+    var now = Date.now();
+    var onN = _landUsers.filter(function(u){
+      return _landOnline[u.phone] && now - _landOnline[u.phone] < 90000;
+    }).length;
+    var totalFigs = _landUsers.reduce(function(acc,u){
+      return acc + Object.values(u.stickers||{}).reduce(function(s,v){return s+(v>=1?1:0);},0);
+    }, 0);
+    var el;
+    el = document.getElementById('st-members');  if(el) el.textContent = _landUsers.length || '—';
+    el = document.getElementById('st-online');   if(el) el.textContent = onN || '—';
+    el = document.getElementById('st-ads');      if(el) el.textContent = totalFigs ? totalFigs.toLocaleString('pt-BR') : '—';
+    el = document.getElementById('st-matches');  if(el) el.textContent = _landMatches.filter(function(m){return m.status!=='cancelled';}).length || '—';
   }).catch(function(){});
 })();
 function stripHtml(s){return (s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();}
