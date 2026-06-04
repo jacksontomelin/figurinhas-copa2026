@@ -37,7 +37,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <title>Família Tomelin · Figurinhas Copa 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -138,7 +138,7 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
   padding-bottom:env(safe-area-inset-bottom,0);
   box-shadow:0 -4px 24px rgba(0,0,0,.4);}
 .bottom-nav.on{display:flex;}
-.nav-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;
+.nav-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:2px;
   padding:7px 0 calc(8px + env(safe-area-inset-bottom,0px));
   background:transparent;border:none;cursor:pointer;
@@ -237,11 +237,11 @@ body{font-family:'Barlow',sans-serif;background:var(--navy);min-height:100vh;ove
 /* Figurinha card */
 .fig-card{
   position:relative;border-radius:12px;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
   aspect-ratio:3/4;display:flex;flex-direction:column;
   align-items:center;justify-content:center;
   transition:transform .1s;overflow:hidden;}
-.fig-card:active{transform:scale(.9);}
+.fig-card:active{transform:scale(.96);transition:transform .08s ease;}
 
 /* Polka dot texture */
 .fig-card::before{content:'';position:absolute;inset:0;
@@ -2720,9 +2720,10 @@ function _renderAlbumTeam(idx){
     card.innerHTML = inner;
     // Toque curto: cicla | Toque longo (500ms): reseta para 0
     let _pressTimer = null;
-    card.addEventListener('touchstart', ()=>{
+    card.addEventListener('touchstart', (e)=>{
       _pressTimer = setTimeout(()=>{
         _pressTimer = null;
+        if(navigator.vibrate) navigator.vibrate(30); // haptic feedback
         resetFig(s.id);
         _renderAlbumTeam(idx);
       }, 500);
@@ -5184,7 +5185,7 @@ function openChallengeModal(){
     </div>
     <div class="fg" style="margin-bottom:10px;">
       <label>Descrição do desafio</label>
-      <input type="text" id="chall-desc" placeholder="Ex: Quem acertar mais resultados esta semana!" style="font-size:13px;">
+      <input type="text" id="chall-desc" placeholder="Ex: Quem acertar mais resultados esta semana!" style="font-size:16px;">
     </div>
     <div class="fg" style="margin-bottom:10px;">
       <label>Aposta (Tomelin Coins)</label>
@@ -5665,7 +5666,7 @@ function _admActions(){
   const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
   return `
   ${_admCard('📡 Railway URL', `
-    <input id="adm-railway" value="${railwayUrl}" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:12px;font-family:'Barlow Condensed',sans-serif;margin-bottom:8px;">
+    <input id="adm-railway" value="${railwayUrl}" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:16px;font-family:'Barlow Condensed',sans-serif;margin-bottom:8px;">
     <button onclick="admSaveRailway()" style="width:100%;padding:10px;border-radius:8px;background:rgba(22,168,75,.2);border:1px solid rgba(22,168,75,.35);color:var(--green2);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;cursor:pointer;">💾 Salvar URL</button>
   `)}
   ${_admCard('📨 Mensagem no Grupo WA', `
@@ -5831,7 +5832,7 @@ function _admActions(el){
     <button class="btn btn-outline" onclick="window.open('bot.html','_blank')">🤖 Abrir Painel do Bot</button>
     <div style="display:flex;gap:6px;margin-bottom:2px;">
       <input id="railway-url-inp" placeholder="https://figurinhas-copa2026-production.up.railway.app" value="${sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app'}"
-        style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 12px;color:#fff;font-size:12px;outline:none;">
+        style="flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 12px;color:#fff;font-size:16px;outline:none;">
       <button class="btn btn-green btn-xs" onclick="const v=document.getElementById('railway-url-inp').value.trim().replace(/\/+$/,'');sessionStorage.setItem('rly',v);toast('✅ Railway salvo!','#1e9640');">💾</button>
     </div>
     <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:-4px;padding:0 4px;">URL do servidor Railway para notificações automáticas</div>
