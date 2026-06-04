@@ -2488,15 +2488,14 @@ function _showCidadesTraco(city){
   const tagged = vizinhos.map(c=>({c, km:Math.round(_getDistKm(city,c))}));
 
   wrap.style.display='block';
-  chips.innerHTML = tagged.map(({c,km})=>`
+  chips.innerHTML = tagged.map(({c})=>`
     <button type="button" data-city="${c}" onclick="_toggleTradeCity('${c}',this)"
-      style="display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:20px;
+      style="padding:7px 14px;border-radius:20px;
         background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);
         color:rgba(255,255,255,.75);font-family:'Barlow Condensed',sans-serif;
         font-size:13px;font-weight:700;cursor:pointer;touch-action:manipulation;
         margin-bottom:3px;">
-      <span>📍 ${c}</span>
-      <span style="font-size:10px;color:var(--gray);font-weight:400;">${km}km</span>
+      📍 ${c}
     </button>`).join('');
 }
 
