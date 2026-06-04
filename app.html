@@ -3039,6 +3039,23 @@ function clearNotifBadge(){
 }
 function clearChatBadge(){ updateBadges(); }
 
+
+// ── Tempo relativo ─────────────────────────────────────────────
+function _timeAgo(ts){
+  if(!ts) return '';
+  const diff = Date.now() - ts;
+  const s = Math.floor(diff / 1000);
+  if (s < 60)               return 'agora';
+  const m = Math.floor(s / 60);
+  if (m < 60)               return m + 'min atrás';
+  const h = Math.floor(m / 60);
+  if (h < 24)               return h + 'h atrás';
+  const d = Math.floor(h / 24);
+  if (d < 7)                return d + (d === 1 ? ' dia' : ' dias') + ' atrás';
+  return new Date(ts).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'});
+}
+window._timeAgo = _timeAgo;
+
 function renderFeed(){
   const me=getCurrentUser(); if(!me)return;
   clearNotifBadge();
