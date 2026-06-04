@@ -2576,7 +2576,8 @@ function updateBadges(){
   const cb=document.getElementById('badge-chat');
   cb.textContent=unread>0?unread:''; cb.classList.toggle('show',unread>0);
   // notifs
-  const notifs=getNotifs().filter(n=>!n.read&&n.for===u.phone).length;
+  const _uNotifs = (_NOTIFS[u.phone]||[]);
+  const notifs=_uNotifs.filter(n=>!n.read).length;
   const nb=document.getElementById('badge-notif');
   nb.textContent=notifs>0?notifs:''; nb.classList.toggle('show',notifs>0);
 }
@@ -3192,10 +3193,12 @@ function openChatWith(phone){
 // ═══════════════════════════════════════════════════
 function addNotif(n){ // for current user
   const me=getCurrentUser(); if(!me)return;
-  const ns=getNotifs();
+  if(!_NOTIFS[me.phone]) _NOTIFS[me.phone]=[];
+  const ns=_NOTIFS[me.phone];
   ns.unshift({...n,for:me.phone,ts:Date.now(),read:false,id:Date.now()+Math.random()});
-  jsSync(K.NOTIFS,ns.slice(0,80));
-  if(_SESSION) apiPost('/api/notifs/'+_SESSION.phone, notif).catch(()=>{});
+  _NOTIFS[me.phone]=ns.slice(0,80);
+  jsSync(K.NOTIFS,_NOTIFS);
+  apiPost('/api/notifs/'+me.phone, n).catch(()=>{});
 }
 
 function addDirectNotif(toPhone,n){
@@ -3236,7 +3239,7 @@ window._timeAgo = _timeAgo;
 function renderFeed(){
   const me=getCurrentUser(); if(!me)return;
   clearNotifBadge();
-  const myNotifs=getNotifs().filter(n=>n.for===me.phone);
+  const myNotifs=(_NOTIFS[me.phone]||[]).filter(n=>n);
   const railwayUrl=sessionStorage.getItem('rly')||'https://figurinhas-copa2026-production.up.railway.app';
 
   document.getElementById('app-content').innerHTML=`

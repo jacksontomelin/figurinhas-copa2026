@@ -1187,27 +1187,8 @@ loadUsers();
 
 // ── POST /api/auth/register ──────────────────────────────────
 // Registra ou atualiza usuário no Railway
-app.post('/api/auth/register', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { phone, name, passHash, avatar, ts } = req.body;
-  if (!phone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
-
-  const existing = DB_USERS.find(u => u.phone === phone);
-  if (existing) {
-    // Atualiza dados se necessário
-    if (name)     existing.name     = name;
-    if (avatar)   existing.avatar   = avatar;
-    if (passHash) existing.passHash = passHash;
-    saveUsers();
-    return res.json({ ok: true, action: 'updated', user: sanitizeUser(existing) });
-  }
-
-  const newUser = { phone, name: name||phone, passHash, avatar: avatar||'⚽', stickers: {}, ts: ts||Date.now() };
-  DB_USERS.push(newUser);
-  saveUsers();
-  log('👤', `Novo usuário registrado: ${name} (${phone})`);
-  res.json({ ok: true, action: 'created', user: sanitizeUser(newUser) });
-});
+// /api/auth/register handled by api.js
+;
 
 // ── POST /api/auth/login ─────────────────────────────────────
 // Verifica credenciais e retorna dados do usuário
