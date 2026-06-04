@@ -3356,415 +3356,73 @@ function buildLandingUrl(name, phone, token) {
 }
 
 async function sendConfirmationWA(name, phone, pass) {
-  const token = Math.random().toString(36).substring(2, 10).toUpperCase();
-  // Save token
-  const tokens = JSON.parse(localStorage.getItem('t26_tokens') || '{}');
-  tokens[phone] = { token, ts: Date.now(), confirmed: false };
-  localStorage.setItem('t26_tokens', JSON.stringify(tokens));
-
   const firstName = name.split(' ')[0];
-  const landingUrl = buildLandingUrl(name, phone, token);
   const GROUP_LINK = 'https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW';
 
-  // Máscara parcial da senha para privacidade no WA
+  // Limpa e formata telefone
+  const cleanPhone = String(phone).replace(/\D/g,'');
+  const phoneZapi  = cleanPhone.startsWith('55') ? cleanPhone : '55' + cleanPhone;
+
+  // Máscara da senha
   const maskedPass = pass
-    ? pass.substring(0, 2) + '*'.repeat(Math.max(2, pass.length - 2))
-    : '(sua senha cadastrada)';
+    ? pass.substring(0,2) + '*'.repeat(Math.max(2, pass.length-2))
+    : '****';
 
-  const msg = `🏆 *Olá, ${firstName}! Bem-vindo(a) à Família Tomelin!* 🎉\n\n`
-    + `Seu cadastro no sistema de figurinhas da Copa 2026 foi confirmado!\n\n`
-    + `🔑 *Seus dados de acesso:*\n`
-    + `📱 Login: *${phone}*\n`
-    + `🔒 Senha: *${maskedPass}*\n\n`
-    + `👉 *Acesse o sistema:*\ncopa2026.familiatomelin.com.br\n\n`
-    + `📱 *Grupo WhatsApp:*\n${GROUP_LINK}\n\n`
-    + `_Guarde esses dados! Família Tomelin · Copa 2026_ 🏆`;
+  const msg =
+    '🏆 *Olá, ' + firstName + '! Bem-vindo(a) à Família Tomelin!* 🎉\n\n'
+    + 'Seu cadastro no sistema de figurinhas da Copa 2026 foi confirmado!\n\n'
+    + '🔑 *Seus dados de acesso:*\n'
+    + '📱 Login: *' + cleanPhone + '*\n'
+    + '🔒 Senha: *' + maskedPass + '*\n\n'
+    + '👉 *Acesse o sistema:*\ncopa2026.familiatomelin.com.br\n\n'
+    + '📱 *Grupo WhatsApp:*\n' + GROUP_LINK + '\n\n'
+    + '_Guarde esses dados! Família Tomelin · Copa 2026_ 🏆';
 
-  const railwayUrl = localStorage.getItem('t26_railway_url') || '';
-  if (railwayUrl) {
-    try {
-      await fetch(railwayUrl + '/api/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, message: msg }),
-        signal: AbortSignal.timeout(8000)
-      });
-      console.log('[Bot] Confirmação enviada para', phone);
-      return;
-    } catch(e) { console.warn('[Bot]', e.message); }
-  }
-  // Fallback direto Z-API
+  // 1ª tentativa: Railway /api/send
+  const rUrl = (localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app').replace(/\/+$/,'');
+  let sent = false;
+
   try {
-    await fetch('https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text', {
+    const r = await fetch(rUrl + '/api/send', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Client-Token': 'Ff0f0920827ca4987818cafa9ba0f97a7S' },
-      body: JSON.stringify({ phone: '55' + phone.replace(/\D/g,''), message: msg }),
-      signal: AbortSignal.timeout(8000)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: cleanPhone, message: msg }),
+      signal: AbortSignal.timeout(10000)
     });
-    console.log('[Bot] Confirmação Z-API direta enviada');
-  } catch(e) { console.warn('[Bot] Falha confirmação:', e.message); }
-}
-
-
-// ═══════════════════════════════════════════════════
-// 🔐 RECUPERAÇÃO DE SENHA VIA WHATSAPP
-// ═══════════════════════════════════════════════════
-const _recCodes = {};
-const RAILWAY_BASE = localStorage.getItem('t26_railway_url') || 'https://figurinhas-copa2026-production.up.railway.app';
-
-window.recFb = function _recFb(id, msg, type){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.style.display = msg ? 'block' : 'none';
-  el.textContent = msg;
-  el.style.background = type==='ok' ? 'rgba(37,211,102,.12)' : type==='err' ? 'rgba(229,57,53,.12)' : 'rgba(245,197,24,.1)';
-  el.style.border     = type==='ok' ? '1px solid rgba(37,211,102,.3)' : type==='err' ? '1px solid rgba(229,57,53,.3)' : '1px solid rgba(245,197,24,.25)';
-  el.style.color      = type==='ok' ? '#a5d6a7' : type==='err' ? '#ef9a9a' : 'var(--gold)';
-}
-
-window._recBack = function _recBack(){
-  document.getElementById('recover-step-2').style.display='none';
-  document.getElementById('recover-step-1').style.display='block';
-  const btn=document.getElementById('rec-btn');
-  if(btn){btn.disabled=false;btn.innerHTML='📱 Enviar código pelo WhatsApp';}
-  recFb('rec-feedback','','');
-}
-
-window._doSendRecovery = async function _doSendRecovery(){
-  const btn = document.getElementById('rec-btn');
-  const raw = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
-  console.log('[Recovery] Phone raw:', raw, 'length:', raw.length);
-
-  if(raw.length < 8){
-    recFb('rec-feedback','⚠️ Digite o telefone com DDD (ex: 47999357131)','err');
-    return;
-  }
-  recFb('rec-feedback','','');
-
-  const phoneShort = raw.startsWith('55') ? raw.slice(2) : raw;
-  const phoneWA    = '55' + phoneShort;
-
-  const code = String(Math.floor(100000 + Math.random()*900000));
-  _recCodes[phoneShort] = { code, ts: Date.now() };
-
-  const u    = getUserByPhone(phoneShort)||getUserByPhone(phoneWA)||getUserByPhone(raw);
-  const nome = u ? u.name.split(' ')[0] : 'usuário';
-
-  const msg = '🔐 *Família Tomelin — Recuperação de Senha*\n\nOlá, *'+nome+'*!\n\nSeu código:\n\n*'+code+'*\n\n_Válido por 10 minutos._\n\n_Família Tomelin · Copa 2026_ 🏆';
-
-  if(btn){btn.disabled=true;btn.innerHTML='⏳ Enviando...';}
-  recFb('rec-feedback','📡 Enviando código para seu WhatsApp...','info');
-
-  try {
-    const resp = await fetch(RAILWAY_BASE+'/api/send',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({phone:phoneWA, message:msg}),
-      signal:AbortSignal.timeout(15000)
-    });
-    const data = await resp.json();
-    console.log('[Recovery]',data);
-    if(data.ok||data.messageId||data.zaapId){
-      recFb('rec-feedback','✅ Código enviado! Verifique seu WhatsApp.','ok');
-      if(btn){btn.disabled=false;btn.innerHTML='📱 Reenviar código';}
-      setTimeout(()=>{
-        document.getElementById('recover-step-1').style.display='none';
-        document.getElementById('recover-step-2').style.display='block';
-        const inp=document.getElementById('rec-code');if(inp)inp.focus();
-      },1000);
-    } else {
-      if(btn){btn.disabled=false;btn.innerHTML='📱 Enviar código pelo WhatsApp';}
-      recFb('rec-feedback','❌ Falha: '+(data.error||data.message||JSON.stringify(data)),'err');
+    const d = await r.json().catch(()=>({}));
+    if (d.ok || d.messageId || d.zaapId) {
+      sent = true;
+      toast('📱 Boas-vindas enviadas no WhatsApp!', 'var(--wa)');
     }
-  } catch(e) {
-    if(btn){btn.disabled=false;btn.innerHTML='📱 Enviar código pelo WhatsApp';}
-    recFb('rec-feedback','❌ Erro de conexão: '+e.message,'err');
-    console.error('[Recovery]',e);
+  } catch(e) { /* Railway falhou, tenta Z-API */ }
+
+  // 2ª tentativa: Z-API direto
+  if (!sent) {
+    try {
+      const r2 = await fetch(
+        'https://api.z-api.io/instances/3F155B355FA8410212E52295B0810B48/token/9B855EED9711E32684160EE5/send-text',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Client-Token': 'Ff0f0920827ca4987818cafa9ba0f97a7S' },
+          body: JSON.stringify({ phone: phoneZapi, message: msg }),
+          signal: AbortSignal.timeout(10000)
+        }
+      );
+      const d2 = await r2.json().catch(()=>({}));
+      if (d2.messageId || d2.zaapId || r2.ok) {
+        sent = true;
+        toast('📱 Boas-vindas enviadas no WhatsApp!', 'var(--wa)');
+      } else {
+        toast('⚠️ WA: ' + (d2.reason || d2.error || 'verifique o número'), '#ef9a9a');
+      }
+    } catch(e) {
+      toast('⚠️ Falha WA: ' + e.message, '#ef9a9a');
+    }
   }
-}
-
-window._doConfirmRecovery = function _doConfirmRecovery(){
-  const raw   = (document.getElementById('rec-phone').value||'').replace(/\D/g,'');
-  const phoneShort = raw.startsWith('55') ? raw.slice(2) : raw;
-  const code  = (document.getElementById('rec-code').value||'').trim();
-  const np    = document.getElementById('rec-newpass').value;
-  const np2   = document.getElementById('rec-newpass2').value;
-
-  if(code.length!==6){ recFb('rec-feedback2','⚠️ Digite o código de 6 dígitos','err'); return; }
-  const stored=_recCodes[phoneShort];
-  if(!stored||stored.code!==code){ recFb('rec-feedback2','❌ Código incorreto','err'); return; }
-  if(Date.now()-stored.ts>10*60*1000){ recFb('rec-feedback2','⏱️ Código expirado. Clique em "Não recebi".','err'); return; }
-  if(np.length<4){ recFb('rec-feedback2','⚠️ Senha muito curta (mínimo 4)','err'); return; }
-  if(np!==np2){ recFb('rec-feedback2','⚠️ Senhas não coincidem','err'); return; }
-
-  const users=getUsers();
-  const uIdx=users.findIndex(u=>u.phone===phoneShort||u.phone==='55'+phoneShort);
-  if(uIdx>=0){
-    users[uIdx].passHash=hash(np);
-    js(K.USERS,users);
-  } else {
-    users.push({phone:phoneShort,name:'Usuário',passHash:hash(np),stickers:{},ts:Date.now(),avatar:'⚽'});
-    js(K.USERS,users);
-    js(K.SESSION,{phone:phoneShort});
-  }
-  delete _recCodes[phoneShort];
-  recFb('rec-feedback2','✅ Senha redefinida com sucesso!','ok');
-  launchConfetti();
-  setTimeout(()=>showForm('login'),2000);
-}
-
-// 🟢 ONLINE COUNTER + GRUPO WA TRACKER
-// ═══════════════════════════════════════════════════
-const K_WA_JOINED = 't26_wa_joined'; // Set of phones that clicked the WA link
-
-function getJoined(){ try{return new Set(JSON.parse(localStorage.getItem(K_WA_JOINED)||'[]'));}catch{return new Set();} }
-function markJoined(phone){ const j=getJoined(); j.add(phone); js(K_WA_JOINED,Array.from(j)); }
-function hasJoined(phone){ return getJoined().has(phone); }
-
-function trackWaClick(){
-  const u=getCurrentUser(); if(!u)return;
-  markJoined(u.phone);
-  // dismiss reminder if showing
-  const rem=document.getElementById('wa-reminder');
-  if(rem){rem.style.transition='opacity .4s,transform .4s';rem.style.opacity='0';rem.style.transform='scale(.95)';setTimeout(()=>rem&&rem.remove(),400);}
+  return sent;
 }
 
 
-// ═══════════════════════════════════════════════════
-// 🛒 MODAL ANUNCIAR FIGURINHA — FUNÇÕES COMPLETAS
-// ═══════════════════════════════════════════════════
-let _sellSelected = new Set();
-let _sellFilter   = 'dup';
-let _sellType     = '';
-let _sellPrice    = 0;
-
-function openSellModal(){
-  const u = getCurrentUser(); if(!u) return;
-  _sellSelected.clear();
-  _sellType  = '';
-  _sellPrice = 0;
-  // Reset UI
-  document.getElementById('sell-step1').style.display = 'block';
-  document.getElementById('sell-step2').style.display = 'none';
-  const nextBtn = document.getElementById('sell-next-btn');
-  if(nextBtn){ nextBtn.style.opacity='.4'; nextBtn.style.pointerEvents='none'; }
-  const pubBtn = document.getElementById('sell-pub-btn');
-  if(pubBtn){ pubBtn.style.opacity='.4'; pubBtn.style.pointerEvents='none'; }
-  // Reset type buttons
-  document.querySelectorAll('.sell-type-btn').forEach(b=>b.classList.remove('selected'));
-  document.querySelectorAll('.sell-type-btn .stb-check').forEach(c=>c.textContent='○');
-  document.getElementById('sell-valor-section').style.display = 'none';
-  // Load stickers
-  setSellFilter(_sellFilter, document.querySelector('.sell-filter-btn.active'));
-  openModal('mod-sell');
-}
-
-function setSellFilter(f, btn){
-  _sellFilter = f;
-  document.querySelectorAll('.sell-filter-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  _renderSellGrid();
-}
-
-function _renderSellGrid(){
-  const u   = getCurrentUser(); if(!u) return;
-  const st  = u.stickers || {};
-  const grid = document.getElementById('sell-fig-grid'); if(!grid) return;
-  const mktCodes = new Set(getMarket().filter(m=>m.owner===u.phone).map(m=>m.code));
-
-  let stickers = ALL_STICKERS.filter(s => s.team !== 'FWC');
-  if(_sellFilter === 'dup')  stickers = stickers.filter(s => (st[s.id]||0) >= 2);
-  if(_sellFilter === 'have') stickers = stickers.filter(s => (st[s.id]||0) === 1);
-
-  if(!stickers.length){
-    grid.innerHTML = '<div style="color:rgba(255,255,255,.35);font-size:12px;text-align:center;padding:18px;grid-column:1/-1;">Nenhuma figurinha nesta categoria</div>';
-    return;
-  }
-
-  grid.innerHTML = '';
-  stickers.forEach(s => {
-    const sel  = _sellSelected.has(s.id);
-    const inMkt = mktCodes.has(s.id);
-    const btn  = document.createElement('button');
-    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;'
-      + 'border-radius:9px;aspect-ratio:3/4;width:100%;padding:3px;gap:1px;cursor:pointer;'
-      + 'border:2px solid;transition:.15s;';
-    btn.style.background   = sel ? 'rgba(245,197,24,.25)' : inMkt ? 'rgba(255,107,53,.15)' : 'rgba(255,255,255,.06)';
-    btn.style.borderColor  = sel ? 'var(--gold)' : inMkt ? 'rgba(255,107,53,.5)' : 'rgba(255,255,255,.12)';
-    btn.innerHTML = '<span style="font-size:clamp(16px,4vw,22px);line-height:1">'+s.flag+'</span>'
-      +'<span style="font-family:\'Bebas Neue\',sans-serif;font-size:12px;color:'+(sel?'var(--gold)':'#fff')+';">'+(getStickerNum(s.id)||s.n)+'</span>'
-      +(sel ? '<span style="font-size:9px;color:var(--gold);">✓</span>' : '')
-      +(inMkt ? '<span style="font-size:8px;color:#ff6b35;">🏷️</span>' : '');
-    btn.disabled = inMkt && !sel;
-    btn.onclick = () => _toggleSellSticker(s.id);
-    grid.appendChild(btn);
-  });
-}
-
-function _toggleSellSticker(id){
-  if(_sellSelected.has(id)) _sellSelected.delete(id);
-  else                       _sellSelected.add(id);
-  _renderSellGrid();
-  _updateSellSelCount();
-}
-
-function _updateSellSelCount(){
-  const count   = _sellSelected.size;
-  const countEl = document.getElementById('sell-sel-count');
-  const wrapEl  = document.getElementById('sell-selected-wrap');
-  const chipsEl = document.getElementById('sell-sel-chips');
-  const nextBtn = document.getElementById('sell-next-btn');
-  if(countEl) countEl.textContent = count;
-  if(wrapEl)  wrapEl.style.display = count > 0 ? 'block' : 'none';
-  if(nextBtn){
-    nextBtn.style.opacity = count > 0 ? '1' : '.4';
-    nextBtn.style.pointerEvents = count > 0 ? 'auto' : 'none';
-  }
-  if(chipsEl) chipsEl.innerHTML = [..._sellSelected].map(id => {
-    const s = ALL_STICKERS.find(x=>x.id===id);
-    if(!s) return '';
-    return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);border-radius:20px;padding:2px 8px;font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--gold);">'
-      +s.flag+' '+(getStickerNum(s.id)||s.n)+' <span onclick="_toggleSellSticker(\''+id+'\')" style="cursor:pointer;margin-left:2px;color:rgba(255,255,255,.5);">✕</span></span>';
-  }).join('');
-}
-
-function sellGoStep2(){
-  if(!_sellSelected.size) return;
-  document.getElementById('sell-step1').style.display = 'none';
-  document.getElementById('sell-step2').style.display = 'block';
-  // Show selected chips on step2
-  const chipsEl = document.getElementById('sell-s2-chips');
-  if(chipsEl) chipsEl.innerHTML = [..._sellSelected].map(id => {
-    const s = ALL_STICKERS.find(x=>x.id===id);
-    if(!s) return '';
-    return '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);border-radius:20px;padding:2px 9px;font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--gold);">'
-      +s.flag+' '+(getStickerNum(s.id)||s.n)+'</span>';
-  }).join('');
-}
-
-function selectSellType(type, btn){
-  _sellType = type;
-  document.querySelectorAll('.sell-type-btn').forEach(b=>{
-    b.classList.remove('selected');
-    const chk = b.querySelector('.stb-check');
-    if(chk) chk.textContent = '○';
-  });
-  if(btn){
-    btn.classList.add('selected');
-    const chk = btn.querySelector('.stb-check');
-    if(chk) chk.textContent = '✓';
-  }
-  const valorSec = document.getElementById('sell-valor-section');
-  if(valorSec) valorSec.style.display = (type==='venda'||type==='ambos') ? 'block' : 'none';
-  const pubBtn = document.getElementById('sell-pub-btn');
-  if(pubBtn){ pubBtn.style.opacity='1'; pubBtn.style.pointerEvents='auto'; }
-}
-
-function doSellNew(){
-  const u = getCurrentUser(); if(!u) return;
-  if(!_sellType){ toast('⚠️ Escolha o tipo de oferta','var(--red)'); return; }
-  if(!_sellSelected.size){ toast('⚠️ Selecione ao menos uma figurinha','var(--red)'); return; }
-
-  const priceInput = document.getElementById('sell-price-input');
-  if(priceInput && (priceInput.value||'').trim()) {
-    _sellPrice = parseFloat(priceInput.value) || 0;
-  }
-
-  const now  = Date.now();
-  const mkt  = getMarket();
-  const codes = [..._sellSelected];
-
-  codes.forEach(code => {
-    // Remove old ad for same sticker by same user if exists
-    const oldIdx = mkt.findIndex(m => m.owner===u.phone && m.code===code);
-    if(oldIdx >= 0) mkt.splice(oldIdx, 1);
-    mkt.push({
-      id:    'ad_' + now + '_' + Math.random().toString(36).slice(2,6),
-      owner: u.phone,
-      code,
-      type:  _sellType,
-      price: _sellPrice || 0,
-      ts:    now,
-    });
-  });
-
-  js(K.MARKET, mkt);
-  closeModal('mod-sell');
-  toast('✅ '+codes.length+' figurinha(s) anunciada(s)! 🎴', 'var(--gold)');
-  launchConfetti();
-  renderMarket();
-
-  // Notify via Railway
-  _afterMarketPublish(u.phone, codes).catch(e => console.warn('[Market]', e));
-}
-
-// ── ONLINE COUNTER BADGE ─────────────────────────────────
-function updateOnlineBadge(){
-  const users=getUsers();
-  const onlineCount=users.filter(u=>isOnline(u.phone)).length;
-  const el=document.getElementById('online-badge');
-  if(!el)return;
-  el.textContent=onlineCount>0?`🟢 ${onlineCount} online agora`:'⚪ Nenhum online';
-  el.style.color=onlineCount>0?'#4caf50':'var(--gray)';
-}
-setInterval(updateOnlineBadge,15000);
-
-// ── WA REMINDER ON LOGIN ──────────────────────────────────
-function showWaReminder(){
-  const u=getCurrentUser(); if(!u)return;
-  if(hasJoined(u.phone))return; // already joined, don't nag
-  // Check if reminder already shown this session
-  if(sessionStorage.getItem('wa_reminded'))return;
-  sessionStorage.setItem('wa_reminded','1');
-
-  // Inject reminder card above the profile bar
-  const existing=document.getElementById('wa-reminder');
-  if(existing)return;
-  const div=document.createElement('div');
-  div.id='wa-reminder';
-  div.style.cssText='max-width:520px;width:100%;margin-bottom:10px;animation:fadeUp .5s cubic-bezier(.34,1.56,.64,1) both;';
-  div.innerHTML=`
-    <div style="background:linear-gradient(135deg,rgba(37,211,102,.15),rgba(18,140,126,.1));
-      border:1.5px solid rgba(37,211,102,.35);border-radius:14px;padding:13px 15px;
-      display:flex;align-items:center;gap:11px;position:relative;">
-      <div style="font-size:26px;flex-shrink:0;">📱</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;
-          letter-spacing:.5px;color:#fff;margin-bottom:3px;">
-          Você ainda não entrou no grupo! 👀
-        </div>
-        <div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.4;">
-          Entre no grupo do WhatsApp para trocar figurinhas com a galera da Família Tomelin!
-        </div>
-        <a href="https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW?s=cl&p=i&ilr=4"
-          target="_blank" rel="noopener" onclick="trackWaClick()"
-          style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;
-            background:var(--wa);color:#fff;border-radius:8px;padding:7px 14px;
-            font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;
-            letter-spacing:1px;text-decoration:none;text-transform:uppercase;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          Entrar no grupo agora!
-        </a>
-      </div>
-      <button onclick="this.parentElement.parentElement.remove();sessionStorage.setItem('wa_dismissed','1')"
-        style="position:absolute;top:8px;right:8px;background:none;border:none;
-          color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;line-height:1;
-          transition:.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.3)'">×</button>
-    </div>
-  `;
-  // Insert before pbar
-  const pbar=document.getElementById('pbar');
-  if(pbar&&pbar.parentNode) pbar.parentNode.insertBefore(div,pbar);
-  else{const ac=document.getElementById('app-content');if(ac)ac.prepend(div);}
-}
-
-
-// ═══════════════════════════════════════════════════
-// 📱 INTEGRAÇÃO RAILWAY BOT — Notificações WhatsApp
-// ═══════════════════════════════════════════════════
-
-// URL do seu servidor Railway (ajuste após deploy)
-const RAILWAY_URL = localStorage.getItem('t26_railway_url') || '';
 
 async function zapiSendText(phone, message){
   // Se Railway configurado, usa o servidor centralizado
