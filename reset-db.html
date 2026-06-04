@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reset DB — Família Tomelin</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#08101c;color:#fff;font-family:'Barlow Condensed',Arial,sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+    border-radius:16px;padding:32px;max-width:420px;width:100%;text-align:center}
+  h1{font-size:24px;color:#ef5350;margin-bottom:8px}
+  p{color:rgba(255,255,255,.6);font-size:14px;line-height:1.6;margin-bottom:24px}
+  .warn{background:rgba(239,83,80,.1);border:1px solid rgba(239,83,80,.3);
+    border-radius:10px;padding:16px;margin-bottom:24px;font-size:13px;color:#ef9a9a}
+  button{width:100%;padding:14px;border-radius:10px;border:none;cursor:pointer;
+    font-size:16px;font-weight:700;font-family:inherit;transition:.2s}
+  .btn-reset{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff}
+  .btn-reset:hover{opacity:.85}
+  .btn-reset:disabled{opacity:.4;cursor:not-allowed}
+  #status{margin-top:20px;padding:14px;border-radius:10px;display:none;font-size:14px}
+  .ok{background:rgba(38,166,154,.15);border:1px solid rgba(38,166,154,.3);color:#80cbc4}
+  .err{background:rgba(239,83,80,.15);border:1px solid rgba(239,83,80,.3);color:#ef9a9a}
+  .loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);
+    border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🗑️ Reset Banco de Dados</h1>
+  <p>Família Tomelin — Copa 2026</p>
+
+  <div class="warn">
+    ⚠️ <strong>ATENÇÃO:</strong> Esta ação irá apagar todos os usuários,
+    figurinhas, anúncios, chats e trocas do sistema.<br><br>
+    Esta ação é <strong>irreversível</strong>.
+  </div>
+
+  <button class="btn-reset" id="btn" onclick="doReset()">
+    🗑️ Zerar Banco de Dados
+  </button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+async function doReset() {
+  if(!confirm('TEM CERTEZA? Todos os dados serão apagados definitivamente.')) return;
+  if(!confirm('ÚLTIMA CONFIRMAÇÃO: Apagar TUDO mesmo?')) return;
+
+  const btn = document.getElementById('btn');
+  const st  = document.getElementById('status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>Zerando...';
+  st.style.display = 'none';
+
+  try {
+    const r = await fetch('https://figurinhas-copa2026-production.up.railway.app/api/admin/reset-db', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({secret:'TOMELIN2026RESET'}),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined,
+    });
+    const d = await r.json();
+
+    if(d.ok) {
+      st.className = 'ok';
+      st.innerHTML = '✅ ' + d.message + '<br><br>Agora acesse o app e faça seu cadastro novamente.';
+      btn.innerHTML = '✅ Banco zerado!';
+      btn.style.background = '#388e3c';
+    } else {
+      throw new Error(d.error || 'Erro desconhecido');
+    }
+  } catch(e) {
+    st.className = 'err';
+    st.innerHTML = '❌ Erro: ' + e.message + '<br><br>Tente novamente ou verifique o Railway.';
+    btn.disabled = false;
+    btn.innerHTML = '🗑️ Tentar novamente';
+  }
+  st.style.display = 'block';
+}
+</script>
+</body>
+</html>
