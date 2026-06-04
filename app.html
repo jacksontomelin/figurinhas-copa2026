@@ -2442,25 +2442,23 @@ async function doRegister(){
     });
     const d = await r.json().catch(()=>({}));
 
-    if(d.error && d.error.includes('já cadastrado')){
+    if(!d.ok || (d.error && d.error.toLowerCase().includes('cadastrado'))){
       document.getElementById('r-phone').classList.add('err');
-      document.getElementById('e-rphone').textContent='Número já cadastrado.';
+      document.getElementById('e-rphone').textContent = d.error || 'Este número já tem cadastro. Faça login.';
       document.getElementById('e-rphone').classList.add('show');
       if(btn){btn.disabled=false;btn.textContent='✅ Criar conta';}
       return;
     }
 
     // Sessão em memória
-    _SESSION = {phone, name, passHash:hash(pass), avatar, stickers:{}, ts:Date.now()};
+    _SESSION = {phone, name, passHash:hash(pass), avatar, cidade:cidadeVal, stickers:{}, ts:Date.now()};
     await loadStateFromRailway();
     addNotif({type:'welcome',text:`Bem-vindo(a), ${name.split(' ')[0]}! 🎉`,ico:'🎉'});
     pingOnline();
     enterApp(_SESSION);
     launchConfetti();
     toast('🎉 Conta criada! Bem-vindo(a)! 🎉','#22a04a');
-
-    // WA enviado pelo servidor em background (ver api.js → sendWelcomeWA)
-    toast('📱 Você receberá uma mensagem no WhatsApp!', 'var(--wa)');
+    setTimeout(()=>toast('📱 Mensagem enviada no seu WhatsApp!','var(--wa)'),2000);
 
   } catch(e){
     toast('⚠️ Erro ao cadastrar: '+e.message,'#ef9a9a');
@@ -2498,7 +2496,8 @@ function enterApp(u){
   document.getElementById('scr-app').classList.add('on');
   document.getElementById('bnav').classList.add('on');
   document.getElementById('pb-name').textContent=u.name.split(' ')[0]+' '+u.name.split(' ').slice(-1)[0];
-  document.getElementById('pb-sub').textContent='🟢 Online agora' + (u.cidade ? ' · 📍 ' + u.cidade : '');
+  const _subTxt = '🟢 Online agora' + (u.cidade ? '  ·  📍 ' + u.cidade : '');
+  document.getElementById('pb-sub').textContent=_subTxt;
   // Online badge update
   setTimeout(()=>{ if(typeof updateBadges==="function") updateBadges(); }, 200);
   // WA reminder (after short delay so screen loads first)

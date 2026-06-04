@@ -8,8 +8,12 @@ const APP_URL   = 'https://copa2026.familiatomelin.com.br';
 const GRP_LINK  = 'https://chat.whatsapp.com/Ke3Dn4Zm3qREy3FF2OtRJW';
 
 function sanitizePhone(p) {
-  const d = String(p).replace(/\D/g,'');
-  return d.startsWith('55') ? d : '55' + d;
+  const d = String(p||'').replace(/\D/g,'');
+  if (!d) return '';
+  // Brasil: 55 + DDD(2) + número(8-9) = 12-13 dígitos
+  if (d.startsWith('55') && d.length >= 12) return d;
+  if (d.length >= 10) return '55' + d;
+  return d; // retorna como está se não conseguir inferir
 }
 
 async function zapiSend(phone, message) {
@@ -56,13 +60,13 @@ async function sendWelcomeWA(phone, name, passHash, plainPass, cidade) {
   // Mensagem particular
   const msgPrivada =
     `🏆 *Olá, ${firstName}! Bem-vindo(a) à Família Tomelin!* 🎉\n\n` +
-    `Seu cadastro no sistema de figurinhas da Copa 2026 foi confirmado!\n\n` +
-    `🔑 *Seus dados de acesso:*\n` +
-    `📱 Login: *${phone.replace(/\D/g,'')}*\n` +
-    `🔒 Senha: *${masked}*\n\n` +
-    `👉 *Acesse o sistema:*\n${APP_URL}\n\n` +
-    `📱 *Grupo WhatsApp:*\n${GRP_LINK}\n\n` +
-    `_Guarde esses dados! Família Tomelin · Copa 2026_ 🏆`;
+    `Seu cadastro no sistema de figurinhas da Copa 2026 foi confirmado! Abaixo seus dados de acesso:\n\n` +
+    `📱 *Número (login):* ${phone.replace(/\D/g,'')}\n` +
+    `🔒 *Senha:* ${masked}\n` +
+    `📍 *Cidade:* ${cidade || 'SC'}\n\n` +
+    `👉 *Acessar o sistema:*\n${APP_URL}\n\n` +
+    `👥 *Entrar no grupo:*\n${GRP_LINK}\n\n` +
+    `_Guarde essa mensagem! Família Tomelin · Copa 2026_ 🏆`;
 
   // Tenta enviar mensagem pessoal (com 1 retry se falhar)
   let r1 = await zapiSend(cleanPhone, msgPrivada);
@@ -77,7 +81,9 @@ async function sendWelcomeWA(phone, name, passHash, plainPass, cidade) {
   // Mensagem no grupo
   const msgGrupo =
     `🎉 *NOVO MEMBRO NA FAMÍLIA TOMELIN!*\n\n` +
-    `👋 Bem-vindo(a), *${name}*! Agora é só marcar suas figurinhas e trocar! 🎴\n\n` +
+    `👋 Bem-vindo(a), *${name}*!${cidade ? ' 📍 ' + cidade + ' – SC' : ''}\n\n` +
+    `Já está no sistema de trocas de figurinhas da Copa 2026! 🎴\n` +
+    `Dê boas-vindas e combine trocas! 🤝\n\n` +
     `👉 ${APP_URL}\n_Família Tomelin · Copa 2026_ 🏆`;
 
   const r2 = await zapiSend(ZAPI_GRP, msgGrupo);
@@ -117,6 +123,10 @@ router.post('/auth/register', async (req, res) => {
   if (!phone) return res.json({ ok: false, error: 'Telefone inválido' });
 
   const existing = db.users.find(phone);
+  // Verifica se já existe com senha diferente (tentativa de re-cadastro)
+  if (existing && existing.passHash !== passHash) {
+    return res.json({ ok: false, error: 'Número já cadastrado. Faça login ou use recuperação de senha.' });
+  }
   // Salva no banco SEM a senha em texto (só o hash)
   const user = db.users.upsert(phone, { name: name||phone, passHash, avatar: avatar||'⚽', cidade: cidade||'SC', stickers: stickers||{}, ts: ts||Date.now() });
 
