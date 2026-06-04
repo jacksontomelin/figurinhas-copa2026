@@ -9,6 +9,7 @@ const express = require('express');
 const https   = require('https');
 const cron    = require('node-cron');
 const pathMod = require('path');
+const db      = require('./db');
 const fs      = require('fs');
 
 const app  = express();
@@ -756,8 +757,7 @@ async function refreshNews() {
   }
 
   if (items.length > 0) {
-    db.news.get()      = items;
-    db.news.ts() = Date.now();
+    db.news.set(items);
     log('📰', `Cache de notícias atualizado — ${items.length} itens`);
   } else {
     log('⚠️', 'Nenhuma notícia encontrada, mantendo cache anterior');
@@ -976,7 +976,7 @@ async function rpaNewsLoop() {
 
   try {
     // Força refresh do RSS para ter notícias frescas
-    db.news.ts() = 0; // invalida cache para forçar novo fetch
+    // db.news.ts reset (handled by db.news.set); // invalida cache para forçar novo fetch
     const items = await refreshNews();
     if (!items || !items.length) {
       log('📰', 'RPA: sem notícias disponíveis');
@@ -997,7 +997,7 @@ async function rpaNewsLoop() {
     });
 
     if (!novas.length) {
-      log('📰', `RPA: ${db.newsSent.raw().newsSent.length} já enviadas, sem notícias novas nas últimas 48h`);
+      log('📰', `RPA: ${db.raw().newsSent.length} já enviadas, sem notícias novas nas últimas 48h`);
       return;
     }
 
@@ -1032,7 +1032,7 @@ async function rpaNewsLoop() {
 
 // Limpa histórico de enviados a cada 6h (recicla notícias antigas)
 cron.schedule('0 */6 * * *', () => {
-  const before = db.newsSent.raw().newsSent.length;
+  const before = db.raw().newsSent.length;
   db.newsSent.clear();
   // newsSent saved automatically by db;
   log('♻️', `RPA: cache de notícias limpo (${before} itens)`);
@@ -1051,7 +1051,7 @@ app.get('/api/rpa/status', (req, res) => {
     ok: true,
     enabled: newsRpaEnabled,
     sent: newsRpaCount,
-    queued: db.newsSent.raw().newsSent.length,
+    queued: db.raw().newsSent.length,
     lastNews: db.news.ts() ? new Date(db.news.ts()).toISOString() : null,
     newsCount: db.news.get().length,
     lastSend: _lastRpaSend ? new Date(_lastRpaSend).toISOString() : null,
@@ -1075,132 +1075,8 @@ app.post('/api/rpa/run-now', async (req, res) => {
 
 
 
-// ═══════════════════════════════════════════════════════════════
-// 💾 API DE ESTADO COMPLETO — Railway como fonte da verdade
-// Substitui localStorage como storage primário do sistema
-// ═══════════════════════════════════════════════════════════════
+// Estado gerenciado por db.js e api.js
 
-const STATE_FILE = pathMod.join(__dirname, 'data', 'state.json');
-
-// Estado global da aplicação
-let APP_STATE = {
-  users:   [],    // todos os usuários com stickers
-  market:  [],    // anúncios de venda/troca
-  chat:    {},    // { 'phone1__phone2': [{from,text,ts}] }
-  matches: [],    // trocas propostas
-  notifs:  {},    // { phone: [{type,text,ico,ts,read}] }
-  online:  {},    // { phone: timestamp }
-  ts: Date.now()
-};
-
-function loadState() {
-  try {
-    if (fs.existsSync(STATE_FILE)) {
-      const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-      APP_STATE = { ...APP_STATE, ...saved };
-      log('💾', `Estado carregado: ${APP_STATE.users.length} usuários, ${APP_STATE.market.length} anúncios`);
-    }
-  } catch(e) { log('⚠️', 'loadState: ' + e.message); }
-}
-
-function saveState() {
-  try {
-    fs.mkdirSync(pathMod.dirname(STATE_FILE), { recursive: true });
-    APP_STATE.ts = Date.now();
-    fs.writeFileSync(STATE_FILE, JSON.stringify(APP_STATE), 'utf8');
-  } catch(e) { log('⚠️', 'saveState: ' + e.message); }
-}
-
-// Salva a cada 10s se houve mudanças
-let _stateDirty = false;
-let _saveInterval = setInterval(() => {
-  if (_stateDirty) { saveState(); _stateDirty = false; }
-}, 10000);
-
-function markDirty() { _stateDirty = true; }
-
-loadState();
-
-// ── GET /api/state ─── Carrega estado completo ─────────────────
-app.get('/api/state', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  // Atualiza online (remove >2min)
-  const now = Date.now();
-  Object.keys(APP_STATE.online).forEach(p => {
-    if (now - APP_STATE.online[p] > 120000) delete APP_STATE.online[p];
-  });
-  res.json({ ok: true, state: APP_STATE, ts: APP_STATE.ts });
-});
-
-// ── POST /api/state/push ─── Salva estado completo ─────────────
-app.post('/api/state/push', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { users, market, chat, matches, notifs, online } = req.body;
-  if (users)   APP_STATE.users   = users;
-  if (market)  APP_STATE.market  = market;
-  if (chat)    APP_STATE.chat    = chat;
-  if (matches) APP_STATE.matches = matches;
-  if (notifs)  APP_STATE.notifs  = notifs;
-  if (online)  APP_STATE.online  = { ...APP_STATE.online, ...online };
-  markDirty();
-  res.json({ ok: true, ts: Date.now() });
-});
-
-// ── POST /api/state/user ─── Atualiza 1 usuário ─────────────────
-app.post('/api/state/user', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { phone, data } = req.body;
-  if (!phone) return res.json({ ok: false, error: 'phone required' });
-  const idx = APP_STATE.users.findIndex(u => u.phone === phone);
-  if (idx >= 0) APP_STATE.users[idx] = { ...APP_STATE.users[idx], ...data };
-  else          APP_STATE.users.push({ phone, ...data });
-  markDirty();
-  res.json({ ok: true });
-});
-
-// ── POST /api/state/market ── Atualiza mercado ──────────────────
-app.post('/api/state/market', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { market } = req.body;
-  if (!Array.isArray(market)) return res.json({ ok: false, error: 'market must be array' });
-  APP_STATE.market = market;
-  markDirty();
-  res.json({ ok: true });
-});
-
-// ── POST /api/state/chat ─── Atualiza chat ─────────────────────
-app.post('/api/state/chat', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { cid, messages } = req.body;
-  if (!cid) return res.json({ ok: false, error: 'cid required' });
-  APP_STATE.chat[cid] = messages;
-  markDirty();
-  res.json({ ok: true });
-});
-
-// ── POST /api/state/online ── Ping online ──────────────────────
-app.post('/api/state/online', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { phone } = req.body;
-  if (!phone) return res.json({ ok: false });
-  APP_STATE.online[phone] = Date.now();
-  markDirty();
-  res.json({ ok: true });
-});
-
-// ── POST /api/state/notif ── Adiciona notificação ──────────────
-app.post('/api/state/notif', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const { phone, notif } = req.body;
-  if (!phone || !notif) return res.json({ ok: false });
-  if (!APP_STATE.notifs[phone]) APP_STATE.notifs[phone] = [];
-  APP_STATE.notifs[phone].unshift({ ...notif, ts: Date.now(), read: false });
-  APP_STATE.notifs[phone] = APP_STATE.notifs[phone].slice(0, 50); // max 50
-  markDirty();
-  res.json({ ok: true });
-});
-
-log('💾', 'API de estado inicializada');
 
 // ═══════════════════════════════════════════════════════════════
 // 🎯 MENSAGENS DE CONVITE — Chama amigos para o sistema
