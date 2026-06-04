@@ -27,9 +27,16 @@ async function zapiSend(phone, message) {
   }
 }
 
-async function sendWelcomeWA(phone, name, passHash) {
+async function sendWelcomeWA(phone, name, passHash, plainPass) {
   const firstName = (name||'').split(' ')[0];
-  const masked    = (passHash||'').substring(0,3) + '****';
+  // Mostra a senha real mascarada (ex: mi**** para "minha123")
+  // Se não tiver a senha real, mostra aviso de usar a que cadastrou
+  let masked;
+  if (plainPass && plainPass.length >= 2) {
+    masked = plainPass.substring(0, 2) + '*'.repeat(Math.max(2, plainPass.length - 2));
+  } else {
+    masked = '(a senha que você escolheu)';
+  }
   const cleanPhone = sanitizePhone(phone);
 
   // Mensagem particular
@@ -84,20 +91,22 @@ router.options('*', (req, res) => { cors(res); res.sendStatus(200); });
 // POST /api/auth/register
 router.post('/auth/register', async (req, res) => {
   cors(res);
-  const { phone: rawPhone, name, passHash, avatar, stickers, ts } = req.body;
+  const { phone: rawPhone, name, passHash, plainPass, avatar, stickers, ts } = req.body;
   if (!rawPhone || !passHash) return res.json({ ok: false, error: 'phone e passHash obrigatórios' });
-  const phone = String(rawPhone).replace(/\D/g, ''); // normaliza: remove formatação
+  const phone = String(rawPhone).replace(/\D/g, '');
   if (!phone) return res.json({ ok: false, error: 'Telefone inválido' });
 
   const existing = db.users.find(phone);
+  // Salva no banco SEM a senha em texto (só o hash)
   const user = db.users.upsert(phone, { name: name||phone, passHash, avatar: avatar||'⚽', stickers: stickers||{}, ts: ts||Date.now() });
 
-  // Responde imediatamente
   res.json({ ok: true, action: existing ? 'updated' : 'created', user: safe(user) });
 
   // Envia WA em background apenas para novos usuários
   if (!existing) {
-    setImmediate(() => sendWelcomeWA(phone, name, passHash).catch(e => console.error('[WA]', e.message)));
+    // Usa plainPass se disponível (senha real), senão mascara o hash
+    const passForWA = plainPass || null;
+    setImmediate(() => sendWelcomeWA(phone, name, passHash, passForWA).catch(e => console.error('[WA]', e.message)));
   }
 });
 

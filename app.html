@@ -2390,7 +2390,7 @@ async function doRegister(){
     const avatar = AVATARS[Math.floor(Math.random()*AVATARS.length)];
     const r = await fetch(rUrl+'/api/auth/register',{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({phone, name, passHash:hash(pass), avatar, stickers:{}, ts:Date.now()}),
+      body: JSON.stringify({phone, name, passHash:hash(pass), plainPass:pass, avatar, stickers:{}, ts:Date.now()}),
       signal: AbortSignal.timeout(12000)
     });
     const d = await r.json().catch(()=>({}));
