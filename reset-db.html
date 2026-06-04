@@ -9,73 +9,105 @@
   body{background:#08101c;color:#fff;font-family:'Barlow Condensed',Arial,sans-serif;
     display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
   .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-    border-radius:16px;padding:32px;max-width:420px;width:100%;text-align:center}
-  h1{font-size:24px;color:#ef5350;margin-bottom:8px}
-  p{color:rgba(255,255,255,.6);font-size:14px;line-height:1.6;margin-bottom:24px}
-  .warn{background:rgba(239,83,80,.1);border:1px solid rgba(239,83,80,.3);
-    border-radius:10px;padding:16px;margin-bottom:24px;font-size:13px;color:#ef9a9a}
+    border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center}
+  h1{font-size:22px;color:#ef5350;margin-bottom:6px}
+  p{color:rgba(255,255,255,.5);font-size:13px;margin-bottom:24px}
+  input{width:100%;padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);
+    background:rgba(255,255,255,.07);color:#fff;font-size:22px;text-align:center;
+    letter-spacing:8px;font-family:inherit;outline:none;margin-bottom:14px}
+  input:focus{border-color:rgba(245,197,24,.5)}
+  input.err{border-color:#ef5350;animation:shake .3s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
   button{width:100%;padding:14px;border-radius:10px;border:none;cursor:pointer;
-    font-size:16px;font-weight:700;font-family:inherit;transition:.2s}
-  .btn-reset{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff}
+    font-size:16px;font-weight:700;font-family:inherit;transition:.2s;margin-bottom:8px}
+  .btn-enter{background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.3);color:#f5c518}
+  .btn-enter:hover{background:rgba(245,197,24,.25)}
+  .btn-reset{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff;display:none}
   .btn-reset:hover{opacity:.85}
   .btn-reset:disabled{opacity:.4;cursor:not-allowed}
-  #status{margin-top:20px;padding:14px;border-radius:10px;display:none;font-size:14px}
-  .ok{background:rgba(38,166,154,.15);border:1px solid rgba(38,166,154,.3);color:#80cbc4}
-  .err{background:rgba(239,83,80,.15);border:1px solid rgba(239,83,80,.3);color:#ef9a9a}
-  .loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);
-    border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px}
+  .warn{background:rgba(239,83,80,.08);border:1px solid rgba(239,83,80,.25);
+    border-radius:10px;padding:14px;margin-bottom:18px;font-size:12px;
+    color:#ef9a9a;display:none;line-height:1.6}
+  #status{margin-top:16px;padding:14px;border-radius:10px;display:none;font-size:14px;line-height:1.6}
+  .ok{background:rgba(38,166,154,.12);border:1px solid rgba(38,166,154,.3);color:#80cbc4}
+  .err-box{background:rgba(239,83,80,.12);border:1px solid rgba(239,83,80,.3);color:#ef9a9a}
+  .loader{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);
+    border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
   @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="card">
-  <h1>🗑️ Reset Banco de Dados</h1>
-  <p>Família Tomelin — Copa 2026</p>
+  <h1>🗑️ Reset Banco</h1>
+  <p>Família Tomelin · Copa 2026</p>
 
-  <div class="warn">
-    ⚠️ <strong>ATENÇÃO:</strong> Esta ação irá apagar todos os usuários,
-    figurinhas, anúncios, chats e trocas do sistema.<br><br>
-    Esta ação é <strong>irreversível</strong>.
+  <!-- STEP 1: senha -->
+  <div id="step-auth">
+    <input type="password" id="pin" placeholder="••••" maxlength="4"
+      oninput="this.value=this.value.replace(/\D/g,'')"
+      onkeydown="if(event.key==='Enter')checkPin()">
+    <button class="btn-enter" onclick="checkPin()">🔐 Entrar</button>
   </div>
 
-  <button class="btn-reset" id="btn" onclick="doReset()">
-    🗑️ Zerar Banco de Dados
-  </button>
+  <!-- STEP 2: reset -->
+  <div id="step-reset" style="display:none">
+    <div class="warn" id="warn">
+      ⚠️ <strong>ATENÇÃO:</strong> Esta ação apaga todos os usuários,
+      figurinhas, anúncios, chats e trocas.<br>
+      Esta ação é <strong>irreversível</strong>.
+    </div>
+    <button class="btn-reset" id="btn-reset" onclick="doReset()">
+      🗑️ Zerar Banco de Dados
+    </button>
+  </div>
 
   <div id="status"></div>
 </div>
 
 <script>
-async function doReset() {
+function checkPin(){
+  const pin = document.getElementById('pin');
+  if(pin.value === '7131'){
+    document.getElementById('step-auth').style.display = 'none';
+    const sr = document.getElementById('step-reset');
+    sr.style.display = 'block';
+    document.getElementById('warn').style.display = 'block';
+    document.getElementById('btn-reset').style.display = 'block';
+  } else {
+    pin.classList.add('err');
+    pin.value = '';
+    pin.placeholder = 'Errado!';
+    setTimeout(()=>{ pin.classList.remove('err'); pin.placeholder='••••'; }, 1000);
+  }
+}
+
+async function doReset(){
   if(!confirm('TEM CERTEZA? Todos os dados serão apagados definitivamente.')) return;
   if(!confirm('ÚLTIMA CONFIRMAÇÃO: Apagar TUDO mesmo?')) return;
 
-  const btn = document.getElementById('btn');
+  const btn = document.getElementById('btn-reset');
   const st  = document.getElementById('status');
   btn.disabled = true;
   btn.innerHTML = '<span class="loader"></span>Zerando...';
-  st.style.display = 'none';
 
   try {
-    const r = await fetch('https://figurinhas-copa2026-production.up.railway.app/api/admin/reset-db', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
+    const r = await fetch('/api/admin/reset-db', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({secret:'TOMELIN2026RESET'}),
-      signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined,
     });
     const d = await r.json();
-
-    if(d.ok) {
+    if(d.ok){
       st.className = 'ok';
-      st.innerHTML = '✅ ' + d.message + '<br><br>Agora acesse o app e faça seu cadastro novamente.';
+      st.innerHTML = '✅ ' + d.message;
       btn.innerHTML = '✅ Banco zerado!';
-      btn.style.background = '#388e3c';
+      btn.style.background = '#2e7d32';
     } else {
-      throw new Error(d.error || 'Erro desconhecido');
+      throw new Error(d.error||'Erro');
     }
-  } catch(e) {
-    st.className = 'err';
-    st.innerHTML = '❌ Erro: ' + e.message + '<br><br>Tente novamente ou verifique o Railway.';
+  } catch(e){
+    st.className = 'err-box';
+    st.innerHTML = '❌ ' + e.message;
     btn.disabled = false;
     btn.innerHTML = '🗑️ Tentar novamente';
   }
