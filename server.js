@@ -624,15 +624,110 @@ cron.schedule('0 */6 * * *', () => {
 // ── START ────────────────────────────────────────────────────
 
 // ── /s/:code — redirect encurtador ──────────────────────────
+// Busca a URL seguindo redirects (ate 4) — retorna {url final, body}
+function fetchFollow(url, maxRedirects = 4) {
+  return new Promise((resolve) => {
+    const go = (u, n) => {
+      try {
+        const https = require('https');
+        const http = require('http');
+        const lib = u.startsWith('http://') ? http : https;
+        const parsed = new URL(u);
+        const req = lib.request({
+          hostname: parsed.hostname, path: parsed.pathname + parsed.search, method: 'GET',
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36' },
+          timeout: 8000,
+        }, (r) => {
+          if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location && n > 0) {
+            let loc = r.headers.location;
+            if (loc.startsWith('/')) loc = parsed.origin + loc;
+            r.destroy();
+            return go(loc, n - 1);
+          }
+          let body = '';
+          r.on('data', c => { body += c; if (body.length > 600000) r.destroy(); });
+          r.on('end', () => resolve({ url: u, body }));
+        });
+        req.on('error', () => resolve({ url: u, body: '' }));
+        req.on('timeout', () => { req.destroy(); resolve({ url: u, body: '' }); });
+        req.end();
+      } catch(e) { resolve({ url: u, body: '' }); }
+    };
+    go(url, maxRedirects);
+  });
+}
+
+// Extrai o texto principal de um artigo a partir do HTML
+function extractArticle(html) {
+  if (!html) return '';
+  // Remove blocos que nao sao conteudo
+  let h = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+    .replace(/<aside[\s\S]*?<\/aside>/gi, '')
+    .replace(/<form[\s\S]*?<\/form>/gi, '');
+
+  // Tenta isolar <article> se existir
+  const artM = h.match(/<article[\s\S]*?<\/article>/i);
+  if (artM) h = artM[0];
+
+  // Pega todos os <p>
+  const paras = [];
+  const pRe = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+  let m;
+  while ((m = pRe.exec(h)) !== null) {
+    let t = m[1]
+      .replace(/<[^>]+>/g, '')
+      .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+      .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
+      .replace(/&#\d+;/g,'').replace(/\s+/g,' ').trim();
+    // So paragrafos com texto real (evita legendas/ads curtos)
+    if (t.length >= 45 && /[.!?]/.test(t)) paras.push(t);
+  }
+  // Dedup e junta
+  const seen = new Set();
+  const clean = paras.filter(p => { if (seen.has(p)) return false; seen.add(p); return true; });
+  return clean.slice(0, 25).join('\n\n').substring(0, 6000);
+}
+
+// Busca o texto completo do artigo (resolve Google News se preciso)
+async function fetchArticleText(url) {
+  if (!url) return '';
+  try {
+    let target = url;
+    if (/news\.google\.com/.test(url)) {
+      const resolved = await resolveGoogleNews(url);
+      if (resolved) target = resolved;
+    }
+    const { body } = await fetchFollow(target);
+    return extractArticle(body);
+  } catch(e) { return ''; }
+}
+
 // ── /n/:code — pagina da noticia no NOSSO site ──────────────
-app.get('/n/:code', (req, res) => {
+app.get('/n/:code', async (req, res) => {
   const n = db.links.get(req.params.code);
   if (!n || n.type !== 'news') return res.status(404).send('Noticia nao encontrada');
   db.links.hit(req.params.code);
 
+  // Busca o texto COMPLETO do artigo (cacheia no proprio registro)
+  let fullText = n.fullText || '';
+  if (!fullText && n.url) {
+    fullText = await fetchArticleText(n.url);
+    if (fullText && fullText.length > (n.desc||'').length) {
+      n.fullText = fullText;
+      db.links.set(req.params.code, n); // cacheia para proximas visitas
+    }
+  }
+  // Usa o texto completo se for maior que o resumo
+  const conteudo = (fullText && fullText.length > (n.desc||'').length) ? fullText : (n.desc || '');
+
   const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const title = esc(n.title);
-  const desc  = esc(n.desc);
+  const desc  = esc(conteudo);
   const src   = esc(n.src);
   const img   = n.img && /^https?:\/\//.test(n.img) ? esc(n.img) : '';
   const orig  = esc(n.url);
@@ -684,8 +779,8 @@ h1{font-size:25px;line-height:1.3;margin-bottom:10px;font-weight:800}
   <div class="body">${desc || 'Toque no botao abaixo para ler a materia completa na fonte original.'}</div>
   <div class="divider"></div>
   <div class="orig-box">
-    <p>Esta é uma prévia. Leia a matéria completa na fonte original:</p>
-    <a class="btn" href="${orig}" target="_blank" rel="noopener">Ler em ${src} →</a>
+    <p>Matéria de <b>${src}</b>. Para ver com fotos e na íntegra, acesse a fonte:</p>
+    <a class="btn" href="${orig}" target="_blank" rel="noopener">Abrir em ${src} →</a>
   </div>
   <div class="foot">
     Compartilhado por <a href="https://copa2026.familiatomelin.com.br">Família Tomelin · Copa 2026</a> 🏆
