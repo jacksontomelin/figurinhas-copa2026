@@ -1137,11 +1137,71 @@ app.post('/api/rpa/toggle', (req, res) => {
 
 app.all('/api/rpa/run-now', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  log('▶️', 'RPA: execucao manual');
-  // Força envio ignorando o intervalo de 4min
-  _lastRpaSend = 0;
-  rpaNewsLoop().catch(e => log('❌', e.message));
-  res.json({ ok: true, message: 'RPA executando — verifique o grupo em alguns segundos.' });
+  log('▶️', 'RPA: execucao manual (diagnostico)');
+  const diag = { steps: [] };
+  try {
+    // 1) Buscar notícias
+    const items = await refreshNews();
+    diag.steps.push(`1) refreshNews retornou ${items.length} itens`);
+    diag.totalCache = items.length;
+
+    if (!items.length) {
+      diag.steps.push('❌ PAROU: nenhuma notícia no cache (feeds falharam?)');
+      return res.json({ ok: false, diag });
+    }
+
+    // 2) Filtrar novas (não enviadas + últimas 72h)
+    const jaEnviadas = db.raw().newsSent.length;
+    const novas = items.filter(it => {
+      const id = newsId(it);
+      if (db.newsSent.has(id)) return false;
+      if (it.pub) {
+        const ageMs = Date.now() - new Date(it.pub).getTime();
+        if (ageMs > NEWS_MAX_AGE_MS) return false;
+      }
+      return true;
+    });
+    diag.steps.push(`2) ${jaEnviadas} já enviadas; ${novas.length} novas elegíveis (72h)`);
+    diag.jaEnviadas = jaEnviadas;
+    diag.novas = novas.length;
+    diag.amostra = items.slice(0, 5).map(it => ({
+      title: (it.title||'').substring(0, 60),
+      src: it.src,
+      pub: it.pub || 'sem data',
+      ageH: it.pub ? Math.round((Date.now()-new Date(it.pub).getTime())/3600000) : null,
+    }));
+
+    if (!novas.length) {
+      diag.steps.push('⚠️ Sem notícias novas — limpando cache de enviadas para reenviar');
+      db.newsSent.clear();
+      diag.steps.push('✅ Cache de enviadas limpo, tente novamente');
+      return res.json({ ok: false, diag });
+    }
+
+    // 3) Testar envio da primeira
+    const item = novas.sort((a,b)=>new Date(b.pub||0)-new Date(a.pub||0))[0];
+    diag.steps.push(`3) Enviando: "${(item.title||'').substring(0,50)}" (${item.src})`);
+    const msg = formatNewsMsg(item, newsRpaCount);
+    const r = await sendGroup(msg);
+    diag.sendResult = r;
+
+    if (r.ok) {
+      db.newsSent.add(newsId(item));
+      newsRpaCount++;
+      _lastRpaSend = 0; // permite o cron continuar enviando o resto
+      diag.steps.push(`✅ ENVIADO! messageId: ${r.messageId}`);
+      // Dispara o resto do lote em background
+      rpaNewsLoop().catch(e => log('❌', e.message));
+    } else {
+      diag.steps.push(`❌ FALHA no envio: ${JSON.stringify(r.error).substring(0,200)}`);
+      diag.steps.push('→ Problema na Z-API (credenciais/grupo/instância)');
+    }
+
+    res.json({ ok: r.ok, diag });
+  } catch(e) {
+    diag.steps.push(`❌ ERRO: ${e.message}`);
+    res.json({ ok: false, diag, error: e.message });
+  }
 });
 
 
