@@ -455,19 +455,8 @@ function safe(u) {
   return rest;
 }
 
-function shortenUrl(url) {
-  const APP_URL = 'https://copa2026.familiatomelin.com.br';
-  const links = db.links.all();
-  // Check existing
-  const existing = Object.entries(links).find(([,v]) => v.url === url);
-  if (existing) return `${APP_URL}/s/${existing[0]}`;
-  // Create new
-  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-  let code;
-  do { code = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join(''); }
-  while (links[code]);
-  db.links.set(code, { url, hits: 0, created: Date.now() });
-  return `${APP_URL}/s/${code}`;
+function shortenUrl(url, host) {
+  return db.shorten(url, host || 'copa2026.familiatomelin.com.br');
 }
 
 
