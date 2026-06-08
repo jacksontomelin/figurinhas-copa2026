@@ -775,12 +775,21 @@ async function refreshNews() {
     'Copa+do+Mundo+2026',
     'FIFA+World+Cup+2026+Brasil',
     'Sele%C3%A7%C3%A3o+Brasileira+2026',
+    'Sele%C3%A7%C3%A3o+Brasileira+convocados',
+    'CBF+sele%C3%A7%C3%A3o',
+    'Brasil+futebol+hoje',
+    'Neymar',
+    'Vini+Jr',
+    'Endrick',
+    'amistoso+Brasil',
+    'tabela+Copa+2026',
+    'grupos+Copa+do+Mundo+2026',
   ];
   const seen = new Set();
   const items = [];
 
   for (const q of queries) {
-    if (items.length >= 12) break;
+    if (items.length >= 30) break;
     try {
       const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
       const r = await fetchHTTPS(rssUrl, { timeout: 8000 });
@@ -790,7 +799,7 @@ async function refreshNews() {
         if (!seen.has(item.title)) {
           seen.add(item.title);
           items.push(item);
-          if (items.length >= 12) break;
+          if (items.length >= 30) break;
         }
       }
     } catch (e) {
@@ -1006,83 +1015,64 @@ function newsId(item) {
 // RPA principal: puxa notícias frescas e envia as novas no grupo
 let _lastRpaSend = 0; // timestamp do último envio
 
+const NEWS_PER_CYCLE = 3;
+const NEWS_MIN_INTERVAL = 4 * 60 * 1000;
+const NEWS_MAX_AGE_MS = 72 * 60 * 60 * 1000;
+
 async function rpaNewsLoop() {
   if (!newsRpaEnabled) return;
-
-  // Mínimo 55 minutos entre envios automáticos (evita spam)
-  const minInterval = 55 * 60 * 1000;
-  if (Date.now() - _lastRpaSend < minInterval) {
-    log('📰', `RPA: aguardando intervalo (próximo em ${Math.ceil((minInterval-(Date.now()-_lastRpaSend))/60000)}min)`);
-    return;
-  }
+  if (Date.now() - _lastRpaSend < NEWS_MIN_INTERVAL) return;
 
   try {
-    // Força refresh do RSS para ter notícias frescas
-    // db.news.ts reset (handled by db.news.set); // invalida cache para forçar novo fetch
     const items = await refreshNews();
-    if (!items || !items.length) {
-      log('📰', 'RPA: sem notícias disponíveis');
-      return;
-    }
+    if (!items || !items.length) { log('📰', 'RPA: sem noticias disponiveis'); return; }
 
-    // Filtra: NÃO enviadas + das últimas 48h
-    const MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48h em milliseconds
     const novas = items.filter(it => {
       const id = newsId(it);
       if (db.newsSent.has(id)) return false;
-      // Se tem data de publicação, só envia se for das últimas 48h
       if (it.pub) {
         const ageMs = Date.now() - new Date(it.pub).getTime();
-        if (ageMs > MAX_AGE_MS) return false; // mais velha que 48h → ignora
+        if (ageMs > NEWS_MAX_AGE_MS) return false;
       }
       return true;
     });
 
-    if (!novas.length) {
-      log('📰', `RPA: ${db.raw().newsSent.length} já enviadas, sem notícias novas nas últimas 48h`);
-      return;
+    if (!novas.length) { log('📰', `RPA: ${db.raw().newsSent.length} enviadas, sem novas nas ultimas 72h`); return; }
+
+    const ordenadas = novas.sort((a, b) => new Date(b.pub||0) - new Date(a.pub||0));
+    const lote = ordenadas.slice(0, NEWS_PER_CYCLE);
+    log('📰', `RPA: enviando lote de ${lote.length} noticia(s)`);
+
+    let enviadas = 0;
+    for (const item of lote) {
+      const id = newsId(item);
+      const msg = formatNewsMsg(item, newsRpaCount);
+      const r = await sendGroup(msg);
+      if (r.ok) {
+        db.newsSent.add(id); newsRpaCount++; enviadas++; cronStats.enviados++;
+        log('✅', `RPA: #${newsRpaCount} — "${(item.title||'').substring(0,45)}"`);
+      } else {
+        log('❌', `RPA: falha — ${JSON.stringify(r).substring(0,80)}`); cronStats.erros++;
+      }
+      await delay(2000);
     }
-
-    // Pega a notícia mais recente não enviada
-    const item = novas.sort((a, b) => {
-      return (new Date(b.pub||0) - new Date(a.pub||0));
-    })[0];
-    const id = newsId(item);
-
-    log('📰', `RPA: enviando — "${(item.title||'').substring(0,50)}"`);
-
-    const msg = formatNewsMsg(item, newsRpaCount);
-    const r   = await sendGroup(msg);
-
-    if (r.ok) {
-      db.newsSent.add(id);
-      newsRpaCount++;
-      _lastRpaSend = Date.now();
-      // newsSent saved automatically by db; // persiste em disco
-      log('✅', `RPA: notícia #${newsRpaCount} enviada`);
-      cronStats.enviados++;
-    } else {
-      log('❌', `RPA: falha — ${JSON.stringify(r).substring(0,100)}`);
-      cronStats.erros++;
-    }
+    if (enviadas > 0) _lastRpaSend = Date.now();
 
   } catch (e) {
-    log('❌', `RPA news erro: ${e.message}`);
-    cronStats.erros++;
+    log('❌', `RPA news erro: ${e.message}`); cronStats.erros++;
   }
 }
 
 // Limpa histórico de enviados a cada 6h (recicla notícias antigas)
-cron.schedule('0 */6 * * *', () => {
+cron.schedule('0 */4 * * *', () => {
   const before = db.raw().newsSent.length;
   db.newsSent.clear();
-  // newsSent saved automatically by db;
-  log('♻️', `RPA: cache de notícias limpo (${before} itens)`);
+  log('♻️', `RPA: cache de noticias limpo (${before} itens) — permite reenvio`);
 }, { timezone: 'America/Sao_Paulo' });
 
 // Cron: roda a cada 10 minutos
-cron.schedule('*/10 * * * *', async () => {
-  log('⏰', 'RPA cron: verificando notícias ao vivo...');
+cron.schedule('*/5 * * * *', async () => {
+  log('⏰', 'RPA cron: buscando noticias (lote de 3)...');
   await rpaNewsLoop();
 }, { timezone: 'America/Sao_Paulo' });
 
