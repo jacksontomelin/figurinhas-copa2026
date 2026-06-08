@@ -770,37 +770,74 @@ function fetchHTTPS(url, opts = {}) {
 }
 
 // ── Busca e cacheia notícias ───────────────────────────────────
+// Buscas no Google News (por tema)
+const NEWS_QUERIES = [
+  'Copa+do+Mundo+2026',
+  'FIFA+World+Cup+2026+Brasil',
+  'Sele%C3%A7%C3%A3o+Brasileira+2026',
+  'Sele%C3%A7%C3%A3o+Brasileira+convocados',
+  'CBF+sele%C3%A7%C3%A3o',
+  'Brasil+futebol+hoje',
+  'Neymar',
+  'Vini+Jr',
+  'Endrick',
+  'amistoso+Brasil',
+  'tabela+Copa+2026',
+  'grupos+Copa+do+Mundo+2026',
+  'Brasileir%C3%A3o+S%C3%A9rie+A',
+  'Libertadores',
+  'Santa+Catarina+futebol',
+];
+
+// Feeds RSS diretos de grandes portais (fonte fixa, conteúdo fresco)
+const NEWS_FEEDS = [
+  { url: 'https://ge.globo.com/futebol/rss/',                       src: 'GE Globo' },
+  { url: 'https://ge.globo.com/futebol/selecao-brasileira/rss/',   src: 'GE Seleção' },
+  { url: 'https://ge.globo.com/rss/',                              src: 'GE Globo' },
+  { url: 'https://www.cnnbrasil.com.br/esportes/feed/',            src: 'CNN Brasil' },
+  { url: 'https://www.lance.com.br/rss/',                          src: 'Lance!' },
+  { url: 'https://www.terra.com.br/esportes/rss.xml',              src: 'Terra' },
+  { url: 'https://www.nsctotal.com.br/feed',                       src: 'NSC Total' },
+  { url: 'https://news.google.com/rss/headlines/section/topic/SPORTS?hl=pt-BR&gl=BR&ceid=BR:pt-419', src: 'Google Esportes' },
+];
+
 async function refreshNews() {
-  const queries = [
-    'Copa+do+Mundo+2026',
-    'FIFA+World+Cup+2026+Brasil',
-    'Sele%C3%A7%C3%A3o+Brasileira+2026',
-    'Sele%C3%A7%C3%A3o+Brasileira+convocados',
-    'CBF+sele%C3%A7%C3%A3o',
-    'Brasil+futebol+hoje',
-    'Neymar',
-    'Vini+Jr',
-    'Endrick',
-    'amistoso+Brasil',
-    'tabela+Copa+2026',
-    'grupos+Copa+do+Mundo+2026',
-  ];
   const seen = new Set();
   const items = [];
+  const LIMIT = 40;
 
-  for (const q of queries) {
-    if (items.length >= 30) break;
+  // 1) Feeds RSS diretos (prioridade — conteúdo mais fresco e variado)
+  for (const feed of NEWS_FEEDS) {
+    if (items.length >= LIMIT) break;
+    try {
+      const r = await fetchHTTPS(feed.url, { timeout: 8000 });
+      if (r.status !== 200) continue;
+      const parsed = parseRSS(r.body);
+      for (const item of parsed) {
+        if (!item.title || seen.has(item.title)) continue;
+        seen.add(item.title);
+        if (!item.src || item.src === 'Copa 2026') item.src = feed.src; // marca a fonte
+        items.push(item);
+        if (items.length >= LIMIT) break;
+      }
+    } catch (e) {
+      log('⚠️', `Feed erro (${feed.src}): ${e.message}`);
+    }
+  }
+
+  // 2) Google News por tema (complementa)
+  for (const q of NEWS_QUERIES) {
+    if (items.length >= LIMIT) break;
     try {
       const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
       const r = await fetchHTTPS(rssUrl, { timeout: 8000 });
       if (r.status !== 200) continue;
       const parsed = parseRSS(r.body);
       for (const item of parsed) {
-        if (!seen.has(item.title)) {
-          seen.add(item.title);
-          items.push(item);
-          if (items.length >= 30) break;
-        }
+        if (!item.title || seen.has(item.title)) continue;
+        seen.add(item.title);
+        items.push(item);
+        if (items.length >= LIMIT) break;
       }
     } catch (e) {
       log('⚠️', `News RSS erro (${q}): ${e.message}`);
@@ -809,7 +846,7 @@ async function refreshNews() {
 
   if (items.length > 0) {
     db.news.set(items);
-    log('📰', `Cache de notícias atualizado — ${items.length} itens`);
+    log('📰', `Cache atualizado — ${items.length} itens (${NEWS_FEEDS.length} feeds + ${NEWS_QUERIES.length} buscas)`);
   } else {
     log('⚠️', 'Nenhuma notícia encontrada, mantendo cache anterior');
   }
