@@ -994,49 +994,52 @@ function formatNewsMsg(item, idx) {
   const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡','🔴','📺'];
   const ico = emojis[idx % emojis.length];
 
-  // Título limpo (remove " - Fonte" do final, sem truncar)
+  // Título limpo (remove " - Fonte" do final)
   const title = ((item.title || '')
     .replace(/\s+[-–]\s+[\w][^-–,]{1,40}$/, '').trim()
     || (item.title || '')).trim();
 
   const src = item.src || 'Copa 2026';
 
-  // Desc: limpa, sem duplicar título
+  // Resumo: limpa entidades + tags, mantém o texto
   let desc = (item.desc || '')
     .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
     .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
     .replace(/&#\d+;/g,'').replace(/<[^>]+>/g,'')
     .replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();
 
-  if (desc.toLowerCase().startsWith(title.toLowerCase().substring(0, 30))) {
+  // Remove título duplicado no início do resumo
+  if (desc.toLowerCase().startsWith(title.toLowerCase().substring(0, 25))) {
     desc = desc.substring(title.length).replace(/^[\s\-–·|]+/, '').trim();
   }
-  desc = desc.replace(/\s+[-–]?\s*[a-zA-ZÀ-ú]{2,20}\s*$/, '').trim();
-  if (desc.length < 25 || desc.toLowerCase() === title.toLowerCase()) desc = '';
-  desc = desc.substring(0, 180);
+  // Resumo até 220 chars, corta na última frase/palavra completa
+  if (desc.length > 220) {
+    desc = desc.substring(0, 220);
+    const lastDot = desc.lastIndexOf('. ');
+    if (lastDot > 100) desc = desc.substring(0, lastDot + 1);
+    else desc = desc.substring(0, desc.lastIndexOf(' ')) + '…';
+  }
+  if (desc.length < 20 || desc.toLowerCase() === title.toLowerCase()) desc = '';
 
-  // Link: remove https:// para não quebrar linha no WA
-  // (WhatsApp reconhece domain.com/path como link clicável)
+  // Link: só mostra se for limpo (NÃO mostra redirect feio do Google News)
   let linkLine = '';
-  if (item.link && item.link.length > 10) {
-    // Limpa o link: remove tracking e https:// (WhatsApp reconhece domain.com/path)
+  if (item.link && item.link.length > 10 && !/news\.google\.com/.test(item.link)) {
     let clean = item.link
       .replace(/[?&](utm_[^&]*|fbclid|gclid|ref|oc)=[^&]*/g, '')
       .replace(/[?&]+$/, '');
     const display = clean.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    linkLine = `\n🔗 ${display}`;
+    if (display.length < 90) linkLine = `\n🔗 ${display}`;
   }
 
-  // Monta mensagem — link em linha própria, 🏆 junto com assinatura
   const lines = [
-    `${ico} *NOTÍCIA — ${src.toUpperCase()}*`,
+    `${ico} *${src.toUpperCase()}*`,
     '',
     `*${title}*`,
   ];
-  if (desc) lines.push(desc);
+  if (desc) { lines.push(''); lines.push(desc); }
   lines.push('');
-  lines.push(`📰 ${src}${linkLine}`);
-  lines.push(`Família Tomelin · Copa 2026 🏆`);
+  lines.push(`📲 Veja mais: copa2026.familiatomelin.com.br${linkLine}`);
+  lines.push(`_Família Tomelin · Copa 2026_ 🏆`);
 
   return lines.join('\n');
 }
