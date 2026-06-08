@@ -1021,14 +1021,14 @@ function formatNewsMsg(item, idx) {
   }
   if (desc.length < 20 || desc.toLowerCase() === title.toLowerCase()) desc = '';
 
-  // Link: só mostra se for limpo (NÃO mostra redirect feio do Google News)
+  // Link: encurta no próprio domínio (copa2026.familiatomelin.com.br/s/xxx)
   let linkLine = '';
   if (item.link && item.link.length > 10 && !/news\.google\.com/.test(item.link)) {
-    let clean = item.link
-      .replace(/[?&](utm_[^&]*|fbclid|gclid|ref|oc)=[^&]*/g, '')
-      .replace(/[?&]+$/, '');
-    const display = clean.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (display.length < 90) linkLine = `\n🔗 ${display}`;
+    try {
+      const short = db.shorten(item.link, 'copa2026.familiatomelin.com.br');
+      const display = short.replace(/^https?:\/\//, '');
+      linkLine = `\n🔗 ${display}`;
+    } catch(e) { /* sem link se falhar */ }
   }
 
   const lines = [
@@ -1038,7 +1038,7 @@ function formatNewsMsg(item, idx) {
   ];
   if (desc) { lines.push(''); lines.push(desc); }
   lines.push('');
-  lines.push(`📲 Veja mais: copa2026.familiatomelin.com.br${linkLine}`);
+  lines.push(`🔗 Leia: ${linkLine ? linkLine.replace('\n🔗 ','') : 'copa2026.familiatomelin.com.br'}`);
   lines.push(`_Família Tomelin · Copa 2026_ 🏆`);
 
   return lines.join('\n');

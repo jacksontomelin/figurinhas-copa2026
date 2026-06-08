@@ -434,7 +434,7 @@ router.get('/shorten', (req, res) => {
   cors(res);
   const { url } = req.query;
   if (!url) return res.json({ ok: false, error: 'url obrigatória' });
-  const short = shortenUrl(url, req.hostname || 'copa2026.familiatomelin.com.br');
+  const short = db.shorten(url, req.hostname || 'copa2026.familiatomelin.com.br');
   res.json({ ok: true, short, original: url });
 });
 
@@ -443,7 +443,7 @@ router.post('/shorten', (req, res) => {
   cors(res);
   const url = req.body?.url || req.query.url;
   if (!url) return res.json({ ok: false, error: 'url obrigatória' });
-  const short = shortenUrl(url, req.hostname || 'copa2026.familiatomelin.com.br');
+  const short = db.shorten(url, req.hostname || 'copa2026.familiatomelin.com.br');
   res.json({ ok: true, short, original: url });
 });
 

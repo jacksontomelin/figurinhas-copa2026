@@ -264,6 +264,22 @@ const db = {
     hit:  (code)       => { if (_db.links[code]) { _db.links[code].hits = (_db.links[code].hits||0)+1; markDirty(); } },
   },
 
+  // Encurtador: cria (ou reusa) um short link no próprio domínio
+  shorten(url, host) {
+    host = (host || 'copa2026.familiatomelin.com.br').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (!url) return '';
+    // Código determinístico a partir da URL (mesma URL → mesmo código)
+    let h = 0;
+    for (let i = 0; i < url.length; i++) { h = ((h << 5) - h + url.charCodeAt(i)) | 0; }
+    const code = Math.abs(h).toString(36).substring(0, 7);
+    // Salva se ainda não existe
+    if (!_db.links[code]) {
+      _db.links[code] = { url, hits: 0, created: Date.now() };
+      markDirty();
+    }
+    return `https://${host}/s/${code}`;
+  },
+
   newsSent: {
     has:   (id)  => _db.newsSent.some(n => n.id === id),
     add:   (id)  => { _db.newsSent.push({ id, ts: Date.now() }); markDirty(); },
