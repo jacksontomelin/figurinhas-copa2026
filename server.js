@@ -657,6 +657,47 @@ function fetchFollow(url, maxRedirects = 4) {
   });
 }
 
+// Decodifica entidades HTML (nomeadas + numericas decimais/hex)
+function decodeEntities(s) {
+  if (!s) return '';
+  const named = {
+    amp:'&', lt:'<', gt:'>', quot:'"', apos:"'", nbsp:' ',
+    aacute:'á', eacute:'é', iacute:'í', oacute:'ó', uacute:'ú',
+    Aacute:'Á', Eacute:'É', Iacute:'Í', Oacute:'Ó', Uacute:'Ú',
+    agrave:'à', Agrave:'À', acirc:'â', ecirc:'ê', ocirc:'ô',
+    Acirc:'Â', Ecirc:'Ê', Ocirc:'Ô', atilde:'ã', otilde:'õ',
+    Atilde:'Ã', Otilde:'Õ', ccedil:'ç', Ccedil:'Ç',
+    uuml:'ü', Uuml:'Ü', ntilde:'ñ', Ntilde:'Ñ', ouml:'ö', Ouml:'Ö',
+    hellip:'…', mdash:'—', ndash:'–', deg:'°', ordm:'º', ordf:'ª',
+    lsquo:"'", rsquo:"'", ldquo:'"', rdquo:'"', laquo:'«', raquo:'»',
+    bull:'•', middot:'·', euro:'€', pound:'£', copy:'©', reg:'®', trade:'™',
+  };
+  return String(s)
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => { try { return String.fromCodePoint(parseInt(h,16)); } catch(e){ return ''; } })
+    .replace(/&#(\d+);/g, (_, d) => { try { return String.fromCodePoint(parseInt(d,10)); } catch(e){ return ''; } })
+    .replace(/&([a-zA-Z]+);/g, (m, name) => named[name] !== undefined ? named[name] : m);
+}
+
+// Paragrafos de lixo (disclaimers, boilerplate) que devem ser removidos
+function isJunkParagraph(t) {
+  const low = t.toLowerCase();
+  const junk = [
+    'os comentários são de responsabilidade',
+    'comentarios sao de responsabilidade',
+    'denuncie', 'termos de uso', 'política de privacidade',
+    'leia também', 'leia mais', 'veja também', 'saiba mais',
+    'compartilhe', 'publicidade', 'continua após', 'continua apos',
+    'assine', 'newsletter', 'cadastre-se', 'siga o', 'siga a',
+    'baixe o app', 'todos os direitos reservados', 'copyright',
+    'foto:', 'crédito:', 'credito:', 'reprodução', 'getty images',
+  ];
+  if (junk.some(j => low.includes(j))) return true;
+  // Remove paragrafos majoritariamente em ingles (ex: tweets embutidos)
+  const enWords = (low.match(/\b(the|match|have|been|for|and|will|with|appointed|officials)\b/g)||[]).length;
+  if (enWords >= 3) return true;
+  return false;
+}
+
 // Extrai o texto principal de um artigo a partir do HTML
 function extractArticle(html) {
   if (!html) return '';
@@ -679,13 +720,9 @@ function extractArticle(html) {
   const pRe = /<p[^>]*>([\s\S]*?)<\/p>/gi;
   let m;
   while ((m = pRe.exec(h)) !== null) {
-    let t = m[1]
-      .replace(/<[^>]+>/g, '')
-      .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
-      .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
-      .replace(/&#\d+;/g,'').replace(/\s+/g,' ').trim();
-    // So paragrafos com texto real (evita legendas/ads curtos)
-    if (t.length >= 45 && /[.!?]/.test(t)) paras.push(t);
+    let t = decodeEntities(m[1].replace(/<[^>]+>/g, '')).replace(/\s+/g,' ').trim();
+    // So paragrafos com texto real, sem lixo/boilerplate
+    if (t.length >= 45 && /[.!?]/.test(t) && !isJunkParagraph(t)) paras.push(t);
   }
   // Dedup e junta
   const seen = new Set();
@@ -900,14 +937,10 @@ function parseRSS(xml) {
     const rawDescription = get('description') || '';
     const rawDesc = (rawContent.length > rawDescription.length ? rawContent : rawDescription);
 
-    const desc = rawDesc
-      .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
-      .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
-      .replace(/&#\d+;/g,'')
-      .replace(/<[^>]+>/g,'')           // remove tags HTML
+    const desc = decodeEntities(rawDesc.replace(/<[^>]+>/g,''))
       .replace(/https?:\/\/\S+/g,'')   // remove URLs
       .replace(/\s+/g,' ').trim()
-      .substring(0, 800);              // guarda até 800 chars no cache
+      .substring(0, 800);
     const pub   = get('pubDate');
     const src   = (itemStr.match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || 'Copa 2026';
 
@@ -1234,10 +1267,7 @@ function formatNewsMsg(item, idx) {
   const src = item.src || 'Copa 2026';
 
   // Resumo: limpa entidades + tags, mantém o texto
-  let desc = (item.desc || '')
-    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
-    .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
-    .replace(/&#\d+;/g,'').replace(/<[^>]+>/g,'')
+  let desc = decodeEntities((item.desc || '').replace(/<[^>]+>/g,''))
     .replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim();
 
   // Remove título duplicado no início do resumo
