@@ -624,12 +624,52 @@ cron.schedule('0 */6 * * *', () => {
 // ── START ────────────────────────────────────────────────────
 
 // ── /s/:code — redirect encurtador ──────────────────────────
-app.get('/s/:code', (req, res) => {
+app.get('/s/:code', async (req, res) => {
   const link = db.links.get(req.params.code);
-  if (!link) return res.status(404).send('Link não encontrado');
+  if (!link) return res.status(404).send('Link nao encontrado');
   db.links.hit(req.params.code);
-  res.redirect(302, link.url);
+
+  let target = link.url;
+  // Se for link do Google News, tenta resolver pro artigo real
+  if (/news\.google\.com/.test(target)) {
+    try {
+      const resolved = await resolveGoogleNews(target);
+      if (resolved) target = resolved;
+    } catch(e) { /* mantem o original se falhar */ }
+  }
+  res.redirect(302, target);
 });
+
+// Resolve link do Google News seguindo o redirect HTTP
+async function resolveGoogleNews(url) {
+  return new Promise((resolve) => {
+    try {
+      const https = require('https');
+      const u = new URL(url);
+      const req2 = https.request({
+        hostname: u.hostname, path: u.pathname + u.search, method: 'GET',
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TomelinBot/1.0)' },
+        timeout: 6000,
+      }, (r2) => {
+        // Redirect via header Location
+        if (r2.statusCode >= 300 && r2.statusCode < 400 && r2.headers.location) {
+          const loc = r2.headers.location;
+          if (!/news\.google\.com/.test(loc)) return resolve(loc);
+        }
+        // Procura URL real no corpo (data-n-au ou href)
+        let body = '';
+        r2.on('data', c => { body += c; if (body.length > 50000) r2.destroy(); });
+        r2.on('end', () => {
+          const m = body.match(/data-n-au="([^"]+)"/) || body.match(/<a[^>]+href="(https?:\/\/(?!news\.google)[^"]+)"/);
+          resolve(m ? m[1] : null);
+        });
+      });
+      req2.on('error', () => resolve(null));
+      req2.on('timeout', () => { req2.destroy(); resolve(null); });
+      req2.end();
+    } catch(e) { resolve(null); }
+  });
+}
 cron.schedule('0 * * * *', () => {
   db.newsSent.clean();
   // Limpa usuarios online inativos > 2min
@@ -1019,9 +1059,9 @@ function formatNewsMsg(item, idx) {
   }
   if (desc.length < 20 || desc.toLowerCase() === title.toLowerCase()) desc = '';
 
-  // Link: encurta no próprio domínio (copa2026.familiatomelin.com.br/s/xxx)
+  // Link: encurta SEMPRE no próprio domínio → redireciona direto pra matéria
   let linkLine = '';
-  if (item.link && item.link.length > 10 && !/news\.google\.com/.test(item.link)) {
+  if (item.link && item.link.length > 10) {
     try {
       const short = db.shorten(item.link, 'copa2026.familiatomelin.com.br');
       const display = short.replace(/^https?:\/\//, '');
@@ -1036,7 +1076,8 @@ function formatNewsMsg(item, idx) {
   ];
   if (desc) { lines.push(''); lines.push(desc); }
   lines.push('');
-  lines.push(`🔗 Leia: ${linkLine ? linkLine.replace('\n🔗 ','') : 'copa2026.familiatomelin.com.br'}`);
+  if (linkLine) lines.push(`👉 Leia a materia:${linkLine}`);
+  else lines.push('👉 copa2026.familiatomelin.com.br');
   lines.push(`_Família Tomelin · Copa 2026_ 🏆`);
 
   return lines.join('\n');
