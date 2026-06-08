@@ -624,6 +624,76 @@ cron.schedule('0 */6 * * *', () => {
 // ── START ────────────────────────────────────────────────────
 
 // ── /s/:code — redirect encurtador ──────────────────────────
+// ── /n/:code — pagina da noticia no NOSSO site ──────────────
+app.get('/n/:code', (req, res) => {
+  const n = db.links.get(req.params.code);
+  if (!n || n.type !== 'news') return res.status(404).send('Noticia nao encontrada');
+  db.links.hit(req.params.code);
+
+  const esc = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const title = esc(n.title);
+  const desc  = esc(n.desc);
+  const src   = esc(n.src);
+  const img   = n.img && /^https?:\/\//.test(n.img) ? esc(n.img) : '';
+  const orig  = esc(n.url);
+  const data  = n.pub ? new Date(n.pub).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} · Família Tomelin</title>
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${desc.substring(0,160)}">
+${img?`<meta property="og:image" content="${img}">`:''}
+<meta property="og:type" content="article">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#08101c;color:#eef2f7;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.7;padding-bottom:40px}
+.top{background:linear-gradient(135deg,#0a2540,#103a6b);padding:14px 18px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.top img{height:34px;width:34px;border-radius:8px}
+.top b{font-size:16px}.top span{color:#f5c518}
+.wrap{max-width:680px;margin:0 auto;padding:18px}
+.src-badge{display:inline-block;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.35);color:#f5c518;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:14px;letter-spacing:.3px}
+h1{font-size:25px;line-height:1.3;margin-bottom:10px;font-weight:800}
+.meta{color:rgba(255,255,255,.45);font-size:13px;margin-bottom:18px}
+.hero{width:100%;border-radius:14px;margin-bottom:20px;border:1px solid rgba(255,255,255,.08)}
+.body{font-size:16.5px;color:rgba(255,255,255,.85);white-space:pre-line}
+.body p{margin-bottom:14px}
+.divider{height:1px;background:rgba(255,255,255,.1);margin:28px 0}
+.orig-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;text-align:center}
+.orig-box p{color:rgba(255,255,255,.55);font-size:14px;margin-bottom:14px}
+.btn{display:inline-block;background:linear-gradient(135deg,#f5c518,#e0a800);color:#0a1828;font-weight:800;font-size:15px;padding:13px 26px;border-radius:11px;text-decoration:none;transition:.2s}
+.btn:hover{opacity:.88}
+.foot{text-align:center;color:rgba(255,255,255,.35);font-size:13px;margin-top:26px}
+.foot a{color:#f5c518;text-decoration:none}
+.back{display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.6);text-decoration:none;font-size:14px;margin-bottom:16px}
+</style></head>
+<body>
+<div class="top">
+  <img src="https://copa2026.familiatomelin.com.br/favicon.png" onerror="this.style.display='none'" alt="">
+  <b>Família <span>Tomelin</span></b>
+</div>
+<div class="wrap">
+  <a href="https://copa2026.familiatomelin.com.br" class="back">← Início</a>
+  <div class="src-badge">📰 ${src}</div>
+  <h1>${title}</h1>
+  ${data?`<div class="meta">🕐 ${data}</div>`:''}
+  ${img?`<img class="hero" src="${img}" alt="" onerror="this.style.display='none'">`:''}
+  <div class="body">${desc || 'Toque no botao abaixo para ler a materia completa na fonte original.'}</div>
+  <div class="divider"></div>
+  <div class="orig-box">
+    <p>Esta é uma prévia. Leia a matéria completa na fonte original:</p>
+    <a class="btn" href="${orig}" target="_blank" rel="noopener">Ler em ${src} →</a>
+  </div>
+  <div class="foot">
+    Compartilhado por <a href="https://copa2026.familiatomelin.com.br">Família Tomelin · Copa 2026</a> 🏆
+  </div>
+</div>
+</body></html>`);
+});
+
 app.get('/s/:code', async (req, res) => {
   const link = db.links.get(req.params.code);
   if (!link) return res.status(404).send('Link nao encontrado');
@@ -778,7 +848,15 @@ function parseRSS(xml) {
     // Clean title: remove ' - Source' suffix (Google RSS standard)
     title = title.replace(/\s+[-–]\s+[\w][^-–,]{1,35}$/, '').trim() || title;
 
-    if (title) items.push({ title, link, desc, pub, src });
+    // Extrai imagem (media:content, enclosure, ou primeira <img> do conteúdo)
+    let img = '';
+    const mediaM = itemStr.match(/<media:content[^>]+url=["']([^"']+)["']/i)
+              || itemStr.match(/<enclosure[^>]+url=["']([^"']+)["']/i)
+              || itemStr.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i)
+              || (get('content:encoded')||rawDescription).match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (mediaM && /^https?:\/\//.test(mediaM[1])) img = mediaM[1];
+
+    if (title) items.push({ title, link, desc, pub, src, img });
   }
   return items;
 }
@@ -1028,6 +1106,27 @@ let newsRpaCount = 0;
 // newsSent loaded automatically by db;
 
 // Formata notícia para WhatsApp
+// Cria link da noticia no NOSSO site (/n/code) guardando os dados completos
+function newsLink(item) {
+  const url = item.link || '';
+  let h = 0; const base = url || item.title || '';
+  for (let i = 0; i < base.length; i++) { h = ((h << 5) - h + base.charCodeAt(i)) | 0; }
+  const code = 'n' + Math.abs(h).toString(36).substring(0, 7);
+  // Guarda os dados da noticia no links store (reaproveita a estrutura)
+  db.links.set(code, {
+    url,                       // link original (fonte)
+    type: 'news',
+    title: item.title || '',
+    desc: item.desc || '',
+    src: item.src || 'Noticia',
+    img: item.img || '',
+    pub: item.pub || '',
+    hits: (db.links.get(code)?.hits) || 0,
+    created: Date.now(),
+  });
+  return `https://copa2026.familiatomelin.com.br/n/${code}`;
+}
+
 function formatNewsMsg(item, idx) {
   const emojis = ['📰','⚽','🏆','🌎','🔥','🎯','💥','📡','🗞️','⚡','🔴','📺'];
   const ico = emojis[idx % emojis.length];
@@ -1059,15 +1158,12 @@ function formatNewsMsg(item, idx) {
   }
   if (desc.length < 20 || desc.toLowerCase() === title.toLowerCase()) desc = '';
 
-  // Link: encurta SEMPRE no próprio domínio → redireciona direto pra matéria
+  // Link aponta pro NOSSO site (/n/code) com a noticia completa
   let linkLine = '';
-  if (item.link && item.link.length > 10) {
-    try {
-      const short = db.shorten(item.link, 'copa2026.familiatomelin.com.br');
-      const display = short.replace(/^https?:\/\//, '');
-      linkLine = `\n🔗 ${display}`;
-    } catch(e) { /* sem link se falhar */ }
-  }
+  try {
+    const nl = newsLink(item);
+    linkLine = `\n🔗 ${nl.replace(/^https?:\/\//, '')}`;
+  } catch(e) { /* sem link se falhar */ }
 
   const lines = [
     `${ico} *${src.toUpperCase()}*`,
