@@ -1019,15 +1019,17 @@ function formatNewsMsg(item, idx) {
   // (WhatsApp reconhece domain.com/path como link clicável)
   let linkLine = '';
   if (item.link && item.link.length > 10) {
-    const short = shortenUrl(item.link);
-    // Remove https:// do display mas mantém o link clicável
-    const display = short.replace(/^https?:\/\//, '');
+    // Limpa o link: remove tracking e https:// (WhatsApp reconhece domain.com/path)
+    let clean = item.link
+      .replace(/[?&](utm_[^&]*|fbclid|gclid|ref|oc)=[^&]*/g, '')
+      .replace(/[?&]+$/, '');
+    const display = clean.replace(/^https?:\/\//, '').replace(/\/$/, '');
     linkLine = `\n🔗 ${display}`;
   }
 
   // Monta mensagem — link em linha própria, 🏆 junto com assinatura
   const lines = [
-    `${ico} *COPA 2026 — NOTÍCIA*`,
+    `${ico} *NOTÍCIA — ${src.toUpperCase()}*`,
     '',
     `*${title}*`,
   ];
