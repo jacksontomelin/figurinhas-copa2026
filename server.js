@@ -1098,11 +1098,13 @@ app.post('/api/rpa/toggle', (req, res) => {
   res.json({ ok: true, enabled: newsRpaEnabled });
 });
 
-app.post('/api/rpa/run-now', async (req, res) => {
+app.all('/api/rpa/run-now', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  log('▶️', 'RPA: execução manual');
+  log('▶️', 'RPA: execucao manual');
+  // Força envio ignorando o intervalo de 4min
+  _lastRpaSend = 0;
   rpaNewsLoop().catch(e => log('❌', e.message));
-  res.json({ ok: true, message: 'RPA executando...' });
+  res.json({ ok: true, message: 'RPA executando — verifique o grupo em alguns segundos.' });
 });
 
 
