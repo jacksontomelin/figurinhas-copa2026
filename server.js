@@ -688,23 +688,21 @@ function parseRSS(xml) {
 
     let title = get('title');
     let link  = '';
-    // Limpa descrição: decodifica entidades ANTES de remover tags
-    // (garante que &lt;a href=...&gt; também seja removido)
-    const rawDesc = get('description') || '';
+
+    // Pega o conteúdo MAIS COMPLETO disponível:
+    // content:encoded (artigo completo) > description (resumo)
+    const rawContent = get('content:encoded') || '';
+    const rawDescription = get('description') || '';
+    const rawDesc = (rawContent.length > rawDescription.length ? rawContent : rawDescription);
+
     const desc = rawDesc
-      // 1ª passagem: decodifica entidades HTML para tags reais
       .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
       .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
       .replace(/&#\d+;/g,'')
-      // 2ª passagem: remove TODOS os tags HTML (incluindo os decodificados)
-      .replace(/<[^>]+>/g,'')
-      // 3ª passagem: remove qualquer URL que sobrou (links do Google News etc)
-      .replace(/https?:\/\/\S+/g,'')
-      // Remove nome da fonte que às vezes vaza no final (ex: "...texto ge")
-      .replace(/\s+[-–]?\s*[a-zA-ZÀ-ú]{1,20}\s*$/, '')
-      // Limpa espaços extras
+      .replace(/<[^>]+>/g,'')           // remove tags HTML
+      .replace(/https?:\/\/\S+/g,'')   // remove URLs
       .replace(/\s+/g,' ').trim()
-      .substring(0, 220);
+      .substring(0, 800);              // guarda até 800 chars no cache
     const pub   = get('pubDate');
     const src   = (itemStr.match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || 'Copa 2026';
 
@@ -1012,11 +1010,11 @@ function formatNewsMsg(item, idx) {
   if (desc.toLowerCase().startsWith(title.toLowerCase().substring(0, 25))) {
     desc = desc.substring(title.length).replace(/^[\s\-–·|]+/, '').trim();
   }
-  // Resumo até 220 chars, corta na última frase/palavra completa
-  if (desc.length > 220) {
-    desc = desc.substring(0, 220);
+  // Resumo mais completo: até 600 chars, corta na última frase completa
+  if (desc.length > 600) {
+    desc = desc.substring(0, 600);
     const lastDot = desc.lastIndexOf('. ');
-    if (lastDot > 100) desc = desc.substring(0, lastDot + 1);
+    if (lastDot > 300) desc = desc.substring(0, lastDot + 1);
     else desc = desc.substring(0, desc.lastIndexOf(' ')) + '…';
   }
   if (desc.length < 20 || desc.toLowerCase() === title.toLowerCase()) desc = '';
