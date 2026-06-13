@@ -505,6 +505,178 @@ router.post('/admin/reset-db', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════
+//  SISTEMA DE APOSTAS (gratuito) — dados globais no PostgreSQL
+// ═══════════════════════════════════════════════════════════
+
+// Pontuacao de um palpite vs resultado real
+function scoreBet(bet, fx) {
+  if (fx.status !== 'finished' || fx.homeScore == null || fx.awayScore == null) return null;
+  const realOutcome = fx.homeScore > fx.awayScore ? '1' : (fx.homeScore < fx.awayScore ? '2' : 'X');
+  let pts = 0;
+  // Acertou placar exato: +10 (e o outcome ja vem junto)
+  if (bet.homeScore != null && bet.awayScore != null &&
+      Number(bet.homeScore) === fx.homeScore && Number(bet.awayScore) === fx.awayScore) {
+    pts = 10;
+  } else if (bet.outcome === realOutcome) {
+    pts = 3; // acertou so o vencedor/empate
+  }
+  return { pts, realOutcome, exact: pts === 10 };
+}
+
+// GET /api/fixtures — lista de jogos
+router.get('/fixtures', (req, res) => {
+  cors(res);
+  res.json({ ok: true, fixtures: db.fixtures.all() });
+});
+
+// POST /api/fixtures — admin define/atualiza jogos (lote)
+router.post('/fixtures', (req, res) => {
+  cors(res);
+  const { fixtures, secret } = req.body;
+  if (secret !== 'TOMELIN2026') return res.status(403).json({ ok: false, error: 'Nao autorizado' });
+  if (Array.isArray(fixtures)) db.fixtures.set(fixtures);
+  res.json({ ok: true, total: db.fixtures.all().length });
+});
+
+// PUT /api/fixtures/:id — atualiza resultado de um jogo + liquida apostas
+router.put('/fixtures/:id', (req, res) => {
+  cors(res);
+  const { secret, homeScore, awayScore, status } = req.body;
+  if (secret !== 'TOMELIN2026') return res.status(403).json({ ok: false, error: 'Nao autorizado' });
+  const fx = db.fixtures.get(req.params.id);
+  if (!fx) return res.json({ ok: false, error: 'Jogo nao encontrado' });
+  db.fixtures.update(req.params.id, {
+    homeScore: homeScore != null ? Number(homeScore) : fx.homeScore,
+    awayScore: awayScore != null ? Number(awayScore) : fx.awayScore,
+    status: status || fx.status,
+  });
+  // Liquida apostas se o jogo terminou
+  let settled = 0;
+  const updated = db.fixtures.get(req.params.id);
+  if (updated.status === 'finished') {
+    db.bets.byGame(req.params.id).forEach(bet => {
+      if (bet.settled) return;
+      const r = scoreBet(bet, updated);
+      if (r) {
+        db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+        if (r.pts > 0) {
+          // recompensa em moedas: placar exato 50, vencedor 15
+          db.coins.add(bet.phone, r.exact ? 50 : 15);
+        }
+        settled++;
+      }
+    });
+  }
+  res.json({ ok: true, settled });
+});
+
+// GET /api/bets — todas as apostas (ou ?phone= para um usuario)
+router.get('/bets', (req, res) => {
+  cors(res);
+  const phone = req.query.phone;
+  res.json({ ok: true, bets: phone ? db.bets.byUser(phone) : db.bets.all() });
+});
+
+// POST /api/bets — registra um palpite (gratuito)
+router.post('/bets', (req, res) => {
+  cors(res);
+  const { phone, name, gameId, outcome, homeScore, awayScore } = req.body;
+  if (!phone || !gameId) return res.json({ ok: false, error: 'Dados invalidos' });
+  const fx = db.fixtures.get(gameId);
+  if (!fx) return res.json({ ok: false, error: 'Jogo nao encontrado' });
+  if (fx.status === 'finished') return res.json({ ok: false, error: 'Jogo ja terminou' });
+  // Trava apostas apos o inicio do jogo
+  if (fx.kickoff && Date.now() > new Date(fx.kickoff).getTime()) {
+    return res.json({ ok: false, error: 'Jogo ja comecou — palpites encerrados' });
+  }
+  const bet = db.bets.place({
+    phone, name: name || phone, gameId,
+    outcome: outcome || null,
+    homeScore: homeScore != null ? Number(homeScore) : null,
+    awayScore: awayScore != null ? Number(awayScore) : null,
+    settled: false, points: 0,
+  });
+  res.json({ ok: true, bet });
+});
+
+// GET /api/ranking — ranking global dos melhores apostadores
+router.get('/ranking', (req, res) => {
+  cors(res);
+  const users = db.users.all();
+  const allBets = db.bets.all();
+  const ranking = users.map(u => {
+    const myBets = allBets.filter(b => b.phone === u.phone);
+    const settled = myBets.filter(b => b.settled);
+    const points = settled.reduce((s, b) => s + (b.points || 0), 0);
+    const exact = settled.filter(b => b.exact).length;
+    const hits = settled.filter(b => b.points > 0).length;
+    return {
+      phone: u.phone,
+      name: u.name || u.phone,
+      avatar: u.avatar || '⚽',
+      cidade: u.cidade || '',
+      points,
+      bets: myBets.length,
+      settled: settled.length,
+      hits,
+      exact,
+      accuracy: settled.length ? Math.round((hits / settled.length) * 100) : 0,
+      coins: db.coins.get(u.phone),
+    };
+  })
+  .filter(r => r.bets > 0 || r.points > 0)
+  .sort((a, b) => b.points - a.points || b.exact - a.exact || b.accuracy - a.accuracy);
+  res.json({ ok: true, ranking });
+});
+
+// GET /api/coins/:phone — saldo de moedas
+router.get('/coins/:phone', (req, res) => {
+  cors(res);
+  res.json({ ok: true, coins: db.coins.get(req.params.phone) });
+});
+
+// POST /api/coins/daily — bonus diario de moedas (1x por dia)
+router.post('/coins/daily', (req, res) => {
+  cors(res);
+  const { phone } = req.body;
+  if (!phone) return res.json({ ok: false, error: 'phone obrigatorio' });
+  const u = db.users.find(phone);
+  if (!u) return res.json({ ok: false, error: 'Usuario nao encontrado' });
+  const today = new Date().toISOString().slice(0, 10);
+  if (u.lastDaily === today) return res.json({ ok: false, error: 'Bonus ja coletado hoje', coins: db.coins.get(phone) });
+  db.users.upsert(phone, { lastDaily: today });
+  const coins = db.coins.add(phone, 100);
+  res.json({ ok: true, coins, bonus: 100 });
+});
+
+// ── DESAFIOS 1v1 ───────────────────────────────────
+router.get('/challenges', (req, res) => {
+  cors(res);
+  const phone = req.query.phone;
+  res.json({ ok: true, challenges: phone ? db.challenges.byUser(phone) : db.challenges.all() });
+});
+
+router.post('/challenges', (req, res) => {
+  cors(res);
+  const { from, fromName, to, toName, gameId, stake } = req.body;
+  if (!from || !to || !gameId) return res.json({ ok: false, error: 'Dados invalidos' });
+  const ch = db.challenges.add({
+    from, fromName: fromName || from, to, toName: toName || to,
+    gameId, stake: Number(stake) || 50, status: 'pending',
+  });
+  res.json({ ok: true, challenge: ch });
+});
+
+router.put('/challenges/:id', (req, res) => {
+  cors(res);
+  const { status } = req.body; // accepted | declined
+  const ch = db.challenges.get(req.params.id);
+  if (!ch) return res.json({ ok: false, error: 'Desafio nao encontrado' });
+  db.challenges.update(req.params.id, { status: status || ch.status });
+  res.json({ ok: true });
+});
+
 router.post('/state/reload', async (req, res) => {
   cors(res);
   try {

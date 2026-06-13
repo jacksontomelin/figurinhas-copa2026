@@ -851,6 +851,18 @@ try {
   log('❌', 'Banco de dados ERROR: ' + e.message);
 }
 
+
+// ── Seed dos jogos da Copa (se vazio) ───────────────────────
+function seedFixtures() {
+  try {
+    if (db.fixtures.all().length === 0) {
+      const seed = require('./fixtures_seed.js');
+      db.fixtures.set(seed);
+      log('⚽', `Fixtures seed carregado: ${seed.length} jogos da Copa`);
+    }
+  } catch(e) { log('⚠️', 'Seed fixtures erro: ' + e.message); }
+}
+
 app.listen(PORT, '0.0.0.0', () => {
   log('🚀', `Servidor rodando na porta ${PORT}`);
   log('📱', `Z-API: ${ZAPI.instance}`);
@@ -858,6 +870,7 @@ app.listen(PORT, '0.0.0.0', () => {
   log('🤖', 'Monitor de jogos: ATIVO');
   log('⏰', 'Cron jobs: ATIVOS');
   log('📡', `Endpoints Railway: ${db.users.count()} usuários | PG: ${!!process.env.DATABASE_URL}`);
+  setTimeout(seedFixtures, 4000); // carrega jogos da Copa após PG iniciar
 });
 
 module.exports = app;

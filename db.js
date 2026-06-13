@@ -19,6 +19,10 @@ const SCHEMA = {
   links:   {},
   newsSent:[],
   waMsgs:  [],
+  bets:    [],   // apostas dos usuarios
+  coins:   {},   // saldo de moedas por phone
+  fixtures:[],   // jogos da copa (palpites)
+  challenges:[], // desafios 1v1
 };
 
 let _db      = { ...SCHEMA };
@@ -80,7 +84,7 @@ async function loadFromPG() {
 async function saveToPG() {
   if (!_pgClient) return;
   try {
-    const keys = ['users','market','chat','matches','notifs','online','news','links','newsSent','waMsgs'];
+    const keys = ['users','market','chat','matches','notifs','online','news','links','newsSent','waMsgs','bets','coins','fixtures','challenges'];
     for (const key of keys) {
       await _pgClient.query(
         `INSERT INTO app_state (key, value, updated_at)
@@ -262,6 +266,55 @@ const db = {
     get:  (code)       => _db.links[code],
     set:  (code, data) => { _db.links[code] = data; markDirty(); },
     hit:  (code)       => { if (_db.links[code]) { _db.links[code].hits = (_db.links[code].hits||0)+1; markDirty(); } },
+  },
+
+  // ── APOSTAS ──────────────────────────────────────
+  bets: {
+    all:    ()        => _db.bets,
+    byUser: (phone)   => _db.bets.filter(b => b.phone === phone),
+    byGame: (gameId)  => _db.bets.filter(b => b.gameId === gameId),
+    find:   (phone, gameId) => _db.bets.find(b => b.phone === phone && b.gameId === gameId),
+    place:  (bet)     => {
+      const i = _db.bets.findIndex(b => b.phone === bet.phone && b.gameId === bet.gameId);
+      if (i >= 0) _db.bets[i] = { ..._db.bets[i], ...bet };
+      else _db.bets.push({ ...bet, id: Date.now() + '' + Math.floor(Math.random()*1000), ts: Date.now() });
+      markDirty();
+      return _db.bets.find(b => b.phone === bet.phone && b.gameId === bet.gameId);
+    },
+    update: (id, data) => {
+      const b = _db.bets.find(x => x.id === id);
+      if (b) { Object.assign(b, data); markDirty(); }
+    },
+  },
+
+  // ── MOEDAS ───────────────────────────────────────
+  coins: {
+    all:  ()              => _db.coins,
+    get:  (phone)         => (_db.coins[phone] != null ? _db.coins[phone] : 1000),
+    set:  (phone, val)    => { _db.coins[phone] = Math.max(0, val); markDirty(); },
+    add:  (phone, delta)  => {
+      const cur = (_db.coins[phone] != null ? _db.coins[phone] : 1000);
+      _db.coins[phone] = Math.max(0, cur + delta);
+      markDirty();
+      return _db.coins[phone];
+    },
+  },
+
+  // ── JOGOS / FIXTURES ─────────────────────────────
+  fixtures: {
+    all:    ()       => _db.fixtures,
+    get:    (id)     => _db.fixtures.find(f => f.id === id),
+    set:    (list)   => { _db.fixtures = list; markDirty(); },
+    update: (id, d)  => { const f = _db.fixtures.find(x => x.id === id); if (f) { Object.assign(f, d); markDirty(); } },
+  },
+
+  // ── DESAFIOS 1v1 ─────────────────────────────────
+  challenges: {
+    all:    ()       => _db.challenges,
+    byUser: (phone)  => _db.challenges.filter(c => c.from === phone || c.to === phone),
+    get:    (id)     => _db.challenges.find(c => c.id === id),
+    add:    (ch)     => { const c = { ...ch, id: Date.now()+''+Math.floor(Math.random()*1000), ts: Date.now() }; _db.challenges.push(c); markDirty(); return c; },
+    update: (id, d)  => { const c = _db.challenges.find(x => x.id === id); if (c) { Object.assign(c, d); markDirty(); } },
   },
 
   // Encurtador: cria (ou reusa) um short link no próprio domínio
