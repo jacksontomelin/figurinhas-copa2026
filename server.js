@@ -306,7 +306,7 @@ async function checkStickerMatches(changedPhone) {
 
 // ── MIDDLEWARES ───────────────────────────────────────────────
 app.use(require('express').json({ limit: '5mb' }));
-app.use(require('express').static(pathMod.join(__dirname)));
+app.use(require('express').static(pathMod.join(__dirname), { index: false }));
 // CORS global
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -543,14 +543,19 @@ app.get('/api/info', (_, res) => res.json({
 }));
 
 // Serve HTML
-// Bolão de apostas = pagina principal (lancamento)
-app.get('/', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
-app.get('/apostas', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
-app.get('/bolao', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
-app.get('/apostas.html', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
-// Album de figurinhas continua acessivel
-app.get('/album', (_, res) => res.sendFile(pathMod.join(__dirname, 'index.html')));
-app.get('/figurinhas', (_, res) => res.sendFile(pathMod.join(__dirname, 'index.html')));
+// Headers anti-cache para HTML (forca o navegador a sempre pegar a versao nova)
+function noCache(res){
+  res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma','no-cache');
+  res.setHeader('Expires','0');
+}
+// BOLAO = pagina principal (apostas.html). index.html tambem e o bolao.
+app.get('/', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
+app.get('/apostas', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
+app.get('/bolao', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
+app.get('/apostas.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
+app.get('/index.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
+app.get('/app.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'app.html')); });
 app.get('/reset-db.html', (_, res) => res.sendFile(pathMod.join(__dirname, 'reset-db.html')));
 app.get('/reset', (_, res) => res.sendFile(pathMod.join(__dirname, 'reset-db.html')));
 app.get('/bot', (_, res) => res.sendFile(pathMod.join(__dirname, 'bot.html')));
