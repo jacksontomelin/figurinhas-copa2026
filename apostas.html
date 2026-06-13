@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#06101f">
+<title>Bolão da Família · Copa 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06101f; --bg2:#0a1a31; --card:#0e2038; --card2:#122845;
+  --gold:#f5c518; --gold2:#ffd84d; --green:#1db954; --green2:#34d36a;
+  --red:#ef4444; --line:rgba(255,255,255,.09); --txt:#eaf1fa; --mut:rgba(234,241,250,.5);
+  --br:#009b3a; --bry:#ffdf00;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sans-serif;overscroll-behavior:none}
+body{padding-bottom:78px;min-height:100vh}
+.anton{font-family:'Anton',sans-serif;letter-spacing:.5px}
+.cond{font-family:'Barlow Condensed',sans-serif}
+
+/* ─── SCREENS ─── */
+.screen{display:none;animation:fade .25s ease}
+.screen.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ─── AUTH ─── */
+#scr-auth{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(120% 80% at 50% 0%, #103a6b 0%, var(--bg) 55%)}
+#scr-auth.on{display:flex}
+.auth-logo{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:3px;color:var(--gold);margin-bottom:6px}
+.auth-h1{font-family:'Anton',sans-serif;font-size:38px;line-height:.95;text-align:center;margin-bottom:6px}
+.auth-h1 b{color:var(--gold)}
+.auth-sub{color:var(--mut);font-size:14px;text-align:center;margin-bottom:28px}
+.auth-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;width:100%;max-width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.tabs{display:flex;background:var(--bg2);border-radius:11px;padding:4px;margin-bottom:18px;gap:4px}
+.tabs button{flex:1;padding:11px;border:none;background:transparent;color:var(--mut);font-weight:700;font-size:14px;
+  border-radius:8px;cursor:pointer;transition:.2s;font-family:'Inter'}
+.tabs button.on{background:var(--gold);color:#0a1525}
+.fld{margin-bottom:13px}
+.fld label{display:block;font-size:12px;color:var(--mut);margin-bottom:6px;font-weight:600}
+.fld input,.fld select{width:100%;padding:13px 14px;background:var(--bg2);border:1.5px solid var(--line);
+  border-radius:11px;color:var(--txt);font-size:16px;outline:none;transition:.2s;font-family:'Inter'}
+.fld input:focus,.fld select:focus{border-color:var(--gold)}
+.fld input.err{border-color:var(--red)}
+.err-msg{display:none;color:#fca5a5;font-size:12px;margin-top:5px}
+.err-msg.show{display:block}
+.avatars{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.avatars button{width:42px;height:42px;border-radius:11px;border:1.5px solid var(--line);background:var(--bg2);
+  font-size:22px;cursor:pointer;transition:.15s}
+.avatars button.on{border-color:var(--gold);background:rgba(245,197,24,.15);transform:scale(1.08)}
+.btn-primary{width:100%;padding:15px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a1525;
+  border:none;border-radius:12px;font-weight:800;font-size:16px;cursor:pointer;transition:.2s;margin-top:6px;font-family:'Inter'}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.5}
+.link-btn{background:none;border:none;color:var(--gold);font-size:13px;cursor:pointer;margin-top:14px;width:100%;font-family:'Inter'}
+
+/* ─── HEADER ─── */
+.hdr{position:sticky;top:0;z-index:50;background:rgba(6,16,31,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);padding:13px 16px;display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-family:'Anton',sans-serif;font-size:19px;letter-spacing:.5px}
+.hdr-title b{color:var(--gold)}
+.coins-pill{display:flex;align-items:center;gap:6px;background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.3);
+  padding:7px 13px;border-radius:30px;font-weight:800;font-size:15px;color:var(--gold);cursor:pointer}
+.coins-pill .ic{font-size:15px}
+
+/* ─── CONTENT ─── */
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+.sec-title{font-family:'Anton',sans-serif;font-size:15px;letter-spacing:1px;color:var(--mut);text-transform:uppercase;
+  margin:6px 2px 12px;display:flex;align-items:center;gap:8px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ─── GAME CARD ─── */
+.game{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden;transition:.2s}
+.game.destaque{border-color:rgba(245,197,24,.4);box-shadow:0 0 0 1px rgba(245,197,24,.15)}
+.game-top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;
+  background:linear-gradient(90deg,rgba(255,255,255,.03),transparent);border-bottom:1px solid var(--line)}
+.game-grupo{font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.5px}
+.game-grupo b{color:var(--gold)}
+.game-time{font-size:11px;color:var(--mut);font-weight:600}
+.game-live{display:inline-flex;align-items:center;gap:5px;background:rgba(239,68,68,.15);color:#fca5a5;
+  padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.5px}
+.game-live .dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.teams{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 8px}
+.team{flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.team .flag{font-size:38px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.4))}
+.team .name{font-weight:700;font-size:13px;line-height:1.2}
+.vs{font-family:'Anton',sans-serif;font-size:15px;color:var(--mut);padding:0 10px}
+.score-final{font-family:'Anton',sans-serif;font-size:32px;color:var(--gold);padding:0 8px;white-space:nowrap}
+
+/* prediction */
+.pred{padding:6px 14px 16px}
+.pred-q{font-size:12px;color:var(--mut);text-align:center;margin-bottom:10px;font-weight:600}
+.pick-row{display:flex;gap:8px;margin-bottom:12px}
+.pick{flex:1;padding:12px 6px;background:var(--bg2);border:1.5px solid var(--line);border-radius:11px;cursor:pointer;
+  text-align:center;transition:.15s}
+.pick .pk-lbl{font-size:10px;color:var(--mut);font-weight:700;margin-bottom:3px;text-transform:uppercase}
+.pick .pk-team{font-size:13px;font-weight:700}
+.pick.on{border-color:var(--gold);background:rgba(245,197,24,.13)}
+.pick.on .pk-team{color:var(--gold)}
+.score-pick{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px}
+.score-in{width:54px;height:54px;text-align:center;font-family:'Anton',sans-serif;font-size:26px;
+  background:var(--bg2);border:1.5px solid var(--line);border-radius:12px;color:var(--txt);outline:none}
+.score-in:focus{border-color:var(--gold)}
+.score-x{font-family:'Anton';color:var(--mut);font-size:18px}
+.bet-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green2));color:#06140a;
+  border:none;border-radius:11px;font-weight:800;font-size:15px;cursor:pointer;transition:.2s;font-family:'Inter'}
+.bet-btn:active{transform:scale(.98)}
+.bet-btn:disabled{opacity:.45}
+.bet-done{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:rgba(29,185,84,.12);
+  border:1px solid rgba(29,185,84,.3);border-radius:11px;color:var(--green2);font-weight:700;font-size:14px}
+.bet-result{padding:12px 14px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.tag{padding:4px 11px;border-radius:20px;font-size:12px;font-weight:800}
+.tag.win{background:rgba(29,185,84,.18);color:var(--green2)}
+.tag.exact{background:rgba(245,197,24,.18);color:var(--gold)}
+.tag.miss{background:rgba(239,68,68,.14);color:#fca5a5}
+
+/* ─── RANKING ─── */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:8px 0 22px}
+.pod{flex:1;max-width:120px;text-align:center}
+.pod .av{font-size:30px;background:var(--card);border:2px solid var(--line);width:60px;height:60px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 7px;position:relative}
+.pod.p1 .av{border-color:var(--gold);width:72px;height:72px;font-size:36px;box-shadow:0 0 24px rgba(245,197,24,.35)}
+.pod.p2 .av{border-color:#c0c8d4}
+.pod.p3 .av{border-color:#cd8b5a}
+.pod .medal{position:absolute;bottom:-6px;right:-4px;font-size:22px}
+.pod .nm{font-weight:700;font-size:13px;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pod .pts{font-family:'Anton';font-size:20px;color:var(--gold)}
+.pod .pts small{font-size:10px;color:var(--mut);font-family:'Inter';font-weight:600}
+.pod .bar{margin-top:8px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,var(--card2),var(--card))}
+.pod.p1 .bar{height:70px;background:linear-gradient(180deg,rgba(245,197,24,.25),var(--card))}
+.pod.p2 .bar{height:50px}
+.pod.p3 .bar{height:38px}
+
+.rank-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--line);
+  border-radius:13px;margin-bottom:9px}
+.rank-row.me{border-color:var(--gold);background:rgba(245,197,24,.07)}
+.rank-pos{font-family:'Anton';font-size:18px;color:var(--mut);width:28px;text-align:center}
+.rank-av{font-size:24px;width:42px;height:42px;background:var(--bg2);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.rank-info{flex:1;min-width:0}
+.rank-name{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{font-size:11px;color:var(--mut);margin-top:2px}
+.rank-pts{text-align:right}
+.rank-pts .big{font-family:'Anton';font-size:20px;color:var(--gold)}
+.rank-pts .sm{font-size:10px;color:var(--mut)}
+
+/* ─── PROFILE ─── */
+.prof-hero{text-align:center;padding:24px 16px 18px}
+.prof-av{font-size:54px;background:var(--card);border:3px solid var(--gold);width:96px;height:96px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 12px;box-shadow:0 0 30px rgba(245,197,24,.25)}
+.prof-name{font-family:'Anton';font-size:26px}
+.prof-city{color:var(--mut);font-size:13px;margin-top:2px}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin:18px 0}
+.stat-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}
+.stat-box .n{font-family:'Anton';font-size:30px;color:var(--gold);line-height:1}
+.stat-box .l{font-size:11px;color:var(--mut);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.daily{background:linear-gradient(135deg,rgba(245,197,24,.13),rgba(29,185,84,.08));border:1px solid rgba(245,197,24,.25);
+  border-radius:14px;padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.daily-txt{flex:1}
+.daily-txt b{font-size:14px;display:block;margin-bottom:2px}
+.daily-txt span{font-size:12px;color:var(--mut)}
+.daily-btn{padding:11px 18px;background:var(--gold);color:#0a1525;border:none;border-radius:10px;font-weight:800;
+  font-size:14px;cursor:pointer;white-space:nowrap;font-family:'Inter'}
+.daily-btn:disabled{opacity:.45;background:var(--mut)}
+.logout-btn{width:100%;padding:14px;background:var(--card);border:1px solid var(--line);color:#fca5a5;
+  border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;margin-top:8px;font-family:'Inter'}
+
+/* ─── EMPTY / LOADER ─── */
+.empty{text-align:center;padding:50px 20px;color:var(--mut)}
+.empty .ico{font-size:46px;margin-bottom:12px;opacity:.6}
+.empty p{font-size:14px;line-height:1.5}
+.loader{text-align:center;padding:50px}
+.spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--gold);border-radius:50%;
+  animation:spin .8s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── BOTTOM NAV ─── */
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:60;background:rgba(8,18,33,.96);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);display:flex;padding:7px 6px calc(7px + env(safe-area-inset-bottom,0))}
+.nav button{flex:1;background:none;border:none;color:var(--mut);padding:7px 4px;cursor:pointer;display:flex;
+  flex-direction:column;align-items:center;gap:3px;transition:.2s;font-family:'Inter'}
+.nav button .ic{font-size:21px;line-height:1}
+.nav button .lb{font-size:10px;font-weight:700}
+.nav button.on{color:var(--gold)}
+
+/* ─── TOAST ─── */
+#toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%) translateY(20px);z-index:200;
+  background:#1a2942;border:1px solid var(--line);color:var(--txt);padding:13px 20px;border-radius:12px;
+  font-size:14px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.5);max-width:90%}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* confetti */
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:300}
+</style>
+</head>
+<body>
+
+<!-- ════════════ AUTH ════════════ -->
+<div id="scr-auth" class="on">
+  <div class="auth-logo">⚽ FAMÍLIA TOMELIN</div>
+  <h1 class="auth-h1">BOLÃO DA<br><b>COPA 2026</b></h1>
+  <p class="auth-sub">Dê seus palpites, dispute com a família<br>e suba no ranking. 100% grátis 🏆</p>
+
+  <div class="auth-card">
+    <div class="tabs">
+      <button id="tab-login" class="on" onclick="switchTab('login')">Entrar</button>
+      <button id="tab-reg" onclick="switchTab('reg')">Criar conta</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="form-login">
+      <div class="fld">
+        <label>Celular (com DDD)</label>
+        <input id="l-phone" type="tel" inputmode="numeric" placeholder="47 99999-9999" oninput="maskPhone(this)">
+        <div class="err-msg" id="e-lphone"></div>
+      </div>
+      <div class="fld">
+        <label>Senha</label>
+        <input id="l-pass" type="password" placeholder="Sua senha">
+        <div class="err-msg" id="e-lpass"></div>
+      </div>
+      <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar →</button>
+      <button class="link-btn" onclick="switchTab('reg')">Não tem conta? Criar agora</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="form-reg" style="display:none">
+      <div class="fld">
+        <label>Seu nome</label>
+        <input id="r-name" type="text" placeholder="Como aparece no ranking">
+        <div class="err-msg" id="e-rname"></div>
+      </div>
+      <div class="fld">
+        <label>Celular (com DDD)</label>
+        <input id="r-phone" type="tel" inputmode="numeric" placeholder="47 99999-9999" oninput="maskPhone(this)">
+        <div class="err-msg" id="e-rphone"></div>
+      </div>
+      <div class="fld">
+        <label>Senha</label>
+        <input id="r-pass" type="password" placeholder="Crie uma senha">
+        <div class="err-msg" id="e-rpass"></div>
+      </div>
+      <div class="fld">
+        <label>Cidade</label>
+        <input id="r-city" type="text" placeholder="Ex: Blumenau" value="Blumenau">
+      </div>
+      <div class="fld">
+        <label>Escolha seu avatar</label>
+        <div class="avatars" id="avatars"></div>
+      </div>
+      <button class="btn-primary" id="btn-reg" onclick="doRegister()">Criar conta e jogar →</button>
+      <button class="link-btn" onclick="switchTab('login')">Já tenho conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ APP ════════════ -->
+<div id="scr-app" class="screen">
+  <div class="hdr">
+    <div class="hdr-title">Bolão <b>Tomelin</b></div>
+    <div class="coins-pill" onclick="navTo('perfil')">
+      <span class="ic">🪙</span><span id="hdr-coins">—</span>
+    </div>
+  </div>
+  <div class="wrap" id="app-content"></div>
+</div>
+
+<!-- ════════════ NAV ════════════ -->
+<nav class="nav" id="nav" style="display:none">
+  <button id="nav-jogos" class="on" onclick="navTo('jogos')"><span class="ic">⚽</span><span class="lb">Jogos</span></button>
+  <button id="nav-palpites" onclick="navTo('palpites')"><span class="ic">🎯</span><span class="lb">Palpites</span></button>
+  <button id="nav-ranking" onclick="navTo('ranking')"><span class="ic">🏆</span><span class="lb">Ranking</span></button>
+  <button id="nav-perfil" onclick="navTo('perfil')"><span class="ic">👤</span><span class="lb">Perfil</span></button>
+</nav>
+
+<div id="toast"></div>
+<canvas id="confetti"></canvas>
+
+<script>
+const API = 'https://figurinhas-copa2026-production.up.railway.app/api';
+const AVATARS = ['⚽','🥅','🏆','🦁','🐯','🦅','🐉','🔥','⭐','👑','🎯','🚀','🇧🇷','💚','💛','🟢'];
+
+let _user = null;       // {phone, name, avatar, cidade, passHash}
+let _fixtures = [];     // jogos
+let _myBets = {};       // gameId → bet
+let _ranking = [];
+let _coins = 0;
+let _tab = 'login';
+let _regAvatar = '⚽';
+
+// ─── HASH (simples, consistente) ───
+function hash(s){ let h=0; for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;} return 'h'+Math.abs(h).toString(36); }
+
+// ─── HELPERS ───
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function toast(msg,ms){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
+function maskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);if(v.length>=7)v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');else if(v.length>=3)v=v.replace(/(\d{2})(\d{0,5})/,'($1) $2');el.value=v;}
+function cleanPhone(v){let p=String(v||'').replace(/\D/g,'');if(p.length===11)p='55'+p;else if(p.length===13&&p.startsWith('55')){}return p;}
+function api(path,opts){return fetch(API+path,opts).then(r=>r.json());}
+
+function fmtKick(iso){
+  try{
+    const d=new Date(iso),now=new Date();
+    const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0');
+    const hh=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0');
+    const isToday=d.toDateString()===now.toDateString();
+    const tmr=new Date(now);tmr.setDate(now.getDate()+1);
+    const isTmr=d.toDateString()===tmr.toDateString();
+    const dia=isToday?'Hoje':isTmr?'Amanhã':`${dd}/${mm}`;
+    return `${dia} · ${hh}h${mi!=='00'?mi:''}`;
+  }catch(e){return '';}
+}
+function isLocked(fx){ return fx.status==='finished' || fx.status==='live' || (fx.kickoff && Date.now()>new Date(fx.kickoff).getTime()); }
+
+// ════════════ AUTH ════════════
+function switchTab(t){
+  _tab=t;
+  document.getElementById('tab-login').classList.toggle('on',t==='login');
+  document.getElementById('tab-reg').classList.toggle('on',t==='reg');
+  document.getElementById('form-login').style.display=t==='login'?'block':'none';
+  document.getElementById('form-reg').style.display=t==='reg'?'block':'none';
+}
+function renderAvatars(){
+  const el=document.getElementById('avatars');
+  el.innerHTML=AVATARS.map(a=>`<button class="${a===_regAvatar?'on':''}" onclick="pickAvatar('${a}')">${a}</button>`).join('');
+}
+function pickAvatar(a){_regAvatar=a;renderAvatars();}
+function showErr(id,msg){const e=document.getElementById(id);if(e){e.textContent=msg;e.classList.add('show');}}
+function clearErrs(){document.querySelectorAll('.err-msg').forEach(e=>e.classList.remove('show'));document.querySelectorAll('input').forEach(i=>i.classList.remove('err'));}
+
+async function doLogin(){
+  clearErrs();
+  const phone=cleanPhone(document.getElementById('l-phone').value);
+  const pass=document.getElementById('l-pass').value;
+  if(phone.length<12){showErr('e-lphone','Celular inválido');return;}
+  if(!pass){showErr('e-lpass','Digite sua senha');return;}
+  const btn=document.getElementById('btn-login');btn.disabled=true;btn.textContent='Entrando...';
+  try{
+    const d=await api('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone,passHash:hash(pass)})});
+    if(d.ok){
+      _user={phone,name:d.user.name,avatar:d.user.avatar||'⚽',cidade:d.user.cidade||'',passHash:hash(pass)};
+      saveSession(); await enterApp();
+    } else if(d.needsReset){
+      showErr('e-lpass','Senha não configurada. Crie a conta de novo.');switchTab('reg');
+      document.getElementById('r-phone').value=document.getElementById('l-phone').value;
+    } else if(d.error==='Senha incorreta'){ showErr('e-lpass','Senha incorreta');
+    } else { showErr('e-lphone',d.error||'Não foi possível entrar'); }
+  }catch(e){toast('⚠️ Servidor indisponível. Tente em instantes.');}
+  finally{btn.disabled=false;btn.textContent='Entrar →';}
+}
+
+async function doRegister(){
+  clearErrs();
+  const name=document.getElementById('r-name').value.trim();
+  const phone=cleanPhone(document.getElementById('r-phone').value);
+  const pass=document.getElementById('r-pass').value;
+  const city=document.getElementById('r-city').value.trim()||'Blumenau';
+  if(name.length<2){showErr('e-rname','Digite seu nome');return;}
+  if(phone.length<12){showErr('e-rphone','Celular inválido');return;}
+  if(pass.length<3){showErr('e-rpass','Senha muito curta');return;}
+  const btn=document.getElementById('btn-reg');btn.disabled=true;btn.textContent='Criando...';
+  try{
+    const d=await api('/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone,name,passHash:hash(pass),avatar:_regAvatar,cidade:city})});
+    if(d.ok){
+      _user={phone,name,avatar:_regAvatar,cidade:city,passHash:hash(pass)};
+      saveSession(); launchConfetti();
+      await enterApp();
+      toast('🎉 Bem-vindo ao bolão, '+name.split(' ')[0]+'!');
+    } else if(d.error&&d.error.includes('já')){ showErr('e-rphone','Celular já cadastrado. Faça login.');switchTab('login');
+    } else { showErr('e-rphone',d.error||'Não foi possível criar'); }
+  }catch(e){toast('⚠️ Servidor indisponível. Tente em instantes.');}
+  finally{btn.disabled=false;btn.textContent='Criar conta e jogar →';}
+}
+
+function saveSession(){ try{sessionStorage.setItem('bolao_user',JSON.stringify(_user));}catch(e){} }
+function loadSession(){ try{const s=sessionStorage.getItem('bolao_user');if(s)_user=JSON.parse(s);}catch(e){} }
+function doLogout(){
+  if(!confirm('Sair da sua conta?'))return;
+  _user=null;try{sessionStorage.removeItem('bolao_user');}catch(e){}
+  document.getElementById('scr-app').classList.remove('on');
+  document.getElementById('nav').style.display='none';
+  document.getElementById('scr-auth').classList.add('on');
+}
+
+// ════════════ ENTER APP ════════════
+async function enterApp(){
+  document.getElementById('scr-auth').classList.remove('on');
+  document.getElementById('scr-app').classList.add('on');
+  document.getElementById('nav').style.display='flex';
+  pingOnline();
+  await loadData();
+  navTo('jogos');
+}
+
+async function loadData(){
+  try{
+    const [fx,bets,co]=await Promise.all([
+      api('/fixtures'),
+      api('/bets?phone='+_user.phone),
+      api('/coins/'+_user.phone),
+    ]);
+    _fixtures=(fx.fixtures||[]).sort((a,b)=>new Date(a.kickoff)-new Date(b.kickoff));
+    _myBets={}; (bets.bets||[]).forEach(b=>_myBets[b.gameId]=b);
+    _coins=co.coins||0;
+    document.getElementById('hdr-coins').textContent=_coins;
+  }catch(e){ toast('⚠️ Erro ao carregar dados'); }
+}
+function pingOnline(){ if(_user) api('/online',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_user.phone})}).catch(()=>{}); }
+setInterval(pingOnline,40000);
+
+// ════════════ NAV ════════════
+function navTo(tab){
+  ['jogos','palpites','ranking','perfil'].forEach(t=>{
+    const b=document.getElementById('nav-'+t); if(b)b.classList.toggle('on',t===tab);
+  });
+  window.scrollTo(0,0);
+  if(tab==='jogos')      renderJogos();
+  else if(tab==='palpites') renderPalpites();
+  else if(tab==='ranking')  renderRanking();
+  else if(tab==='perfil')   renderPerfil();
+}
+
+// ════════════ JOGOS ════════════
+function renderJogos(){
+  const el=document.getElementById('app-content');
+  const upcoming=_fixtures.filter(f=>!isLocked(f));
+  const live=_fixtures.filter(f=>f.status==='live');
+  const all=[...live,...upcoming];
+  if(!all.length){
+    el.innerHTML=`<div class="empty"><div class="ico">⚽</div><p>Nenhum jogo aberto para palpite agora.<br>Volte em breve!</p></div>`;
+    return;
+  }
+  let html='';
+  const destaques=all.filter(f=>f.destaque);
+  if(destaques.length){
+    html+=`<div class="sec-title">🇧🇷 Jogos do Brasil</div>`;
+    html+=destaques.map(gameCard).join('');
+  }
+  const outros=all.filter(f=>!f.destaque);
+  if(outros.length){
+    html+=`<div class="sec-title">Próximos jogos</div>`;
+    html+=outros.map(gameCard).join('');
+  }
+  el.innerHTML=html;
+}
+
+function gameCard(fx){
+  const bet=_myBets[fx.id];
+  const locked=isLocked(fx);
+  const live=fx.status==='live';
+  return `
+  <div class="game ${fx.destaque?'destaque':''}">
+    <div class="game-top">
+      <span class="game-grupo">Grupo <b>${fx.grupo||'-'}</b></span>
+      ${live?'<span class="game-live"><span class="dot"></span>AO VIVO</span>':`<span class="game-time">${fmtKick(fx.kickoff)}</span>`}
+    </div>
+    <div class="teams">
+      <div class="team"><span class="flag">${fx.homeFlag||'🏳️'}</span><span class="name">${esc(fx.home)}</span></div>
+      <span class="vs">×</span>
+      <div class="team"><span class="flag">${fx.awayFlag||'🏳️'}</span><span class="name">${esc(fx.away)}</span></div>
+    </div>
+    ${bet?betSummary(fx,bet):predUI(fx)}
+  </div>`;
+}
+
+function predUI(fx){
+  return `
+  <div class="pred" id="pred-${fx.id}">
+    <div class="pred-q">Quem vence? E qual o placar?</div>
+    <div class="pick-row">
+      <div class="pick" data-o="1" onclick="pickOutcome('${fx.id}','1')"><div class="pk-lbl">Vitória</div><div class="pk-team">${esc(fx.home.split(' ')[0])}</div></div>
+      <div class="pick" data-o="X" onclick="pickOutcome('${fx.id}','X')"><div class="pk-lbl">Empate</div><div class="pk-team">×</div></div>
+      <div class="pick" data-o="2" onclick="pickOutcome('${fx.id}','2')"><div class="pk-lbl">Vitória</div><div class="pk-team">${esc(fx.away.split(' ')[0])}</div></div>
+    </div>
+    <div class="score-pick">
+      <input class="score-in" id="sc-h-${fx.id}" type="number" min="0" max="20" inputmode="numeric" placeholder="0" oninput="syncOutcome('${fx.id}')">
+      <span class="score-x">×</span>
+      <input class="score-in" id="sc-a-${fx.id}" type="number" min="0" max="20" inputmode="numeric" placeholder="0" oninput="syncOutcome('${fx.id}')">
+    </div>
+    <button class="bet-btn" onclick="placeBet('${fx.id}')">🎯 Confirmar palpite</button>
+  </div>`;
+}
+
+function betSummary(fx,bet){
+  const sc=(bet.homeScore!=null&&bet.awayScore!=null)?`${bet.homeScore} × ${bet.awayScore}`:'';
+  let resultHtml='';
+  if(fx.status==='finished'){
+    const tag=bet.exact?'<span class="tag exact">🎯 Placar exato +10</span>':
+              bet.points>0?'<span class="tag win">✓ Acertou +3</span>':
+              '<span class="tag miss">✗ Não foi dessa vez</span>';
+    resultHtml=`<div class="bet-result"><span style="color:var(--mut)">Resultado: <b style="color:var(--txt)">${fx.homeScore} × ${fx.awayScore}</b></span>${tag}</div>`;
+  }
+  return `
+  <div class="pred">
+    <div class="bet-done">✓ Seu palpite: <b>${sc||'registrado'}</b> ${!isLocked(fx)?`<a onclick="editBet('${fx.id}')" style="color:var(--gold);cursor:pointer;margin-left:6px">editar</a>`:''}</div>
+  </div>${resultHtml}`;
+}
+
+const _picks={};
+function pickOutcome(id,o){
+  _picks[id]=o;
+  document.querySelectorAll(`#pred-${id} .pick`).forEach(p=>p.classList.toggle('on',p.dataset.o===o));
+}
+function syncOutcome(id){
+  const h=parseInt(document.getElementById('sc-h-'+id).value);
+  const a=parseInt(document.getElementById('sc-a-'+id).value);
+  if(isNaN(h)||isNaN(a))return;
+  const o=h>a?'1':h<a?'2':'X';
+  pickOutcome(id,o);
+}
+function editBet(id){ delete _myBets[id]; renderJogos(); }
+
+async function placeBet(id){
+  const h=document.getElementById('sc-h-'+id).value;
+  const a=document.getElementById('sc-a-'+id).value;
+  let outcome=_picks[id];
+  let homeScore=h!==''?parseInt(h):null, awayScore=a!==''?parseInt(a):null;
+  if(homeScore!=null&&awayScore!=null){ outcome=homeScore>awayScore?'1':homeScore<awayScore?'2':'X'; }
+  if(!outcome){ toast('Escolha o vencedor ou digite o placar'); return; }
+  try{
+    const d=await api('/bets',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone:_user.phone,name:_user.name,gameId:id,outcome,homeScore,awayScore})});
+    if(d.ok){
+      _myBets[id]=d.bet;
+      toast('🎯 Palpite registrado! Boa sorte!');
+      renderJogos();
+    } else { toast('⚠️ '+(d.error||'Erro ao registrar')); if(d.error&&d.error.includes('começou')){await loadData();renderJogos();} }
+  }catch(e){ toast('⚠️ Erro de conexão'); }
+}
+
+// ════════════ MEUS PALPITES ════════════
+function renderPalpites(){
+  const el=document.getElementById('app-content');
+  const mine=_fixtures.filter(f=>_myBets[f.id]);
+  if(!mine.length){
+    el.innerHTML=`<div class="empty"><div class="ico">🎯</div><p>Você ainda não deu nenhum palpite.<br>Vá em <b>Jogos</b> e comece!</p></div>`;
+    return;
+  }
+  const pend=mine.filter(f=>f.status!=='finished');
+  const done=mine.filter(f=>f.status==='finished');
+  let html='';
+  if(pend.length){ html+=`<div class="sec-title">Aguardando resultado</div>`; html+=pend.map(gameCard).join(''); }
+  if(done.length){ html+=`<div class="sec-title">Já decididos</div>`; html+=done.map(gameCard).join(''); }
+  el.innerHTML=html;
+}
+
+// ════════════ RANKING ════════════
+async function renderRanking(){
+  const el=document.getElementById('app-content');
+  el.innerHTML=`<div class="loader"><div class="spin"></div></div>`;
+  try{
+    const d=await api('/ranking');
+    _ranking=d.ranking||[];
+  }catch(e){ _ranking=[]; }
+  if(!_ranking.length){
+    el.innerHTML=`<div class="empty"><div class="ico">🏆</div><p>O ranking aparece assim que os palpites começarem a valer pontos.<br>Seja o primeiro!</p></div>`;
+    return;
+  }
+  const top3=_ranking.slice(0,3);
+  const rest=_ranking.slice(3);
+  const medals=['🥇','🥈','🏅'];
+  // podium order: 2,1,3
+  const podOrder=[top3[1],top3[0],top3[2]].filter(Boolean);
+  const podClass={};
+  if(top3[0])podClass[top3[0].phone]='p1';
+  if(top3[1])podClass[top3[1].phone]='p2';
+  if(top3[2])podClass[top3[2].phone]='p3';
+
+  let html=`<div class="sec-title">🏆 Melhores Apostadores</div><div class="podium">`;
+  podOrder.forEach(p=>{
+    const cls=podClass[p.phone];
+    const medal=cls==='p1'?'🥇':cls==='p2'?'🥈':'🏅';
+    html+=`<div class="pod ${cls}">
+      <div class="av">${p.avatar}<span class="medal">${medal}</span></div>
+      <div class="nm">${esc(p.name.split(' ')[0])}</div>
+      <div class="pts">${p.points}<small> pts</small></div>
+      <div class="bar"></div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  if(rest.length){
+    html+=rest.map((p,i)=>{
+      const pos=i+4; const me=p.phone===_user.phone;
+      return `<div class="rank-row ${me?'me':''}">
+        <div class="rank-pos">${pos}</div>
+        <div class="rank-av">${p.avatar}</div>
+        <div class="rank-info">
+          <div class="rank-name">${esc(p.name)}${me?' (você)':''}</div>
+          <div class="rank-meta">${p.hits} acertos · ${p.exact} placar exato · ${p.accuracy}%</div>
+        </div>
+        <div class="rank-pts"><div class="big">${p.points}</div><div class="sm">pontos</div></div>
+      </div>`;
+    }).join('');
+  }
+  // se o usuário não está no top, mostra a posição dele
+  const myRank=_ranking.findIndex(p=>p.phone===_user.phone);
+  if(myRank>=3){
+    const me=_ranking[myRank];
+    html+=`<div class="sec-title">Sua posição</div>
+    <div class="rank-row me">
+      <div class="rank-pos">${myRank+1}</div>
+      <div class="rank-av">${me.avatar}</div>
+      <div class="rank-info"><div class="rank-name">${esc(me.name)} (você)</div>
+      <div class="rank-meta">${me.hits} acertos · ${me.exact} placar exato</div></div>
+      <div class="rank-pts"><div class="big">${me.points}</div><div class="sm">pontos</div></div>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+
+// ════════════ PERFIL ════════════
+function renderPerfil(){
+  const el=document.getElementById('app-content');
+  const myBets=Object.values(_myBets);
+  const settled=myBets.filter(b=>b.settled);
+  const hits=settled.filter(b=>b.points>0).length;
+  const exact=settled.filter(b=>b.exact).length;
+  const pts=settled.reduce((s,b)=>s+(b.points||0),0);
+  const today=new Date().toISOString().slice(0,10);
+  const claimed=(_user.lastDaily===today);
+
+  el.innerHTML=`
+  <div class="prof-hero">
+    <div class="prof-av">${_user.avatar}</div>
+    <div class="prof-name">${esc(_user.name)}</div>
+    <div class="prof-city">📍 ${esc(_user.cidade||'Brasil')}</div>
+  </div>
+
+  <div class="daily">
+    <div class="daily-txt"><b>🪙 Bônus diário</b><span>${claimed?'Você já coletou hoje. Volte amanhã!':'Ganhe 100 moedas grátis por dia!'}</span></div>
+    <button class="daily-btn" id="daily-btn" ${claimed?'disabled':''} onclick="claimDaily()">${claimed?'Coletado':'Coletar +100'}</button>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-box"><div class="n">${pts}</div><div class="l">Pontos</div></div>
+    <div class="stat-box"><div class="n">🪙 ${_coins}</div><div class="l">Moedas</div></div>
+    <div class="stat-box"><div class="n">${hits}</div><div class="l">Acertos</div></div>
+    <div class="stat-box"><div class="n">${exact}</div><div class="l">Placar exato</div></div>
+    <div class="stat-box"><div class="n">${myBets.length}</div><div class="l">Palpites</div></div>
+    <div class="stat-box"><div class="n">${settled.length?Math.round(hits/settled.length*100):0}%</div><div class="l">Aproveitamento</div></div>
+  </div>
+
+  <button class="logout-btn" onclick="doLogout()">Sair da conta</button>
+  <div style="text-align:center;color:var(--mut);font-size:12px;margin-top:18px">Família Tomelin · Copa 2026 🏆<br>Bolão gratuito entre a família</div>`;
+}
+
+async function claimDaily(){
+  const btn=document.getElementById('daily-btn');btn.disabled=true;
+  try{
+    const d=await api('/coins/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_user.phone})});
+    if(d.ok){
+      _coins=d.coins;_user.lastDaily=new Date().toISOString().slice(0,10);saveSession();
+      document.getElementById('hdr-coins').textContent=_coins;
+      toast('🪙 +100 moedas! Saldo: '+_coins);
+      launchConfetti();
+      renderPerfil();
+    } else { toast(d.error||'Já coletado hoje'); }
+  }catch(e){ toast('⚠️ Erro'); btn.disabled=false; }
+}
+
+// ════════════ CONFETTI ════════════
+function launchConfetti(){
+  const c=document.getElementById('confetti'),ctx=c.getContext('2d');
+  c.width=innerWidth;c.height=innerHeight;
+  const cols=['#f5c518','#1db954','#ffffff','#34d36a','#ffd84d'];
+  const P=Array.from({length:90},()=>({x:Math.random()*c.width,y:-20-Math.random()*c.height*.5,
+    r:4+Math.random()*5,c:cols[Math.floor(Math.random()*cols.length)],vy:2+Math.random()*4,vx:-2+Math.random()*4,a:Math.random()*Math.PI}));
+  let f=0;
+  (function loop(){
+    ctx.clearRect(0,0,c.width,c.height);f++;
+    P.forEach(p=>{p.y+=p.vy;p.x+=p.vx;p.a+=.1;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);
+      ctx.fillStyle=p.c;ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*1.6);ctx.restore();});
+    if(f<150)requestAnimationFrame(loop);else ctx.clearRect(0,0,c.width,c.height);
+  })();
+}
+
+// ════════════ INIT ════════════
+(function init(){
+  renderAvatars();
+  loadSession();
+  if(_user&&_user.phone&&_user.passHash){
+    enterApp();
+  } else {
+    document.getElementById('scr-auth').classList.add('on');
+  }
+})();
+</script>
+</body>
+</html>

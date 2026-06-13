@@ -543,7 +543,14 @@ app.get('/api/info', (_, res) => res.json({
 }));
 
 // Serve HTML
-app.get('/', (_, res) => res.sendFile(pathMod.join(__dirname, 'index.html')));
+// Bolão de apostas = pagina principal (lancamento)
+app.get('/', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
+app.get('/apostas', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
+app.get('/bolao', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
+app.get('/apostas.html', (_, res) => res.sendFile(pathMod.join(__dirname, 'apostas.html')));
+// Album de figurinhas continua acessivel
+app.get('/album', (_, res) => res.sendFile(pathMod.join(__dirname, 'index.html')));
+app.get('/figurinhas', (_, res) => res.sendFile(pathMod.join(__dirname, 'index.html')));
 app.get('/reset-db.html', (_, res) => res.sendFile(pathMod.join(__dirname, 'reset-db.html')));
 app.get('/reset', (_, res) => res.sendFile(pathMod.join(__dirname, 'reset-db.html')));
 app.get('/bot', (_, res) => res.sendFile(pathMod.join(__dirname, 'bot.html')));
