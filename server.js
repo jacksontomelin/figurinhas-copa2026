@@ -556,6 +556,29 @@ app.get('/bolao', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirnam
 app.get('/apostas.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
 app.get('/index.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
 app.get('/app.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'app.html')); });
+// Forca busca de placares agora (debug/manual)
+app.all('/api/scores/sync', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const events = await fetchESPNScores();
+    await autoUpdateScores();
+    const sample = events.slice(0, 8).map(ev => {
+      const c = ev.competitions && ev.competitions[0];
+      const comp = c ? c.competitors : [];
+      const h = comp.find(x=>x.homeAway==='home')||comp[0];
+      const a = comp.find(x=>x.homeAway==='away')||comp[1];
+      return {
+        jogo: `${h&&h.team&&h.team.displayName} ${h&&h.score} x ${a&&a.score} ${a&&a.team&&a.team.displayName}`,
+        status: c && c.status && c.status.type ? c.status.type.state : '?',
+        completo: c && c.status && c.status.type ? c.status.type.completed : false,
+      };
+    });
+    res.json({ ok: true, eventos: events.length, amostra: sample, fixtures: db.fixtures.all().map(f=>({id:f.id,jogo:`${f.home} ${f.homeScore??'-'} x ${f.awayScore??'-'} ${f.away}`,status:f.status})) });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/admin-bolao', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'admin-bolao.html')); });
 app.get('/admin', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'admin-bolao.html')); });
 app.get('/resultados', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'admin-bolao.html')); });
@@ -904,6 +927,139 @@ try {
 }
 
 
+// ═══════════════════════════════════════════════════════════
+//  PLACAR AUTOMÁTICO — busca resultados da Copa via ESPN API
+// ═══════════════════════════════════════════════════════════
+
+// Mapa: nome no nosso sistema (PT) → nomes possiveis na ESPN (EN/variantes)
+const TEAM_ALIASES = {
+  'brasil':['brazil','brasil'], 'marrocos':['morocco','marrocos'], 'haiti':['haiti'],
+  'escocia':['scotland','escocia'], 'mexico':['mexico'], 'africa do sul':['south africa'],
+  'coreia do sul':['south korea','korea republic'], 'dinamarca':['denmark'],
+  'canada':['canada'], 'italia':['italy'], 'estados unidos':['united states','usa'],
+  'paraguai':['paraguay'], 'australia':['australia'], 'turquia':['turkey','turkiye'],
+  'catar':['qatar'], 'suica':['switzerland'], 'alemanha':['germany'], 'curacao':['curacao'],
+  'holanda':['netherlands'], 'japao':['japan'], 'costa do marfim':['ivory coast','cote divoire'],
+  'equador':['ecuador'], 'belgica':['belgium'], 'egito':['egypt'], 'ira':['iran','iran ir'],
+  'nova zelandia':['new zealand'], 'espanha':['spain'], 'cabo verde':['cape verde','cabo verde'],
+  'arabia saudita':['saudi arabia'], 'uruguai':['uruguay'], 'franca':['france'], 'senegal':['senegal'],
+  'noruega':['norway'], 'iraque':['iraq'], 'argentina':['argentina'], 'argelia':['algeria'],
+  'austria':['austria'], 'jordania':['jordan'], 'portugal':['portugal'], 'uzbequistao':['uzbekistan'],
+  'colombia':['colombia'], 'rd congo':['dr congo','congo dr'], 'inglaterra':['england'],
+  'croacia':['croatia'], 'gana':['ghana'], 'panama':['panama'],
+};
+
+function normTeam(s) {
+  return String(s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z ]/g,'').trim();
+}
+
+// Confere se dois nomes de time batem (PT vs EN)
+function teamsMatch(ptName, espnName) {
+  const pt = normTeam(ptName), es = normTeam(espnName);
+  if (pt === es) return true;
+  const aliases = TEAM_ALIASES[pt] || [];
+  if (aliases.map(normTeam).includes(es)) return true;
+  // match parcial (primeira palavra)
+  if (pt && es && (pt.startsWith(es) || es.startsWith(pt))) return true;
+  return false;
+}
+
+// Busca o scoreboard da ESPN para a Copa do Mundo
+async function fetchESPNScores() {
+  const leagues = ['fifa.world', 'FIFA.WORLDQ', 'fifa.worldq'];
+  for (const lg of leagues) {
+    try {
+      const { body } = await fetchFollow(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lg}/scoreboard`);
+      if (!body) continue;
+      const data = JSON.parse(body);
+      if (data && Array.isArray(data.events) && data.events.length) return data.events;
+    } catch(e) { /* tenta proxima liga */ }
+  }
+  return [];
+}
+
+// Atualiza fixtures + liquida apostas com base nos placares da ESPN
+async function autoUpdateScores() {
+  try {
+    const events = await fetchESPNScores();
+    if (!events.length) { return; }
+
+    let atualizados = 0, encerrados = 0, pagos = 0;
+
+    for (const ev of events) {
+      const comp = ev.competitions && ev.competitions[0];
+      if (!comp) continue;
+      const competitors = comp.competitors || [];
+      const homeC = competitors.find(c => c.homeAway === 'home') || competitors[0];
+      const awayC = competitors.find(c => c.homeAway === 'away') || competitors[1];
+      if (!homeC || !awayC) continue;
+
+      const espnHome = homeC.team && (homeC.team.displayName || homeC.team.name);
+      const espnAway = awayC.team && (awayC.team.displayName || awayC.team.name);
+      const hScore = homeC.score != null ? parseInt(homeC.score) : null;
+      const aScore = awayC.score != null ? parseInt(awayC.score) : null;
+      const st = comp.status && comp.status.type ? comp.status.type.state : '';
+      const completed = comp.status && comp.status.type ? comp.status.type.completed : false;
+
+      // Acha o fixture correspondente (testa home/away nas duas ordens)
+      const fx = db.fixtures.all().find(f => {
+        const a = teamsMatch(f.home, espnHome) && teamsMatch(f.away, espnAway);
+        return a;
+      });
+      if (!fx) continue;
+
+      const newStatus = completed ? 'finished' : (st === 'in' ? 'live' : fx.status);
+
+      // So atualiza se mudou
+      if (fx.status === newStatus && fx.homeScore === hScore && fx.awayScore === aScore) continue;
+
+      db.fixtures.update(fx.id, {
+        homeScore: hScore, awayScore: aScore, status: newStatus,
+      });
+      atualizados++;
+      if (newStatus === 'live') log('🔴', `AO VIVO: ${fx.home} ${hScore} x ${aScore} ${fx.away}`);
+
+      // Liquida apostas quando termina
+      if (newStatus === 'finished' && hScore != null && aScore != null) {
+        encerrados++;
+        const updated = db.fixtures.get(fx.id);
+        db.bets.byGame(fx.id).forEach(bet => {
+          if (bet.settled) return;
+          const r = scoreBet(bet, updated);
+          if (r) {
+            db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+            if (r.pts > 0) { db.coins.add(bet.phone, r.exact ? 50 : 15); pagos++; }
+          }
+        });
+        log('✅', `ENCERRADO (auto): ${fx.home} ${hScore} x ${aScore} ${fx.away} — apostas pagas`);
+        // Avisa no grupo
+        notifyGameResult(fx, hScore, aScore).catch(()=>{});
+      }
+    }
+
+    if (atualizados) log('⚽', `Placar auto: ${atualizados} atualizado(s), ${encerrados} encerrado(s), ${pagos} aposta(s) paga(s)`);
+  } catch(e) {
+    log('⚠️', `autoUpdateScores erro: ${e.message}`);
+  }
+}
+
+// Envia resultado + quem acertou no grupo do WhatsApp
+async function notifyGameResult(fx, h, a) {
+  try {
+    const bets = db.bets.byGame(fx.id);
+    const exatos = bets.filter(b => b.exact).map(b => b.name);
+    const acertos = bets.filter(b => b.points > 0 && !b.exact).map(b => b.name);
+    let msg = `⚽ *FIM DE JOGO!*\n\n${fx.homeFlag||''} *${fx.home} ${h} x ${a} ${fx.away}* ${fx.awayFlag||''}\n`;
+    if (exatos.length) msg += `\n🎯 *Cravaram o placar (+10):*\n${exatos.map(n=>'• '+n).join('\n')}\n`;
+    if (acertos.length) msg += `\n✅ *Acertaram o vencedor (+3):*\n${acertos.map(n=>'• '+n).join('\n')}\n`;
+    if (!exatos.length && !acertos.length) msg += `\n😅 Ninguem acertou esse! Bola pra frente.\n`;
+    msg += `\n🏆 Veja o ranking: copa2026.familiatomelin.com.br\n_Bolão da Família Tomelin_`;
+    await sendGroup(msg);
+  } catch(e) {}
+}
+
 // ── Seed dos jogos da Copa (se vazio) ───────────────────────
 function seedFixtures() {
   try {
@@ -923,6 +1079,7 @@ app.listen(PORT, '0.0.0.0', () => {
   log('⏰', 'Cron jobs: ATIVOS');
   log('📡', `Endpoints Railway: ${db.users.count()} usuários | PG: ${!!process.env.DATABASE_URL}`);
   setTimeout(seedFixtures, 4000); // carrega jogos da Copa após PG iniciar
+  setTimeout(autoUpdateScores, 9000); // primeira busca de placares
 });
 
 module.exports = app;
@@ -1401,6 +1558,10 @@ cron.schedule('0 */4 * * *', () => {
 }, { timezone: 'America/Sao_Paulo' });
 
 // Cron: roda a cada 10 minutos
+cron.schedule('*/2 * * * *', async () => {
+  await autoUpdateScores();
+}, { timezone: 'America/Sao_Paulo' });
+
 cron.schedule('*/5 * * * *', async () => {
   log('⏰', 'RPA cron: buscando noticias (lote de 3)...');
   await rpaNewsLoop();
