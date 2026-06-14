@@ -966,18 +966,50 @@ function teamsMatch(ptName, espnName) {
   return false;
 }
 
-// Busca o scoreboard da ESPN para a Copa do Mundo
-async function fetchESPNScores() {
-  const leagues = ['fifa.world', 'FIFA.WORLDQ', 'fifa.worldq'];
-  for (const lg of leagues) {
-    try {
-      const { body } = await fetchFollow(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lg}/scoreboard`);
-      if (!body) continue;
-      const data = JSON.parse(body);
-      if (data && Array.isArray(data.events) && data.events.length) return data.events;
-    } catch(e) { /* tenta proxima liga */ }
+// Datas YYYYMMDD de um intervalo (de -nDias ate +nDias a partir de hoje)
+function dateWindow(back, fwd) {
+  const out = [];
+  const now = new Date();
+  for (let d = -back; d <= fwd; d++) {
+    const dt = new Date(now);
+    dt.setDate(now.getDate() + d);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    out.push(`${y}${m}${day}`);
   }
-  return [];
+  return out;
+}
+
+// Busca o scoreboard da ESPN para a Copa numa janela de datas
+async function fetchESPNScores() {
+  const leagues = ['fifa.world', 'fifa.worldq'];
+  const dates = dateWindow(3, 3); // 3 dias atras ate 3 dias a frente
+  const seen = new Set();
+  const allEvents = [];
+
+  for (const lg of leagues) {
+    let leagueWorked = false;
+    for (const dt of dates) {
+      try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${lg}/scoreboard?dates=${dt}`;
+        const { body } = await fetchFollow(url);
+        if (!body) continue;
+        const data = JSON.parse(body);
+        if (data && Array.isArray(data.events)) {
+          leagueWorked = true;
+          for (const ev of data.events) {
+            if (ev.id && seen.has(ev.id)) continue;
+            if (ev.id) seen.add(ev.id);
+            allEvents.push(ev);
+          }
+        }
+      } catch(e) { /* proxima data */ }
+    }
+    // Se essa liga retornou jogos, nao precisa testar a outra
+    if (leagueWorked && allEvents.length) break;
+  }
+  return allEvents;
 }
 
 // Atualiza fixtures + liquida apostas com base nos placares da ESPN
