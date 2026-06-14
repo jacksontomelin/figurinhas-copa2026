@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#06101f">
+<title>Admin · Bolão Tomelin</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06101f;--card:#0e2038;--bg2:#0a1a31;--gold:#f5c518;--green:#1db954;--red:#ef4444;--line:rgba(255,255,255,.1);--txt:#eaf1fa;--mut:rgba(234,241,250,.5)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sans-serif;padding-bottom:30px}
+.hdr{background:linear-gradient(135deg,#0a2540,#103a6b);padding:18px 16px;text-align:center;position:sticky;top:0;z-index:10}
+.hdr h1{font-family:'Anton';font-size:22px;letter-spacing:.5px}
+.hdr p{color:var(--mut);font-size:13px;margin-top:3px}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+
+/* PIN */
+#pin-scr{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px}
+#pin-scr input{width:160px;padding:14px;text-align:center;font-size:26px;letter-spacing:10px;background:var(--card);
+  border:1.5px solid var(--line);border-radius:12px;color:var(--txt);outline:none}
+#pin-scr input:focus{border-color:var(--gold)}
+.btn{padding:13px 22px;background:var(--gold);color:#0a1525;border:none;border-radius:11px;font-weight:800;font-size:15px;cursor:pointer;font-family:'Inter'}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4}
+
+#main{display:none}
+.filt{display:flex;gap:8px;margin-bottom:16px}
+.filt button{flex:1;padding:10px;background:var(--card);border:1px solid var(--line);color:var(--mut);
+  border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter'}
+.filt button.on{background:var(--gold);color:#0a1525;border-color:var(--gold)}
+
+.game{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.game.fin{opacity:.7;border-color:rgba(29,185,84,.3)}
+.g-top{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:10px}
+.g-top b{color:var(--gold)}
+.g-teams{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
+.g-team{flex:1;text-align:center}
+.g-team .fl{font-size:30px}
+.g-team .nm{font-size:13px;font-weight:700;margin-top:4px}
+.g-in{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px}
+.g-in input{width:50px;height:50px;text-align:center;font-family:'Anton';font-size:24px;background:var(--bg2);
+  border:1.5px solid var(--line);border-radius:10px;color:var(--txt);outline:none}
+.g-in input:focus{border-color:var(--gold)}
+.g-in .x{font-family:'Anton';color:var(--mut)}
+.g-actions{display:flex;gap:8px}
+.g-actions button{flex:1;padding:11px;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter'}
+.b-live{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)!important}
+.b-fin{background:linear-gradient(135deg,var(--green),#34d36a);color:#06140a}
+.b-edit{background:var(--bg2);color:var(--mut);border:1px solid var(--line)!important}
+.fin-badge{text-align:center;color:var(--green);font-weight:700;font-size:14px;padding:6px}
+.bets-count{text-align:center;font-size:11px;color:var(--mut);margin-top:8px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a2942;
+  border:1px solid var(--line);padding:13px 20px;border-radius:12px;font-weight:600;opacity:0;transition:.3s;z-index:100;max-width:90%}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty{text-align:center;padding:40px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>🎮 Admin — Resultados</h1>
+  <p>Bolão da Família Tomelin</p>
+</div>
+
+<div id="pin-scr">
+  <p style="color:var(--mut)">Digite o PIN de admin</p>
+  <input id="pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter')checkPin()">
+  <button class="btn" onclick="checkPin()">Entrar</button>
+</div>
+
+<div id="main">
+  <div class="wrap">
+    <div class="filt">
+      <button id="f-open" class="on" onclick="setFilt('open')">A definir</button>
+      <button id="f-fin" onclick="setFilt('fin')">Encerrados</button>
+      <button id="f-all" onclick="setFilt('all')">Todos</button>
+    </div>
+    <div id="games"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API='https://figurinhas-copa2026-production.up.railway.app/api';
+const SECRET='TOMELIN2026';
+let _fx=[], _bets=[], _filt='open';
+
+function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function checkPin(){
+  if(document.getElementById('pin').value==='7131'){
+    document.getElementById('pin-scr').style.display='none';
+    document.getElementById('main').style.display='block';
+    load();
+  } else { toast('PIN incorreto'); document.getElementById('pin').value=''; }
+}
+
+async function load(){
+  try{
+    const [fx,bets]=await Promise.all([
+      fetch(API+'/fixtures').then(r=>r.json()),
+      fetch(API+'/bets').then(r=>r.json()),
+    ]);
+    _fx=(fx.fixtures||[]).sort((a,b)=>new Date(a.kickoff)-new Date(b.kickoff));
+    _bets=bets.bets||[];
+    render();
+  }catch(e){ toast('Erro ao carregar'); }
+}
+
+function setFilt(f){_filt=f;['open','fin','all'].forEach(x=>document.getElementById('f-'+x).classList.toggle('on',x===f));render();}
+
+function render(){
+  let list=_fx;
+  if(_filt==='open') list=_fx.filter(f=>f.status!=='finished');
+  else if(_filt==='fin') list=_fx.filter(f=>f.status==='finished');
+  const el=document.getElementById('games');
+  if(!list.length){el.innerHTML='<div class="empty">Nenhum jogo nesse filtro.</div>';return;}
+  el.innerHTML=list.map(card).join('');
+}
+
+function card(fx){
+  const nBets=_bets.filter(b=>b.gameId===fx.id).length;
+  const fin=fx.status==='finished';
+  const dt=new Date(fx.kickoff);
+  const when=`${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}h`;
+  return `<div class="game ${fin?'fin':''}">
+    <div class="g-top"><span>Grupo <b>${fx.grupo||'-'}</b></span><span>${when} · ${esc(fx.estadio||'')}</span></div>
+    <div class="g-teams">
+      <div class="g-team"><div class="fl">${fx.homeFlag||'🏳️'}</div><div class="nm">${esc(fx.home)}</div></div>
+      <div class="g-in">
+        <input id="h-${fx.id}" type="number" min="0" max="20" inputmode="numeric" value="${fx.homeScore!=null?fx.homeScore:''}" placeholder="-">
+        <span class="x">×</span>
+        <input id="a-${fx.id}" type="number" min="0" max="20" inputmode="numeric" value="${fx.awayScore!=null?fx.awayScore:''}" placeholder="-">
+      </div>
+      <div class="g-team"><div class="fl">${fx.awayFlag||'🏳️'}</div><div class="nm">${esc(fx.away)}</div></div>
+    </div>
+    ${fin
+      ? `<div class="fin-badge">✓ Encerrado: ${fx.homeScore} × ${fx.awayScore}</div>
+         <div class="g-actions"><button class="b-edit" onclick="reabrir('${fx.id}')">Reabrir / corrigir</button></div>`
+      : `<div class="g-actions">
+           <button class="b-live" onclick="setLive('${fx.id}')">🔴 Ao vivo</button>
+           <button class="b-fin" onclick="encerrar('${fx.id}')">✓ Encerrar e pagar</button>
+         </div>`}
+    <div class="bets-count">${nBets} palpite(s) neste jogo</div>
+  </div>`;
+}
+
+async function encerrar(id){
+  const h=document.getElementById('h-'+id).value, a=document.getElementById('a-'+id).value;
+  if(h===''||a===''){toast('Digite o placar final');return;}
+  if(!confirm(`Encerrar com ${h} × ${a}? Isso paga todos os palpites.`))return;
+  try{
+    const d=await fetch(API+'/fixtures/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({secret:SECRET,homeScore:+h,awayScore:+a,status:'finished'})}).then(r=>r.json());
+    if(d.ok){toast(`✓ Encerrado! ${d.settled} palpite(s) liquidado(s)`);load();}
+    else toast('Erro: '+(d.error||'?'));
+  }catch(e){toast('Erro de conexão');}
+}
+async function setLive(id){
+  try{
+    const d=await fetch(API+'/fixtures/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({secret:SECRET,status:'live'})}).then(r=>r.json());
+    if(d.ok){toast('🔴 Marcado como ao vivo');load();}
+  }catch(e){toast('Erro');}
+}
+async function reabrir(id){
+  if(!confirm('Reabrir este jogo? (corrigir placar)'))return;
+  try{
+    const h=document.getElementById('h-'+id).value, a=document.getElementById('a-'+id).value;
+    const d=await fetch(API+'/fixtures/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({secret:SECRET,status:'finished',homeScore:+h,awayScore:+a})}).then(r=>r.json());
+    if(d.ok){toast(`Corrigido! ${d.settled} repagos`);load();}
+  }catch(e){toast('Erro');}
+}
+</script>
+</body>
+</html>

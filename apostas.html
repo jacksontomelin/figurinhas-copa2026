@@ -294,6 +294,23 @@ let _regAvatar = '⚽';
 // ─── HASH (simples, consistente) ───
 function hash(s){ let h=0; for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;} return 'h'+Math.abs(h).toString(36); }
 
+// ─── MENSAGENS DE INTERAÇÃO ───
+const MSG_BET = ['🤞 Palpite na conta! Boa sorte!','🎯 Anotado! Agora é torcer.','✅ Tá valendo! Bora pro topo.',
+  '🔥 Palpite registrado! Confia.','💪 Mandou bem, agora é esperar.','⚽ Tá no jogo! Vamo que vamo.'];
+const MSG_WIN_EXACT = ['🎯 PLACAR EXATO! Você é vidente! +10 pts','🤯 Cravou o placar! Que palpite! +10 pts',
+  '👑 Placar exato! Tá voando! +10 pts','🔥 Acertou em cheio o placar! +10 pts'];
+const MSG_WIN = ['✅ Boa! Acertou o resultado! +3 pts','👏 Mandou bem nesse! +3 pts','💚 Acertou quem venceu! +3 pts',
+  '😎 Tá afiado! +3 pts'];
+const MSG_MISS = ['😢 Que pena, não foi dessa vez.','🙈 Esse não chegou nem perto!','😅 Faz parte! Próximo você acerta.',
+  '💔 Não rolou dessa vez. Bora pra próxima!','🎲 O futebol é assim mesmo. Segue o jogo!'];
+const MSG_RANK = {
+  top1:['👑 Você é o LÍDER do bolão! Tá voando!','🥇 1º lugar! A família toda te observa!','🏆 No topo! Ninguém te segura!'],
+  top3:['🔥 Top 3! Tá brigando pela liderança!','💪 Pódio! Falta pouco pro topo!','⭐ Entre os 3 melhores! Manda ver!'],
+  top10:['😎 Tá indo bem! No pelotão de frente.','📈 Subindo no ranking! Continua assim.','👍 Bom desempenho! Bora pro pódio.'],
+  low:['💪 Bora recuperar! Ainda dá tempo.','🚀 Tá começando! Os pontos vêm.','🎯 Capricha nos palpites e sobe rápido!'],
+};
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
 // ─── HELPERS ───
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toast(msg,ms){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
@@ -412,6 +429,21 @@ async function loadData(){
 }
 function pingOnline(){ if(_user) api('/online',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_user.phone})}).catch(()=>{}); }
 setInterval(pingOnline,40000);
+// Auto-refresh: recarrega jogos/palpites a cada 60s (pega resultados lancados)
+setInterval(async ()=>{
+  if(!_user) return;
+  const prevSettled = Object.values(_myBets).filter(b=>b.settled).length;
+  await loadData();
+  const nowSettled = Object.values(_myBets).filter(b=>b.settled).length;
+  // Se algum palpite foi liquidado desde o ultimo check, avisa e atualiza a tela
+  if(nowSettled>prevSettled){
+    const active=document.querySelector('.nav button.on');
+    const tab=active?active.id.replace('nav-',''):'jogos';
+    if(tab==='jogos')navTo('jogos');
+    else if(tab==='palpites')navTo('palpites');
+    toast('🎉 Saiu resultado! Confira seus palpites.');
+  }
+},60000);
 
 // ════════════ NAV ════════════
 function navTo(tab){
@@ -492,8 +524,10 @@ function betSummary(fx,bet){
   if(fx.status==='finished'){
     const tag=bet.exact?'<span class="tag exact">🎯 Placar exato +10</span>':
               bet.points>0?'<span class="tag win">✓ Acertou +3</span>':
-              '<span class="tag miss">✗ Não foi dessa vez</span>';
-    resultHtml=`<div class="bet-result"><span style="color:var(--mut)">Resultado: <b style="color:var(--txt)">${fx.homeScore} × ${fx.awayScore}</b></span>${tag}</div>`;
+              '<span class="tag miss">✗ Errou</span>';
+    const fb=bet.exact?pick(MSG_WIN_EXACT):bet.points>0?pick(MSG_WIN):pick(MSG_MISS);
+    resultHtml=`<div class="bet-result"><span style="color:var(--mut)">Resultado: <b style="color:var(--txt)">${fx.homeScore} × ${fx.awayScore}</b></span>${tag}</div>
+    <div style="padding:8px 14px 12px;font-size:12.5px;color:var(--mut);text-align:center">${fb}</div>`;
   }
   return `
   <div class="pred">
@@ -527,7 +561,7 @@ async function placeBet(id){
       body:JSON.stringify({phone:_user.phone,name:_user.name,gameId:id,outcome,homeScore,awayScore})});
     if(d.ok){
       _myBets[id]=d.bet;
-      toast('🎯 Palpite registrado! Boa sorte!');
+      toast(pick(MSG_BET));
       renderJogos();
     } else { toast('⚠️ '+(d.error||'Erro ao registrar')); if(d.error&&d.error.includes('começou')){await loadData();renderJogos();} }
   }catch(e){ toast('⚠️ Erro de conexão'); }
@@ -561,6 +595,13 @@ async function renderRanking(){
     el.innerHTML=`<div class="empty"><div class="ico">🏆</div><p>O ranking aparece assim que os palpites começarem a valer pontos.<br>Seja o primeiro!</p></div>`;
     return;
   }
+  // Mensagem motivacional conforme a posição do usuário
+  const myPos=_ranking.findIndex(p=>p.phone===_user.phone);
+  let motiv='';
+  if(myPos===0) motiv=pick(MSG_RANK.top1);
+  else if(myPos>=1&&myPos<3) motiv=pick(MSG_RANK.top3);
+  else if(myPos>=3&&myPos<10) motiv=pick(MSG_RANK.top10);
+  else if(myPos>=10) motiv=pick(MSG_RANK.low);
   const top3=_ranking.slice(0,3);
   const rest=_ranking.slice(3);
   const medals=['🥇','🥈','🏅'];
@@ -571,7 +612,9 @@ async function renderRanking(){
   if(top3[1])podClass[top3[1].phone]='p2';
   if(top3[2])podClass[top3[2].phone]='p3';
 
-  let html=`<div class="sec-title">🏆 Melhores Apostadores</div><div class="podium">`;
+  let html='';
+  if(motiv) html+=`<div style="background:linear-gradient(135deg,rgba(245,197,24,.13),rgba(29,185,84,.08));border:1px solid rgba(245,197,24,.25);border-radius:13px;padding:14px;text-align:center;font-weight:700;font-size:14px;margin-bottom:16px">${motiv}</div>`;
+  html+=`<div class="sec-title">🏆 Melhores Apostadores</div><div class="podium">`;
   podOrder.forEach(p=>{
     const cls=podClass[p.phone];
     const medal=cls==='p1'?'🥇':cls==='p2'?'🥈':'🏅';
@@ -646,6 +689,14 @@ function renderPerfil(){
     <div class="stat-box"><div class="n">${settled.length?Math.round(hits/settled.length*100):0}%</div><div class="l">Aproveitamento</div></div>
   </div>
 
+  ${(()=>{ let m='';
+    if(settled.length===0) m='🎯 Dê seus primeiros palpites e comece a pontuar!';
+    else if(exact>0) m='🤯 Você já cravou '+exact+' placar(es) exato(s)! Fenômeno!';
+    else if(hits>=settled.length*0.6) m='🔥 Tá afiado! Mais da metade dos palpites certos!';
+    else if(hits>0) m='💪 Tá no caminho! Continua palpitando.';
+    else m='😅 Ainda sem acertos, mas o jogo vira! Bora.';
+    return '<div style="background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;text-align:center;font-size:13.5px;margin-bottom:14px">'+m+'</div>';
+  })()}
   <button class="logout-btn" onclick="doLogout()">Sair da conta</button>
   <div style="text-align:center;color:var(--mut);font-size:12px;margin-top:18px">Família Tomelin · Copa 2026 🏆<br>Bolão gratuito entre a família</div>`;
 }

@@ -551,21 +551,21 @@ router.put('/fixtures/:id', (req, res) => {
     awayScore: awayScore != null ? Number(awayScore) : fx.awayScore,
     status: status || fx.status,
   });
-  // Liquida apostas se o jogo terminou
+  // Liquida (ou re-liquida) apostas quando o jogo termina
   let settled = 0;
   const updated = db.fixtures.get(req.params.id);
   if (updated.status === 'finished') {
     db.bets.byGame(req.params.id).forEach(bet => {
-      if (bet.settled) return;
       const r = scoreBet(bet, updated);
-      if (r) {
-        db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
-        if (r.pts > 0) {
-          // recompensa em moedas: placar exato 50, vencedor 15
-          db.coins.add(bet.phone, r.exact ? 50 : 15);
-        }
-        settled++;
+      if (!r) return;
+      // Se ja estava liquidada, reverte as moedas antigas antes de repagar (correcao)
+      if (bet.settled) {
+        const oldReward = bet.exact ? 50 : (bet.points > 0 ? 15 : 0);
+        if (oldReward) db.coins.add(bet.phone, -oldReward);
       }
+      db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+      if (r.pts > 0) db.coins.add(bet.phone, r.exact ? 50 : 15);
+      settled++;
     });
   }
   res.json({ ok: true, settled });
