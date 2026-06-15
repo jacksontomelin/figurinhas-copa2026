@@ -511,6 +511,10 @@ function renderJogos(){
     el.innerHTML=html; return;
   }
 
+  // separa mata-mata sem times definidos (placeholder)
+  const aDefinir = list.filter(f=>f.placeholder);
+  list = list.filter(f=>!f.placeholder);
+
   // destaques do Brasil primeiro (só no filtro abertos)
   if(_jogosFiltro==='abertos'){
     const br=list.filter(f=>f.destaque);
@@ -524,6 +528,11 @@ function renderJogos(){
     if(dk!==lastDay){ html+=`<div class="sec-title">${dayLabel(f.kickoff)}</div>`; lastDay=dk; }
     html+=gameCard(f);
   });
+  // mata-mata a definir (so no filtro abertos)
+  if(_jogosFiltro==='abertos' && aDefinir.length){
+    html+=`<div class="sec-title">🔜 Mata-mata (aguardando classificados)</div>`;
+    html+=aDefinir.map(phCard).join('');
+  }
   el.innerHTML=html;
   window.scrollTo(0,0);
 }
@@ -544,6 +553,21 @@ function gameCard(fx){
       <div class="team"><span class="flag">${fx.awayFlag||'🏳️'}</span><span class="name">${esc(fx.away)}</span></div>
     </div>
     ${bet?betSummary(fx,bet):predUI(fx)}
+  </div>`;
+}
+
+function phCard(fx){
+  return `<div class="game" style="opacity:.75">
+    <div class="game-top">
+      <span class="game-grupo">${fx.grupo&&fx.grupo!=='-'?'Grupo '+fx.grupo:'Mata-mata'}</span>
+      <span class="game-time">${fmtKick(fx.kickoff)}</span>
+    </div>
+    <div class="teams">
+      <div class="team"><span class="flag">⚪</span><span class="name" style="font-size:11px;color:var(--mut)">${esc(fx.home)}</span></div>
+      <span class="vs">×</span>
+      <div class="team"><span class="flag">⚪</span><span class="name" style="font-size:11px;color:var(--mut)">${esc(fx.away)}</span></div>
+    </div>
+    <div class="pred"><div style="text-align:center;font-size:12px;color:var(--mut);padding:6px">⏳ Palpite liberado quando os times forem definidos</div></div>
   </div>`;
 }
 

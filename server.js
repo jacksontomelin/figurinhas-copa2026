@@ -970,12 +970,44 @@ const TEAM_INFO = {
   'venezuela':{pt:'Venezuela',flag:'🇻🇪'}, 'costa rica':{pt:'Costa Rica',flag:'🇨🇷'}, 'honduras':{pt:'Honduras',flag:'🇭🇳'},
   'greece':{pt:'Grécia',flag:'🇬🇷'}, 'romania':{pt:'Romênia',flag:'🇷🇴'}, 'slovakia':{pt:'Eslováquia',flag:'🇸🇰'},
   'slovenia':{pt:'Eslovênia',flag:'🇸🇮'}, 'czechia':{pt:'Tchéquia',flag:'🇨🇿'}, 'turkmenistan':{pt:'Turcomenistão',flag:'🇹🇲'},
+  'bosnia herzegovina':{pt:'Bósnia',flag:'🇧🇦'}, 'bosniaherzegovina':{pt:'Bósnia',flag:'🇧🇦'},
+  'bosnia and herzegovina':{pt:'Bósnia',flag:'🇧🇦'}, 'bosnia':{pt:'Bósnia',flag:'🇧🇦'},
+  'north macedonia':{pt:'Macedônia do Norte',flag:'🇲🇰'}, 'finland':{pt:'Finlândia',flag:'🇫🇮'},
+  'hungary':{pt:'Hungria',flag:'🇭🇺'}, 'georgia':{pt:'Geórgia',flag:'🇬🇪'}, 'albania':{pt:'Albânia',flag:'🇦🇱'},
+  'ireland':{pt:'Irlanda',flag:'🇮🇪'}, 'mali':{pt:'Mali',flag:'🇲🇱'}, 'burkina faso':{pt:'Burkina Faso',flag:'🇧🇫'},
+  'angola':{pt:'Angola',flag:'🇦🇴'}, 'south sudan':{pt:'Sudão do Sul',flag:'🇸🇸'}, 'bolivia':{pt:'Bolívia',flag:'🇧🇴'},
+  'el salvador':{pt:'El Salvador',flag:'🇸🇻'}, 'uae':{pt:'Emirados Árabes',flag:'🇦🇪'},
+  'united arab emirates':{pt:'Emirados Árabes',flag:'🇦🇪'}, 'iceland':{pt:'Islândia',flag:'🇮🇸'},
 };
+
+// Traduz placeholders de mata-mata da ESPN (ex: 'Group A Winner') para PT
+function translatePlaceholder(name) {
+  let s = String(name||'');
+  // Já é placeholder se contém estas palavras
+  if (!/Group|Winner|Place|Round of|Quarterfinal|Semifinal|Loser/i.test(s)) return null;
+  s = s
+    .replace(/Group\s+([A-L])\s+Winner/gi, '1º Grupo $1')
+    .replace(/Group\s+([A-L])\s+2nd Place/gi, '2º Grupo $1')
+    .replace(/Group\s+([A-L])\s+Winner/gi, '1º Grupo $1')
+    .replace(/Third Place Group\s+[A-L/]+/gi, 'Melhor 3º')
+    .replace(/Round of 32\s+(\d+)\s+Winner/gi, 'Vencedor 32-avos $1')
+    .replace(/Round of 16\s+(\d+)\s+Winner/gi, 'Vencedor Oitavas $1')
+    .replace(/Quarterfinal\s+(\d+)\s+Winner/gi, 'Vencedor Quartas $1')
+    .replace(/Semifinal\s+(\d+)\s+Winner/gi, 'Finalista $1')
+    .replace(/Semifinal\s+(\d+)\s+Loser/gi, 'Perdedor Semi $1')
+    .replace(/Group\s+([A-L])/gi, 'Grupo $1');
+  return s;
+}
 function espnToTeam(name){
   const k = normTeam(name);
   if (TEAM_INFO[k]) return TEAM_INFO[k];
-  // tenta achar por inclusao
-  for (const key in TEAM_INFO){ if (k.includes(key) || key.includes(k)) return TEAM_INFO[key]; }
+  // tenta achar por inclusao (mas evita falso-positivo com placeholders)
+  if (!/Group|Winner|Place|Round of|Quarter|Semi|Loser/i.test(name)) {
+    for (const key in TEAM_INFO){ if (k.includes(key) || key.includes(k)) return TEAM_INFO[key]; }
+  }
+  // placeholder de mata-mata → traduz para PT
+  const ph = translatePlaceholder(name);
+  if (ph) return { pt: ph, flag: '⚪', placeholder: true };
   return { pt: name, flag: '🏳️' };
 }
 
@@ -1109,7 +1141,15 @@ async function syncAllFixtures() {
         if (hScore != null) upd.homeScore = hScore;
         if (aScore != null) upd.awayScore = aScore;
         if (kickoff) upd.kickoff = kickoff;
-        if (grupo && !fx.grupo) upd.grupo = grupo;
+        if (grupo && (!fx.grupo || fx.grupo==='-')) upd.grupo = grupo;
+        // se os times foram definidos (deixaram de ser placeholder), atualiza nomes/bandeiras
+        const nowReal = !(hInfo.placeholder || aInfo.placeholder);
+        if (fx.placeholder && nowReal) {
+          upd.home = hInfo.pt; upd.homeFlag = hInfo.flag;
+          upd.away = aInfo.pt; upd.awayFlag = aInfo.flag;
+          upd.placeholder = false;
+          upd.destaque = isBrasil;
+        }
         db.fixtures.update(fx.id, upd);
         atualizados++;
       } else {
@@ -1123,6 +1163,7 @@ async function syncAllFixtures() {
           homeScore: hScore, awayScore: aScore,
           estadio: (comp.venue && comp.venue.fullName) || '',
           destaque: isBrasil,
+          placeholder: !!(hInfo.placeholder || aInfo.placeholder), // times ainda nao definidos
         });
         criados++;
       }
