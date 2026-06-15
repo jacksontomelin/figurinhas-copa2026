@@ -557,6 +557,17 @@ app.get('/apostas.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(_
 app.get('/index.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'apostas.html')); });
 app.get('/app.html', (_, res) => { noCache(res); res.sendFile(pathMod.join(__dirname, 'app.html')); });
 // Forca busca de placares agora (debug/manual)
+app.all('/api/fixtures/sync-all', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const antes = db.fixtures.all().length;
+    await syncAllFixtures();
+    const depois = db.fixtures.all().length;
+    res.json({ ok: true, antes, depois, total: depois,
+      jogos: db.fixtures.all().map(f=>`${f.homeFlag||''} ${f.home} ${f.homeScore??'-'} x ${f.awayScore??'-'} ${f.away} ${f.awayFlag||''} [${f.status}]`) });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
 app.all('/api/scores/sync', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
@@ -931,6 +942,43 @@ try {
 //  PLACAR AUTOMÁTICO — busca resultados da Copa via ESPN API
 // ═══════════════════════════════════════════════════════════
 
+// Mapa EN (ESPN) → { pt: nome, flag: bandeira } — todas as selecoes
+const TEAM_INFO = {
+  'brazil':{pt:'Brasil',flag:'🇧🇷'}, 'morocco':{pt:'Marrocos',flag:'🇲🇦'}, 'haiti':{pt:'Haiti',flag:'🇭🇹'},
+  'scotland':{pt:'Escócia',flag:'🏴'}, 'mexico':{pt:'México',flag:'🇲🇽'}, 'south africa':{pt:'África do Sul',flag:'🇿🇦'},
+  'south korea':{pt:'Coreia do Sul',flag:'🇰🇷'}, 'korea republic':{pt:'Coreia do Sul',flag:'🇰🇷'},
+  'denmark':{pt:'Dinamarca',flag:'🇩🇰'}, 'canada':{pt:'Canadá',flag:'🇨🇦'}, 'italy':{pt:'Itália',flag:'🇮🇹'},
+  'united states':{pt:'Estados Unidos',flag:'🇺🇸'}, 'usa':{pt:'Estados Unidos',flag:'🇺🇸'},
+  'paraguay':{pt:'Paraguai',flag:'🇵🇾'}, 'australia':{pt:'Austrália',flag:'🇦🇺'},
+  'turkey':{pt:'Turquia',flag:'🇹🇷'}, 'turkiye':{pt:'Turquia',flag:'🇹🇷'},
+  'qatar':{pt:'Catar',flag:'🇶🇦'}, 'switzerland':{pt:'Suíça',flag:'🇨🇭'}, 'germany':{pt:'Alemanha',flag:'🇩🇪'},
+  'curacao':{pt:'Curaçao',flag:'🇨🇼'}, 'netherlands':{pt:'Holanda',flag:'🇳🇱'}, 'japan':{pt:'Japão',flag:'🇯🇵'},
+  'ivory coast':{pt:'Costa do Marfim',flag:'🇨🇮'}, 'cote divoire':{pt:'Costa do Marfim',flag:'🇨🇮'},
+  'ecuador':{pt:'Equador',flag:'🇪🇨'}, 'belgium':{pt:'Bélgica',flag:'🇧🇪'}, 'egypt':{pt:'Egito',flag:'🇪🇬'},
+  'iran':{pt:'Irã',flag:'🇮🇷'}, 'new zealand':{pt:'Nova Zelândia',flag:'🇳🇿'}, 'spain':{pt:'Espanha',flag:'🇪🇸'},
+  'cape verde':{pt:'Cabo Verde',flag:'🇨🇻'}, 'saudi arabia':{pt:'Arábia Saudita',flag:'🇸🇦'},
+  'uruguay':{pt:'Uruguai',flag:'🇺🇾'}, 'france':{pt:'França',flag:'🇫🇷'}, 'senegal':{pt:'Senegal',flag:'🇸🇳'},
+  'norway':{pt:'Noruega',flag:'🇳🇴'}, 'iraq':{pt:'Iraque',flag:'🇮🇶'}, 'argentina':{pt:'Argentina',flag:'🇦🇷'},
+  'algeria':{pt:'Argélia',flag:'🇩🇿'}, 'austria':{pt:'Áustria',flag:'🇦🇹'}, 'jordan':{pt:'Jordânia',flag:'🇯🇴'},
+  'portugal':{pt:'Portugal',flag:'🇵🇹'}, 'uzbekistan':{pt:'Uzbequistão',flag:'🇺🇿'},
+  'colombia':{pt:'Colômbia',flag:'🇨🇴'}, 'dr congo':{pt:'RD Congo',flag:'🇨🇩'}, 'congo dr':{pt:'RD Congo',flag:'🇨🇩'},
+  'england':{pt:'Inglaterra',flag:'🏴'}, 'croatia':{pt:'Croácia',flag:'🇭🇷'}, 'ghana':{pt:'Gana',flag:'🇬🇭'},
+  'panama':{pt:'Panamá',flag:'🇵🇦'}, 'sweden':{pt:'Suécia',flag:'🇸🇪'}, 'tunisia':{pt:'Tunísia',flag:'🇹🇳'},
+  'ukraine':{pt:'Ucrânia',flag:'🇺🇦'}, 'poland':{pt:'Polônia',flag:'🇵🇱'}, 'wales':{pt:'País de Gales',flag:'🏴'},
+  'jamaica':{pt:'Jamaica',flag:'🇯🇲'}, 'nigeria':{pt:'Nigéria',flag:'🇳🇬'}, 'cameroon':{pt:'Camarões',flag:'🇨🇲'},
+  'serbia':{pt:'Sérvia',flag:'🇷🇸'}, 'peru':{pt:'Peru',flag:'🇵🇪'}, 'chile':{pt:'Chile',flag:'🇨🇱'},
+  'venezuela':{pt:'Venezuela',flag:'🇻🇪'}, 'costa rica':{pt:'Costa Rica',flag:'🇨🇷'}, 'honduras':{pt:'Honduras',flag:'🇭🇳'},
+  'greece':{pt:'Grécia',flag:'🇬🇷'}, 'romania':{pt:'Romênia',flag:'🇷🇴'}, 'slovakia':{pt:'Eslováquia',flag:'🇸🇰'},
+  'slovenia':{pt:'Eslovênia',flag:'🇸🇮'}, 'czechia':{pt:'Tchéquia',flag:'🇨🇿'}, 'turkmenistan':{pt:'Turcomenistão',flag:'🇹🇲'},
+};
+function espnToTeam(name){
+  const k = normTeam(name);
+  if (TEAM_INFO[k]) return TEAM_INFO[k];
+  // tenta achar por inclusao
+  for (const key in TEAM_INFO){ if (k.includes(key) || key.includes(k)) return TEAM_INFO[key]; }
+  return { pt: name, flag: '🏳️' };
+}
+
 // Mapa: nome no nosso sistema (PT) → nomes possiveis na ESPN (EN/variantes)
 const TEAM_ALIASES = {
   'brasil':['brazil','brasil'], 'marrocos':['morocco','marrocos'], 'haiti':['haiti'],
@@ -982,9 +1030,9 @@ function dateWindow(back, fwd) {
 }
 
 // Busca o scoreboard da ESPN para a Copa numa janela de datas
-async function fetchESPNScores() {
+async function fetchESPNScores(back, fwd) {
   const leagues = ['fifa.world', 'fifa.worldq'];
-  const dates = dateWindow(3, 3); // 3 dias atras ate 3 dias a frente
+  const dates = dateWindow(back != null ? back : 3, fwd != null ? fwd : 3);
   const seen = new Set();
   const allEvents = [];
 
@@ -1010,6 +1058,83 @@ async function fetchESPNScores() {
     if (leagueWorked && allEvents.length) break;
   }
   return allEvents;
+}
+
+// Importa TODOS os jogos da Copa da ESPN (cria os que faltam, atualiza os existentes)
+async function syncAllFixtures() {
+  try {
+    const events = await fetchESPNScores(40, 45); // torneio inteiro
+    if (!events.length) { log('⚽', 'syncAllFixtures: ESPN sem eventos'); return; }
+
+    let criados = 0, atualizados = 0;
+    const existentes = db.fixtures.all();
+
+    for (const ev of events) {
+      const comp = ev.competitions && ev.competitions[0];
+      if (!comp) continue;
+      const cs = comp.competitors || [];
+      const homeC = cs.find(c => c.homeAway === 'home') || cs[0];
+      const awayC = cs.find(c => c.homeAway === 'away') || cs[1];
+      if (!homeC || !awayC) continue;
+
+      const espnHome = homeC.team && (homeC.team.displayName || homeC.team.name);
+      const espnAway = awayC.team && (awayC.team.displayName || awayC.team.name);
+      if (!espnHome || !espnAway) continue;
+
+      const hInfo = espnToTeam(espnHome), aInfo = espnToTeam(espnAway);
+      const hScore = homeC.score != null && homeC.score !== '' ? parseInt(homeC.score) : null;
+      const aScore = awayC.score != null && awayC.score !== '' ? parseInt(awayC.score) : null;
+      const st = comp.status && comp.status.type ? comp.status.type.state : '';
+      const completed = comp.status && comp.status.type ? comp.status.type.completed : false;
+      const status = completed ? 'finished' : (st === 'in' ? 'live' : 'upcoming');
+      const kickoff = ev.date || comp.date || null;
+      // grupo (se a ESPN informar)
+      let grupo = '';
+      const grpNote = (ev.notes && ev.notes[0] && ev.notes[0].headline) || (comp.notes && comp.notes[0] && comp.notes[0].headline) || '';
+      const gm = grpNote.match(/Group\s+([A-L])/i);
+      if (gm) grupo = gm[1].toUpperCase();
+
+      const isBrasil = hInfo.pt === 'Brasil' || aInfo.pt === 'Brasil';
+
+      // Tenta achar fixture existente (por times OU por id espn)
+      const espnId = 'e' + (ev.id || '');
+      let fx = existentes.find(f =>
+        (teamsMatch(f.home, espnHome) && teamsMatch(f.away, espnAway)) ||
+        f.id === espnId
+      );
+
+      if (fx) {
+        // atualiza dados que possam ter mudado
+        const upd = { status };
+        if (hScore != null) upd.homeScore = hScore;
+        if (aScore != null) upd.awayScore = aScore;
+        if (kickoff) upd.kickoff = kickoff;
+        if (grupo && !fx.grupo) upd.grupo = grupo;
+        db.fixtures.update(fx.id, upd);
+        atualizados++;
+      } else {
+        // cria novo jogo (ex: outras chaves, mata-mata)
+        db.fixtures.all().push({
+          id: espnId,
+          grupo: grupo || '-',
+          home: hInfo.pt, homeFlag: hInfo.flag,
+          away: aInfo.pt, awayFlag: aInfo.flag,
+          kickoff, status,
+          homeScore: hScore, awayScore: aScore,
+          estadio: (comp.venue && comp.venue.fullName) || '',
+          destaque: isBrasil,
+        });
+        criados++;
+      }
+    }
+    if (criados || atualizados) {
+      // persiste
+      db.fixtures.set(db.fixtures.all());
+      log('⚽', `syncAllFixtures: ${criados} novo(s), ${atualizados} atualizado(s) — total ${db.fixtures.all().length} jogos`);
+    }
+  } catch(e) {
+    log('⚠️', `syncAllFixtures erro: ${e.message}`);
+  }
 }
 
 // Atualiza fixtures + liquida apostas com base nos placares da ESPN
@@ -1110,8 +1235,9 @@ app.listen(PORT, '0.0.0.0', () => {
   log('🤖', 'Monitor de jogos: ATIVO');
   log('⏰', 'Cron jobs: ATIVOS');
   log('📡', `Endpoints Railway: ${db.users.count()} usuários | PG: ${!!process.env.DATABASE_URL}`);
-  setTimeout(seedFixtures, 4000); // carrega jogos da Copa após PG iniciar
-  setTimeout(autoUpdateScores, 9000); // primeira busca de placares
+  setTimeout(seedFixtures, 4000);       // garante jogos base se ESPN falhar
+  setTimeout(syncAllFixtures, 8000);    // importa TODOS os jogos da Copa (ESPN)
+  setTimeout(autoUpdateScores, 14000);  // primeira atualizacao de placares
 });
 
 module.exports = app;
@@ -1592,6 +1718,10 @@ cron.schedule('0 */4 * * *', () => {
 // Cron: roda a cada 10 minutos
 cron.schedule('*/2 * * * *', async () => {
   await autoUpdateScores();
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('*/30 * * * *', async () => {
+  await syncAllFixtures(); // descobre novos jogos (mata-mata) a cada 30min
 }, { timezone: 'America/Sao_Paulo' });
 
 cron.schedule('*/5 * * * *', async () => {

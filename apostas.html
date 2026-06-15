@@ -72,6 +72,12 @@ body{padding-bottom:78px;min-height:100vh}
   margin:6px 2px 12px;display:flex;align-items:center;gap:8px}
 .sec-title::after{content:'';flex:1;height:1px;background:var(--line)}
 
+/* ─── FILTRO ─── */
+.filt-row{display:flex;gap:8px;margin-bottom:16px;position:sticky;top:54px;z-index:5;background:var(--bg);padding:4px 0}
+.filt-row button{flex:1;padding:10px;background:var(--card);border:1px solid var(--line);color:var(--mut);
+  border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:'Inter';transition:.15s}
+.filt-row button.on{background:var(--gold);color:#0a1525;border-color:var(--gold)}
+
 /* ─── GAME CARD ─── */
 .game{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden;transition:.2s}
 .game.destaque{border-color:rgba(245,197,24,.4);box-shadow:0 0 0 1px rgba(245,197,24,.15)}
@@ -458,27 +464,68 @@ function navTo(tab){
 }
 
 // ════════════ JOGOS ════════════
+let _jogosFiltro='abertos';
+function setJogosFiltro(f){ _jogosFiltro=f; renderJogos(); }
+
+function dayLabel(iso){
+  try{
+    const d=new Date(iso),now=new Date();
+    const dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0');
+    const isToday=d.toDateString()===now.toDateString();
+    const tmr=new Date(now);tmr.setDate(now.getDate()+1);
+    const isTmr=d.toDateString()===tmr.toDateString();
+    const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    if(isToday)return '📅 Hoje';
+    if(isTmr)return '📅 Amanhã';
+    return `📅 ${dias[d.getDay()]} ${dd}/${mm}`;
+  }catch(e){return '📅 Jogos';}
+}
+function dayKey(iso){ try{return new Date(iso).toDateString();}catch(e){return 'x';} }
+
 function renderJogos(){
   const el=document.getElementById('app-content');
-  const upcoming=_fixtures.filter(f=>!isLocked(f));
-  const live=_fixtures.filter(f=>f.status==='live');
-  const all=[...live,...upcoming];
-  if(!all.length){
-    el.innerHTML=`<div class="empty"><div class="ico">⚽</div><p>Nenhum jogo aberto para palpite agora.<br>Volte em breve!</p></div>`;
+  if(!_fixtures.length){
+    el.innerHTML=`<div class="empty"><div class="ico">⚽</div><p>Carregando os jogos da Copa...</p></div>`;
     return;
   }
-  let html='';
-  const destaques=all.filter(f=>f.destaque);
-  if(destaques.length){
-    html+=`<div class="sec-title">🇧🇷 Jogos do Brasil</div>`;
-    html+=destaques.map(gameCard).join('');
+  // filtro
+  let list;
+  if(_jogosFiltro==='abertos') list=_fixtures.filter(f=>!isLocked(f)||f.status==='live');
+  else if(_jogosFiltro==='meus') list=_fixtures.filter(f=>_myBets[f.id]);
+  else list=_fixtures.filter(f=>f.status==='finished');
+  // ordena por data
+  list=list.slice().sort((a,b)=>new Date(a.kickoff)-new Date(b.kickoff));
+  if(_jogosFiltro==='encerrados') list.reverse();
+
+  let html=`<div class="filt-row">
+    <button class="${_jogosFiltro==='abertos'?'on':''}" onclick="setJogosFiltro('abertos')">Abrir palpite</button>
+    <button class="${_jogosFiltro==='meus'?'on':''}" onclick="setJogosFiltro('meus')">Meus</button>
+    <button class="${_jogosFiltro==='encerrados'?'on':''}" onclick="setJogosFiltro('encerrados')">Encerrados</button>
+  </div>`;
+
+  if(!list.length){
+    const msg=_jogosFiltro==='abertos'?'Nenhum jogo aberto agora. Volte em breve!':
+              _jogosFiltro==='meus'?'Você ainda não palpitou. Toque em "Abrir palpite"!':
+              'Nenhum jogo encerrado ainda.';
+    html+=`<div class="empty"><div class="ico">⚽</div><p>${msg}</p></div>`;
+    el.innerHTML=html; return;
   }
-  const outros=all.filter(f=>!f.destaque);
-  if(outros.length){
-    html+=`<div class="sec-title">Próximos jogos</div>`;
-    html+=outros.map(gameCard).join('');
+
+  // destaques do Brasil primeiro (só no filtro abertos)
+  if(_jogosFiltro==='abertos'){
+    const br=list.filter(f=>f.destaque);
+    if(br.length){ html+=`<div class="sec-title">🇧🇷 Jogos do Brasil</div>`+br.map(gameCard).join(''); }
+    list=list.filter(f=>!f.destaque);
   }
+  // agrupa por dia
+  let lastDay='';
+  list.forEach(f=>{
+    const dk=dayKey(f.kickoff);
+    if(dk!==lastDay){ html+=`<div class="sec-title">${dayLabel(f.kickoff)}</div>`; lastDay=dk; }
+    html+=gameCard(f);
+  });
   el.innerHTML=html;
+  window.scrollTo(0,0);
 }
 
 function gameCard(fx){
