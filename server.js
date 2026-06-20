@@ -325,7 +325,7 @@ app.use((req, res, next) => {
 });
 
 // ── API REST (db.js + api.js) ─────────────────────────────────
-const { router: apiRouter } = require('./api');
+const { router: apiRouter, scoreBet } = require('./api');
 app.use('/api', apiRouter);
 
 // ── ROTAS LEGADAS ─────────────────────────────────────────────

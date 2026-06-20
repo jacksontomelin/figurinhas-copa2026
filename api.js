@@ -770,4 +770,4 @@ router.post('/auth/update-password', async (req, res) => {
   console.log('[AUTH] Senha atualizada para:', phone);
   res.json({ ok: true });
 });
-module.exports = { router, shortenUrl };
+module.exports = { router, shortenUrl, scoreBet };
