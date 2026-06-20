@@ -610,39 +610,43 @@ router.get('/bets', (req, res) => {
   res.json({ ok: true, bets: phone ? db.bets.byUser(phone) : db.bets.all() });
 });
 
-// POST/GET /api/force-settle — liquida apostas INLINE com diagnostico completo
+// POST/GET /api/force-settle — liquida apostas INLINE com diagnostico compacto
 router.all('/force-settle', (req, res) => {
   cors(res);
-  const log = [];
   let reavaliadas = 0, corrigidas = 0, erros = 0;
-  try {
-    log.push('scoreBet tipo: ' + typeof scoreBet);
-    const finished = db.fixtures.all().filter(f => f.status === 'finished' && f.homeScore != null);
-    log.push('jogos encerrados: ' + finished.length);
-
-    finished.forEach(fx => {
-      const bets = db.bets.byGame(fx.id);
-      bets.forEach(bet => {
-        reavaliadas++;
-        try {
-          const r = scoreBet(bet, fx);
-          if (!r) { log.push(`${fx.id}: scoreBet retornou null`); return; }
-          const oldPts = bet.points || 0;
-          if (oldPts !== r.pts || bet.exact !== r.exact || !bet.settled) {
-            const oldReward = bet.settled ? (bet.exact ? 50 : (oldPts > 0 ? 15 : 0)) : 0;
-            const newReward = r.pts > 0 ? (r.exact ? 50 : 15) : 0;
-            if (oldReward !== newReward) db.coins.add(bet.phone, newReward - oldReward);
-            db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
-            corrigidas++;
-            log.push(`✅ ${fx.home} x ${fx.away}: ${bet.name} → ${r.pts}pts${r.exact?' (EXATO)':''}`);
-          }
-        } catch(e) { erros++; log.push(`❌ erro no bet ${bet.id}: ${e.message}`); }
-      });
-    });
-  } catch(e) {
-    log.push('❌ ERRO GERAL: ' + e.message);
-  }
-  res.json({ ok: true, reavaliadas, corrigidas, erros, log });
+  const detalhe = [];
+  const todasApostas = db.bets.all();
+  todasApostas.forEach(bet => {
+    const fx = db.fixtures.get(bet.gameId);
+    let r = null, errMsg = null;
+    try { r = fx ? scoreBet(bet, fx) : null; } catch(e) { errMsg = e.message; erros++; }
+    reavaliadas++;
+    const linha = {
+      jogo: fx ? `${fx.home} ${fx.homeScore}x${fx.awayScore} ${fx.away}` : 'SEM FIXTURE',
+      fxStatus: fx ? fx.status : '-',
+      fxPlacar: fx ? `${fx.homeScore}-${fx.awayScore}` : '-',
+      palpite: `${bet.homeScore}-${bet.awayScore} (out:${bet.outcome})`,
+      antes: `settled:${bet.settled} pts:${bet.points}`,
+      scoreBet: r ? `pts:${r.pts} exato:${r.exact}` : (errMsg ? 'ERRO:'+errMsg : 'null'),
+    };
+    if (r) {
+      const oldPts = bet.points || 0;
+      if (oldPts !== r.pts || bet.exact !== r.exact || !bet.settled) {
+        const oldReward = bet.settled ? (bet.exact ? 50 : (oldPts > 0 ? 15 : 0)) : 0;
+        const newReward = r.pts > 0 ? (r.exact ? 50 : 15) : 0;
+        if (oldReward !== newReward) db.coins.add(bet.phone, newReward - oldReward);
+        db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+        corrigidas++;
+        linha.acao = '✅ ATUALIZADO';
+      } else {
+        linha.acao = 'ja correto';
+      }
+    } else {
+      linha.acao = '⏭ pulado (null)';
+    }
+    detalhe.push(linha);
+  });
+  res.json({ ok: true, scoreBetTipo: typeof scoreBet, reavaliadas, corrigidas, erros, detalhe });
 });
 
 // GET /api/bets-debug — diagnostico: bet + fixture + scoreBet
