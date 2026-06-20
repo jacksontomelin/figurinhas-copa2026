@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#06101f">
 <title>Bolão da Família · Copa 2026</title>
+<meta name="version" content="2.1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -267,8 +268,11 @@ body{padding-bottom:78px;min-height:100vh}
 <div id="scr-app" class="screen">
   <div class="hdr">
     <div class="hdr-title">Bolão <b>Tomelin</b></div>
-    <div class="coins-pill" onclick="navTo('perfil')">
-      <span class="ic">🪙</span><span id="hdr-coins">—</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="refreshAll()" style="background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--txt);width:38px;height:38px;border-radius:30px;font-size:17px;cursor:pointer" title="Atualizar">🔄</button>
+      <div class="coins-pill" onclick="navTo('perfil')">
+        <span class="ic">🪙</span><span id="hdr-coins">—</span>
+      </div>
     </div>
   </div>
   <div class="wrap" id="app-content"></div>
@@ -322,7 +326,15 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function toast(msg,ms){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),ms||2600);}
 function maskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);if(v.length>=7)v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');else if(v.length>=3)v=v.replace(/(\d{2})(\d{0,5})/,'($1) $2');el.value=v;}
 function cleanPhone(v){let p=String(v||'').replace(/\D/g,'');if(p.length===11)p='55'+p;else if(p.length===13&&p.startsWith('55')){}return p;}
-function api(path,opts){return fetch(API+path,opts).then(r=>r.json());}
+function api(path,opts){
+  opts=opts||{};
+  opts.cache='no-store'; // nunca usa cache do navegador
+  opts.headers=Object.assign({'Cache-Control':'no-cache','Pragma':'no-cache'},opts.headers||{});
+  // adiciona timestamp em GETs para furar qualquer cache intermediario
+  const sep=path.includes('?')?'&':'?';
+  const url=API+path+((!opts.method||opts.method==='GET')?sep+'_t='+Date.now():'');
+  return fetch(url,opts).then(r=>r.json());
+}
 
 function fmtKick(iso){
   try{
@@ -450,6 +462,15 @@ setInterval(async ()=>{
     toast('🎉 Saiu resultado! Confira seus palpites.');
   }
 },60000);
+
+async function refreshAll(){
+  toast('🔄 Atualizando...');
+  await loadData();
+  const active=document.querySelector('.nav button.on');
+  const tab=active?active.id.replace('nav-',''):'jogos';
+  navTo(tab);
+  toast('✅ Atualizado!');
+}
 
 // ════════════ NAV ════════════
 function navTo(tab){
