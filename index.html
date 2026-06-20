@@ -328,9 +328,8 @@ function maskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);if(v.length>
 function cleanPhone(v){let p=String(v||'').replace(/\D/g,'');if(p.length===11)p='55'+p;else if(p.length===13&&p.startsWith('55')){}return p;}
 function api(path,opts){
   opts=opts||{};
-  opts.cache='no-store'; // nunca usa cache do navegador
-  opts.headers=Object.assign({'Cache-Control':'no-cache','Pragma':'no-cache'},opts.headers||{});
-  // adiciona timestamp em GETs para furar qualquer cache intermediario
+  opts.cache='no-store'; // controla cache do navegador SEM adicionar headers (nao quebra CORS)
+  // timestamp em GETs fura cache intermediario sem precisar de header custom
   const sep=path.includes('?')?'&':'?';
   const url=API+path+((!opts.method||opts.method==='GET')?sep+'_t='+Date.now():'');
   return fetch(url,opts).then(r=>r.json());
