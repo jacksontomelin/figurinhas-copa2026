@@ -610,6 +610,32 @@ router.get('/bets', (req, res) => {
   res.json({ ok: true, bets: phone ? db.bets.byUser(phone) : db.bets.all() });
 });
 
+// GET /api/bets-debug — diagnostico: bet + fixture + scoreBet
+router.get('/bets-debug', (req, res) => {
+  cors(res);
+  const phone = req.query.phone;
+  const allBets = phone ? db.bets.byUser(phone) : db.bets.all();
+  const out = allBets.map(bet => {
+    const fx = db.fixtures.get(bet.gameId);
+    const r = fx ? scoreBet(bet, fx) : null;
+    return {
+      gameId: bet.gameId,
+      jogo: fx ? `${fx.home} x ${fx.away}` : '❌ FIXTURE NAO ENCONTRADO (id orfao)',
+      palpite: { outcome: bet.outcome, h: bet.homeScore, a: bet.awayScore,
+                 tipoH: typeof bet.homeScore, tipoA: typeof bet.awayScore,
+                 settled: bet.settled, ptsArmazenado: bet.points, exactArmazenado: bet.exact },
+      jogoFx: fx ? { status: fx.status, h: fx.homeScore, a: fx.awayScore,
+                     tipoH: typeof fx.homeScore, tipoA: typeof fx.awayScore } : null,
+      scoreBetCalcula: r,
+    };
+  });
+  // tambem lista TODAS as fixtures que tem "haiti" pra detectar duplicata
+  const haitis = db.fixtures.all().filter(f =>
+    /brasil|haiti/i.test(f.home) || /brasil|haiti/i.test(f.away)
+  ).map(f => ({ id: f.id, jogo: `${f.home} x ${f.away}`, status: f.status, placar: `${f.homeScore}-${f.awayScore}` }));
+  res.json({ ok: true, total: out.length, palpites: out, jogosBrasilHaiti: haitis });
+});
+
 // POST /api/bets — registra um palpite (gratuito)
 router.post('/bets', (req, res) => {
   cors(res);
