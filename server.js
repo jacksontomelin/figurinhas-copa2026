@@ -1206,6 +1206,9 @@ async function syncAllFixtures() {
       db.fixtures.set(db.fixtures.all());
       log('⚽', `syncAllFixtures: ${criados} novo(s), ${atualizados} atualizado(s) — total ${db.fixtures.all().length} jogos`);
     }
+    // SEMPRE liquida apostas dos jogos encerrados (sync nao pagava antes!)
+    const rs = resettleAllBets(false);
+    if (rs.corrigidas) log('💰', `syncAllFixtures: ${rs.corrigidas} aposta(s) liquidada(s)`);
   } catch(e) {
     log('⚠️', `syncAllFixtures erro: ${e.message}`);
   }
@@ -1243,8 +1246,23 @@ async function autoUpdateScores() {
 
       const newStatus = completed ? 'finished' : (st === 'in' ? 'live' : fx.status);
 
-      // So atualiza se mudou
-      if (fx.status === newStatus && fx.homeScore === hScore && fx.awayScore === aScore) continue;
+      // Se nada mudou no jogo MAS ha apostas pendentes de um jogo encerrado, liquida
+      if (fx.status === newStatus && fx.homeScore === hScore && fx.awayScore === aScore) {
+        if (newStatus === 'finished' && hScore != null) {
+          const pend = db.bets.byGame(fx.id).filter(b => !b.settled);
+          if (pend.length) {
+            pend.forEach(bet => {
+              const r = scoreBet(bet, fx);
+              if (r) {
+                db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+                if (r.pts > 0) { db.coins.add(bet.phone, r.exact ? 50 : 15); pagos++; }
+              }
+            });
+            log('💰', `Liquidou ${pend.length} aposta(s) pendente(s): ${fx.home} ${hScore}x${aScore} ${fx.away}`);
+          }
+        }
+        continue;
+      }
 
       db.fixtures.update(fx.id, {
         homeScore: hScore, awayScore: aScore, status: newStatus,
