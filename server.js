@@ -568,6 +568,27 @@ app.all('/api/fixtures/sync-all', async (req, res) => {
   } catch(e) { res.json({ ok: false, error: e.message }); }
 });
 
+app.all('/api/bets/debug', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const phone = req.query.phone;
+  const allBets = phone ? db.bets.byUser(phone) : db.bets.all();
+  const out = allBets.map(bet => {
+    const fx = db.fixtures.get(bet.gameId);
+    const r = fx ? scoreBet(bet, fx) : null;
+    return {
+      gameId: bet.gameId,
+      jogo: fx ? `${fx.home} x ${fx.away}` : 'FIXTURE NAO ENCONTRADO',
+      bet: { outcome: bet.outcome, h: bet.homeScore, a: bet.awayScore,
+             tipoH: typeof bet.homeScore, tipoA: typeof bet.awayScore,
+             settled: bet.settled, pointsArmazenado: bet.points, exactArmazenado: bet.exact },
+      fixture: fx ? { status: fx.status, h: fx.homeScore, a: fx.awayScore,
+                      tipoH: typeof fx.homeScore, tipoA: typeof fx.awayScore } : null,
+      scoreBetCalcula: r,
+    };
+  });
+  res.json({ ok: true, total: out.length, palpites: out });
+});
+
 app.all('/api/heal', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const fixes = selfHeal();
