@@ -568,6 +568,27 @@ app.all('/api/fixtures/sync-all', async (req, res) => {
   } catch(e) { res.json({ ok: false, error: e.message }); }
 });
 
+app.all('/api/bets/fix', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  let reavaliadas = 0, corrigidas = 0;
+  db.fixtures.all().filter(f => f.status === 'finished' && f.homeScore != null).forEach(fx => {
+    db.bets.byGame(fx.id).forEach(bet => {
+      const r = scoreBet(bet, fx);
+      if (!r) return;
+      reavaliadas++;
+      const oldPts = bet.points || 0;
+      const oldReward = bet.settled ? (bet.exact ? 50 : (oldPts > 0 ? 15 : 0)) : 0;
+      const newReward = r.pts > 0 ? (r.exact ? 50 : 15) : 0;
+      if (oldPts !== r.pts || !bet.settled) {
+        if (oldReward !== newReward) db.coins.add(bet.phone, newReward - oldReward);
+        db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+        corrigidas++;
+      }
+    });
+  });
+  res.json({ ok: true, reavaliadas, corrigidas, msg: corrigidas+' palpite(s) corrigido(s)' });
+});
+
 app.all('/api/scores/sync', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
@@ -1219,21 +1240,30 @@ async function autoUpdateScores() {
       atualizados++;
       if (newStatus === 'live') log('🔴', `AO VIVO: ${fx.home} ${hScore} x ${aScore} ${fx.away}`);
 
-      // Liquida apostas quando termina
+      // Liquida (ou re-liquida) apostas quando termina
       if (newStatus === 'finished' && hScore != null && aScore != null) {
         encerrados++;
         const updated = db.fixtures.get(fx.id);
+        const placarMudou = (fx.homeScore !== hScore || fx.awayScore !== aScore);
+        let pagouAlguem = false;
         db.bets.byGame(fx.id).forEach(bet => {
-          if (bet.settled) return;
           const r = scoreBet(bet, updated);
-          if (r) {
-            db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
-            if (r.pts > 0) { db.coins.add(bet.phone, r.exact ? 50 : 15); pagos++; }
+          if (!r) return;
+          // Se ja liquidada e o placar nao mudou, pula
+          if (bet.settled && !placarMudou) return;
+          // Reverte recompensa antiga se estava liquidada (correcao de placar)
+          if (bet.settled) {
+            const oldReward = bet.exact ? 50 : (bet.points > 0 ? 15 : 0);
+            if (oldReward) db.coins.add(bet.phone, -oldReward);
           }
+          db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+          if (r.pts > 0) { db.coins.add(bet.phone, r.exact ? 50 : 15); pagos++; }
+          pagouAlguem = true;
         });
-        log('✅', `ENCERRADO (auto): ${fx.home} ${hScore} x ${aScore} ${fx.away} — apostas pagas`);
-        // Avisa no grupo
-        notifyGameResult(fx, hScore, aScore).catch(()=>{});
+        if (pagouAlguem) {
+          log('✅', `ENCERRADO (auto): ${fx.home} ${hScore} x ${aScore} ${fx.away} — apostas pagas`);
+          notifyGameResult(fx, hScore, aScore).catch(()=>{});
+        }
       }
     }
 

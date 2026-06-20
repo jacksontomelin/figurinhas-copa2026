@@ -512,14 +512,21 @@ router.post('/admin/reset-db', async (req, res) => {
 // Pontuacao de um palpite vs resultado real
 function scoreBet(bet, fx) {
   if (fx.status !== 'finished' || fx.homeScore == null || fx.awayScore == null) return null;
-  const realOutcome = fx.homeScore > fx.awayScore ? '1' : (fx.homeScore < fx.awayScore ? '2' : 'X');
+  // Converte TUDO para numero (evita 3 === "3" dar false)
+  const fxH = Number(fx.homeScore), fxA = Number(fx.awayScore);
+  if (Number.isNaN(fxH) || Number.isNaN(fxA)) return null;
+  const realOutcome = fxH > fxA ? '1' : (fxH < fxA ? '2' : 'X');
+
+  const betH = (bet.homeScore != null && bet.homeScore !== '') ? Number(bet.homeScore) : null;
+  const betA = (bet.awayScore != null && bet.awayScore !== '') ? Number(bet.awayScore) : null;
+  // Deriva o palpite de vencedor a partir do placar, se nao tiver outcome salvo
+  const betOutcome = bet.outcome || (betH != null && betA != null ? (betH > betA ? '1' : betH < betA ? '2' : 'X') : null);
+
   let pts = 0;
-  // Acertou placar exato: +10 (e o outcome ja vem junto)
-  if (bet.homeScore != null && bet.awayScore != null &&
-      Number(bet.homeScore) === fx.homeScore && Number(bet.awayScore) === fx.awayScore) {
-    pts = 10;
-  } else if (bet.outcome === realOutcome) {
-    pts = 3; // acertou so o vencedor/empate
+  if (betH != null && betA != null && betH === fxH && betA === fxA) {
+    pts = 10; // placar exato
+  } else if (betOutcome && betOutcome === realOutcome) {
+    pts = 3;  // acertou o vencedor/empate
   }
   return { pts, realOutcome, exact: pts === 10 };
 }
@@ -569,6 +576,31 @@ router.put('/fixtures/:id', (req, res) => {
     });
   }
   res.json({ ok: true, settled });
+});
+
+// POST /api/bets/resettle — re-avalia apostas de jogos encerrados (corrige liquidacoes)
+router.post('/bets/resettle', (req, res) => {
+  cors(res);
+  const { secret } = req.body;
+  if (secret !== 'TOMELIN2026') return res.status(403).json({ ok: false, error: 'Nao autorizado' });
+  let reavaliadas = 0, corrigidas = 0;
+  db.fixtures.all().filter(f => f.status === 'finished' && f.homeScore != null).forEach(fx => {
+    db.bets.byGame(fx.id).forEach(bet => {
+      const r = scoreBet(bet, fx);
+      if (!r) return;
+      reavaliadas++;
+      const oldPts = bet.points || 0;
+      const oldReward = bet.settled ? (bet.exact ? 50 : (oldPts > 0 ? 15 : 0)) : 0;
+      const newReward = r.pts > 0 ? (r.exact ? 50 : 15) : 0;
+      // So mexe se mudou
+      if (oldPts !== r.pts || !bet.settled) {
+        if (oldReward !== newReward) db.coins.add(bet.phone, newReward - oldReward);
+        db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+        corrigidas++;
+      }
+    });
+  });
+  res.json({ ok: true, reavaliadas, corrigidas });
 });
 
 // GET /api/bets — todas as apostas (ou ?phone= para um usuario)
