@@ -568,25 +568,16 @@ app.all('/api/fixtures/sync-all', async (req, res) => {
   } catch(e) { res.json({ ok: false, error: e.message }); }
 });
 
+app.all('/api/heal', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const fixes = selfHeal();
+  res.json({ ok: true, fixes, msg: fixes.length ? fixes.join(', ') : 'Sistema ja estava consistente ✓' });
+});
+
 app.all('/api/bets/fix', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  let reavaliadas = 0, corrigidas = 0;
-  db.fixtures.all().filter(f => f.status === 'finished' && f.homeScore != null).forEach(fx => {
-    db.bets.byGame(fx.id).forEach(bet => {
-      const r = scoreBet(bet, fx);
-      if (!r) return;
-      reavaliadas++;
-      const oldPts = bet.points || 0;
-      const oldReward = bet.settled ? (bet.exact ? 50 : (oldPts > 0 ? 15 : 0)) : 0;
-      const newReward = r.pts > 0 ? (r.exact ? 50 : 15) : 0;
-      if (oldPts !== r.pts || !bet.settled) {
-        if (oldReward !== newReward) db.coins.add(bet.phone, newReward - oldReward);
-        db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
-        corrigidas++;
-      }
-    });
-  });
-  res.json({ ok: true, reavaliadas, corrigidas, msg: corrigidas+' palpite(s) corrigido(s)' });
+  const r = resettleAllBets(false);
+  res.json({ ok: true, ...r, msg: r.corrigidas+' palpite(s) corrigido(s) de '+r.reavaliadas });
 });
 
 app.all('/api/scores/sync', async (req, res) => {
@@ -1273,6 +1264,79 @@ async function autoUpdateScores() {
   }
 }
 
+// AUTO-CURA geral do sistema (roda no startup e periodicamente)
+function selfHeal() {
+  try {
+    let fixes = [];
+
+    // 1. Moedas negativas ou invalidas → zera/normaliza
+    const coins = db.coins.all();
+    let coinFix = 0;
+    for (const phone in coins) {
+      const v = coins[phone];
+      if (typeof v !== 'number' || Number.isNaN(v) || v < 0) {
+        db.coins.set(phone, Math.max(0, Number(v) || 0));
+        coinFix++;
+      }
+    }
+    if (coinFix) fixes.push(`${coinFix} saldo(s) de moedas`);
+
+    // 2. Apostas com placar em string → normaliza para numero
+    let betFix = 0;
+    db.bets.all().forEach(b => {
+      let changed = false;
+      if (b.homeScore != null && typeof b.homeScore === 'string') { b.homeScore = b.homeScore===''?null:Number(b.homeScore); changed = true; }
+      if (b.awayScore != null && typeof b.awayScore === 'string') { b.awayScore = b.awayScore===''?null:Number(b.awayScore); changed = true; }
+      // deriva outcome se faltar
+      if (!b.outcome && b.homeScore != null && b.awayScore != null) {
+        b.outcome = b.homeScore > b.awayScore ? '1' : b.homeScore < b.awayScore ? '2' : 'X'; changed = true;
+      }
+      if (changed) betFix++;
+    });
+    if (betFix) { fixes.push(`${betFix} aposta(s) normalizada(s)`); }
+
+    // 3. Fixtures com placar em string → numero
+    let fxFix = 0;
+    db.fixtures.all().forEach(f => {
+      if (f.homeScore != null && typeof f.homeScore === 'string') { f.homeScore = f.homeScore===''?null:Number(f.homeScore); fxFix++; }
+      if (f.awayScore != null && typeof f.awayScore === 'string') { f.awayScore = f.awayScore===''?null:Number(f.awayScore); fxFix++; }
+    });
+    if (fxFix) fixes.push(`${fxFix} placar(es) de jogo`);
+
+    // 4. Re-avalia palpites (usa os dados ja normalizados)
+    const rs = resettleAllBets(false);
+    if (rs.corrigidas) fixes.push(`${rs.corrigidas} palpite(s) re-liquidado(s)`);
+
+    if (fixes.length) log('🔧', 'Auto-cura: ' + fixes.join(', '));
+    return fixes;
+  } catch(e) {
+    log('⚠️', 'selfHeal erro: ' + e.message);
+    return [];
+  }
+}
+
+// Re-avalia TODOS os palpites de jogos encerrados e corrige liquidacoes
+function resettleAllBets(verbose) {
+  let reavaliadas = 0, corrigidas = 0;
+  db.fixtures.all().filter(f => f.status === 'finished' && f.homeScore != null).forEach(fx => {
+    db.bets.byGame(fx.id).forEach(bet => {
+      const r = scoreBet(bet, fx);
+      if (!r) return;
+      reavaliadas++;
+      const oldPts = bet.points || 0;
+      const oldReward = bet.settled ? (bet.exact ? 50 : (oldPts > 0 ? 15 : 0)) : 0;
+      const newReward = r.pts > 0 ? (r.exact ? 50 : 15) : 0;
+      if (oldPts !== r.pts || bet.exact !== r.exact || !bet.settled) {
+        if (oldReward !== newReward) db.coins.add(bet.phone, newReward - oldReward);
+        db.bets.update(bet.id, { settled: true, points: r.pts, exact: r.exact });
+        corrigidas++;
+      }
+    });
+  });
+  if (verbose && corrigidas > 0) log('🔧', `Auto-fix: ${corrigidas}/${reavaliadas} palpite(s) corrigido(s)`);
+  return { reavaliadas, corrigidas };
+}
+
 // Envia resultado + quem acertou no grupo do WhatsApp
 async function notifyGameResult(fx, h, a) {
   try {
@@ -1309,6 +1373,7 @@ app.listen(PORT, '0.0.0.0', () => {
   setTimeout(seedFixtures, 4000);       // garante jogos base se ESPN falhar
   setTimeout(syncAllFixtures, 8000);    // importa TODOS os jogos da Copa (ESPN)
   setTimeout(autoUpdateScores, 14000);  // primeira atualizacao de placares
+  setTimeout(selfHeal, 20000); // AUTO-CURA: normaliza tipos + corrige liquidacoes ao subir
 });
 
 module.exports = app;
@@ -1793,6 +1858,10 @@ cron.schedule('*/2 * * * *', async () => {
 
 cron.schedule('*/30 * * * *', async () => {
   await syncAllFixtures(); // descobre novos jogos (mata-mata) a cada 30min
+}, { timezone: 'America/Sao_Paulo' });
+
+cron.schedule('*/10 * * * *', () => {
+  selfHeal(); // AUTO-CURA periodica: tipos + palpites a cada 10min
 }, { timezone: 'America/Sao_Paulo' });
 
 cron.schedule('*/5 * * * *', async () => {
